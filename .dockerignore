@@ -1,0 +1,12 @@
+# Ignora dataset e modelli pesanti che non servono in fase di build
+CorrectionDispersion/dataset/
+CorrectionDispersion/models/
+
+# File temporanei o dati locali
+*.npy
+*.csv
+*.pkl
+*.pth
+*.log
+__pycache__/
+*.pyc
