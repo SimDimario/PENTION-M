@@ -28,8 +28,11 @@ services:
     restart: unless-stopped
 
   pention_system:
-    image: pention-frontend:latest
+    build:
+      context: .
+      dockerfile: ./PentionSystem/Dockerfile
     container_name: pention_system
     ports:
       - "8004:8004"
     restart: unless-stopped
+

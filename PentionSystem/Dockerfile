@@ -2,13 +2,15 @@ FROM python:3.10-slim-bookworm
 
 WORKDIR /PentionSystem
 
-COPY requirements.txt .
+# 👇 Cambiato il path
+COPY ./PentionSystem/requirements.txt .
+
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# 👇 Cambiato anche questo
+COPY ./PentionSystem/ .
 
-# ✅ Copia modulo esterno
-COPY ../gaussianPuff /PentionSystem/gaussianPuff
+COPY ./gaussianPuff /PentionSystem/gaussianPuff
 
 EXPOSE 8004
 

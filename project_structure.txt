@@ -164,7 +164,7 @@
 │   ├── service_correction.py
 │   ├── simulation_gen.py
 │   └── train_model.py
-├── EmissionSouceLocalization
+├── EmissionSourceLocalization
 │   ├── Dockerfile
 │   ├── __init__.py
 │   ├── api_source_localization.py
