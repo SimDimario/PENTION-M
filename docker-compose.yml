@@ -1,27 +1,36 @@
 services:
+
   classificatore_nps:
-    image: clas_nps:latest
+    build:
+      context: .
+      dockerfile: ./ClassificatoreNPS/Dockerfile
     container_name: clas_nps
     ports:
       - "8000:8000"
     restart: unless-stopped
 
   correction_dispersion:
-    image: correction_dispersion:latest
+    build:
+      context: .
+      dockerfile: ./CorrectionDispersion/Dockerfile
     container_name: correction_dispersion
     ports:
       - "8001:8001"
     restart: unless-stopped
 
   gaussian_puff:
-    image: gaussian_dispersion_model:latest
+    build:
+      context: .
+      dockerfile: ./gaussianPuff/Dockerfile
     container_name: gaussian_dispersion_model
     ports:
       - "8002:8002"
     restart: unless-stopped
 
   source_localization:
-    image: loc_emission_source:latest
+    build:
+      context: .
+      dockerfile: ./EmissionSourceLocalization/Dockerfile
     container_name: loc_emission_source
     ports:
       - "8003:8003"
@@ -35,4 +44,3 @@ services:
     ports:
       - "8004:8004"
     restart: unless-stopped
-

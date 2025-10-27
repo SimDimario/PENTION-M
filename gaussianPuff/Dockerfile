@@ -2,10 +2,11 @@ FROM python:3.10-slim-bookworm
 
 WORKDIR /gaussianPuff
 
-COPY requirements.txt .
+COPY ./gaussianPuff/requirements.txt .
+
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY ./gaussianPuff/ .
 
 EXPOSE 8002
 

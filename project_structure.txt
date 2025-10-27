@@ -163,6 +163,7 @@
 │   ├── requirements.txt
 │   ├── service_correction.py
 │   ├── simulation_gen.py
+│   ├── test.py
 │   └── train_model.py
 ├── EmissionSourceLocalization
 │   ├── Dockerfile
@@ -219,4 +220,5 @@
 │   ├── requirements.txt
 │   ├── sigmaCalculation.py
 │   └── test_dispersion.py
+├── project_structure.txt
 └── struttura.py

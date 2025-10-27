@@ -2,11 +2,11 @@ FROM python:3.10-slim-bookworm
 
 WORKDIR /ClassificatoreNPS
 
-COPY requirements.txt .
+COPY ./ClassificatoreNPS/requirements.txt .
+
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
-COPY model ./model
+COPY ./ClassificatoreNPS/ .
 
 EXPOSE 8000
 

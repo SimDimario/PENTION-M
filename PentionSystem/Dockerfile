@@ -11,6 +11,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ./PentionSystem/ .
 
 COPY ./gaussianPuff /PentionSystem/gaussianPuff
+COPY ./ClassificatoreNPS/datasetNPS ./ClassificatoreNPS/datasetNPS
+
 
 EXPOSE 8004
 

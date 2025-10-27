@@ -2,10 +2,11 @@ FROM python:3.10-slim-bookworm
 
 WORKDIR /EmissionSourceLocalization
 
-COPY requirements.txt .
+COPY ./EmissionSourceLocalization/requirements.txt .
+
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY ./EmissionSourceLocalization/ .
 
 EXPOSE 8003
 

@@ -115,21 +115,18 @@ class SensorSubstance:
             "concentrations": self.concentrations,
             "noisy_concentrations": self.noisy_concentrations,
             "mass_spectrum": spectrum,
-            "source_pos": (src_x, src_y),  # opzionale, utile per debug
+            "source_pos": (src_x, src_y),
             "source_intensity": src_intensity
         }
 
-    def _generate_mass_spectra(self, df=pd.read_csv(r"C:/Users/claud/Desktop/PENTION/ClassificatoreNPS/datasetNPS/1-s2.0-S2468170923000358-mmc1.csv", sep=',', header=0), n_generic=9, noise_level=0.01):
+    def _generate_mass_spectra(self, df=None, n_generic=9, noise_level=0.01):
         """
         Genera spettri di massa per un sensore basandosi su un dataset reale.
-
-        Args:
-            df (pd.DataFrame): 
-            n_generic (int): Numero di spettri generici da generare oltre allo spettro NPS.
-            noise_level (float): Rumore gaussiano da aggiungere agli spettri.
-        Returns:
-            list of np.array: Lista di spettri
         """
+
+        if df is None:
+            dataset_path = os.path.join(os.path.dirname(__file__), "..", "ClassificatoreNPS", "datasetNPS", "1-s2.0-S2468170923000358-mmc1.csv")
+            df = pd.read_csv(dataset_path, sep=',', header=0)
 
         if self.is_fault:
             print(f"Sensor {self.id} is faulty. No mass spectrum generated.")
@@ -149,6 +146,7 @@ class SensorSubstance:
             mass_spectra.append(spectrum_generic)
 
         return mass_spectra
+
 
     def _simulate_mass_spectrum(self, nps=False):
         """
