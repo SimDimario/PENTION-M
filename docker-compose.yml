@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   classificatore_nps:
     image: clas_nps:latest
