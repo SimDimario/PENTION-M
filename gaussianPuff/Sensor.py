@@ -4,7 +4,7 @@ import random
 from scipy.interpolate import RegularGridInterpolator
 import os
 import sys 
-from gaussianPuff.config import WindType, StabilityType, PasquillGiffordStability
+from config import WindType, StabilityType, PasquillGiffordStability
 import numpy as np
 import pandas as pd
 

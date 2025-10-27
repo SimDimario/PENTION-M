@@ -1,8 +1,8 @@
 #gauss_model.py
 import numpy as np
 from scipy.special import erfcinv
-from gaussianPuff.config import ModelConfig, StabilityType, WindType, NPS, nps_properties, OutputType, DispersionModelType
-from gaussianPuff.gaussianFunction import gauss_func_plume, gauss_func_puff
+from config import ModelConfig, StabilityType, WindType, NPS, nps_properties, OutputType, DispersionModelType
+from gaussianFunction import gauss_func_plume, gauss_func_puff
 
 class Puff:
     def __init__(self, x, y, z, q, t_release):

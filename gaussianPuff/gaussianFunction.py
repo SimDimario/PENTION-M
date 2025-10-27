@@ -1,7 +1,7 @@
 #gaussianFunction.py
 import numpy as np
 from scipy.special import erfcinv as erfcinv
-from gaussianPuff.sigmaCalculation import calc_sigmas 
+from sigmaCalculation import calc_sigmas 
 from numpy import sqrt
 
 def gauss_func_plume(Q,u,dir1,x,y,z,xs,ys,H,STABILITY):

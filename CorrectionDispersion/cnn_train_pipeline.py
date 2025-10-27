@@ -120,7 +120,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BINARY_MAP_PATH = os.path.join(os.path.dirname(__file__), "binary_maps_data/roma_italy_bbox.npy")
 METADATA_MAP_PATH = os.path.join(SCRIPT_DIR, "binary_maps_data", "roma_italy_metadata_bbox.json")
 REAL_CONC_PATH = os.path.join(SCRIPT_DIR, "dataset", "real_dispersion")
-CSV_PATH = os.path.join(SCRIPT_DIR, "dataset", "nps_simulated_dataset_gaussiano_2025-09-08_processed.csv")
+CSV_PATH = os.path.join(SCRIPT_DIR, "dataset", "nps_simulated_dataset_gaussiano_2025-10-27_processed.csv")
 
 if __name__ == "__main__":
     
@@ -145,7 +145,8 @@ if __name__ == "__main__":
     wind_speeds = []
 
     for file in tqdm(os.listdir(REAL_CONC_PATH), desc="Loading concentration maps"):
-        conc_map = np.load(os.path.join(REAL_CONC_PATH, file))
+        conc_map = np.load(os.path.join(REAL_CONC_PATH, file), allow_pickle=True)
+
         conc_map_mean = np.mean(conc_map, axis=2)  # Assuming conc_map is of shape (m, m, n)
         i = int(file.split('_')[1])  # file name format is 'sim_i_conc_real_...'
         wind_dir_cos, wind_dir_sin, wind_speed = csv_df_reduced.iloc[i]

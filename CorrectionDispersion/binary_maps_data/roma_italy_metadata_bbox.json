@@ -13,10 +13,10 @@
     ],
     "crs": "epsg 32633",
     "total_buildings": 1461,
-    "building_cells": 148578,
-    "free_cells": 101422,
+    "building_cells": 148572,
+    "free_cells": 101428,
     "total_cells": 250000,
     "resolution (m)": 2.9237805822340306,
-    "building_density": 59.4312,
+    "building_density": 59.4288,
     "mean_height": 4.482504
 }
