@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   classificatore_nps:
     build: ./ClassificatoreNPS
@@ -35,3 +33,7 @@ services:
     ports:
       - "8004:8004"
     restart: unless-stopped
+    volumes:
+      - ./gaussianPuff:/PentionSystem/gaussianPuff
+      - ./ClassificatoreNPS:/PentionSystem/ClassificatoreNPS
+

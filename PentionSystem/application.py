@@ -12,7 +12,11 @@ if project_root not in sys.path:
 from gaussianPuff.Sensor import SensorSubstance, SensorAir
 from gaussianPuff.config import NPS, OutputType, DispersionModelType, ModelConfig
 
-API_URL = "http://127.0.0.1:"
+API_CORRECTION = "http://correction_dispersion:8001"
+API_CLASSIFICATORE = "http://clas_nps:8000"
+API_GAUSSIAN = "http://gaussian_dispersion_model:8002"
+API_SOURCE = "http://loc_emission_source:8003"
+
 
 def run_application(payload):
     
@@ -25,7 +29,8 @@ def run_application(payload):
     # --- Binary map generation
     status_text.text("Binary map generation...")
 
-    response = requests.post(f"{API_URL}8001/generate_binary_map", json=payload)
+    response = requests.post(f"{API_CORRECTION}/generate_binary_map", json=payload)
+
     if response.status_code != 200:
         st.error("Error in binary map generation.")
         return None
@@ -105,7 +110,7 @@ def run_application(payload):
     if mass_spectrum:
         spectra_json = [m.tolist() for m in mass_spectrum]
         print(f"spectra_json: {type(spectra_json)}")
-        response_dnn = requests.post(f"{API_URL}8000/predict_dnn", json={"spectra": spectra_json})
+        response_dnn = requests.post(f"{API_CLASSIFICATORE}/predict_dnn", json={"spectra": spectra_json})
 
         if response_dnn.status_code == 200:
             predictions = response_dnn.json().get("predictions", [])
@@ -160,7 +165,7 @@ def run_application(payload):
 
     bounds = (payload["min_lon"], payload["min_lat"], payload["max_lon"], payload["max_lat"])
 
-    response_gauss = requests.post(f"{API_URL}8002/start_simulation",
+    response_gauss = requests.post(f"{API_GAUSSIAN}/start_simulation",
                                    json={"config": param_gaussian_model.to_dict(),
                                          "bounds": bounds})
 
@@ -232,7 +237,7 @@ def run_application(payload):
     n_sensor_operating = ([s for s in sensors_substance if not s.is_fault]).__len__()
 
     status_text.text("Start the prediction of the source...")
-    response_loc = requests.post(f"{API_URL}8003/predict_source_raw", json={
+    response_loc = requests.post(f"{API_SOURCE}/predict_source_raw", json={
         "payload_sensors": payload_sensors,
         "n_sensor_operating": n_sensor_operating
     })
@@ -274,7 +279,7 @@ def run_application(payload):
 
     bounds = (payload["min_lon"], payload["min_lat"], payload["max_lon"], payload["max_lat"])
 
-    response_gauss = requests.post(f"{API_URL}8002/start_simulation",
+    response_gauss = requests.post(f"{API_GAUSSIAN}/start_simulation",
                                    json={"config": param_gaussian_model.to_dict(),
                                          "bounds": bounds})
         
@@ -305,7 +310,7 @@ def run_application(payload):
 
     # --- Dispersion simulation + correction
     status_text.text("Dispersion simulation...")
-    response_mcxm = requests.post(f"{API_URL}8001/correct_dispersion",
+    response_mcxm = requests.post(f"{API_CORRECTION}/correct_dispersion",
                                   json={
                                       "wind_speed": wind_speed,
                                       "wind_dir": wind_dir.tolist(),
