@@ -1,12 +1,13 @@
-FROM python:3.10-slim
+FROM python:3.10-slim-bookworm
 
 WORKDIR /ClassificatoreNPS
 
-COPY ./ClassificatoreNPS/requirements.txt .
+COPY requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt --verbose
 
-COPY ./ClassificatoreNPS/ .
+COPY . .
+COPY model ./model
 
 EXPOSE 8000
 

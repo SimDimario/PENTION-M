@@ -1,18 +1,12 @@
-FROM python:3.10-slim
+FROM python:3.10-slim-bookworm
 
 WORKDIR /PentionSystem
 
-# 👇 Cambiato il path
-COPY ./PentionSystem/requirements.txt .
+COPY requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt --verbose
 
-# 👇 Cambiato anche questo
-COPY ./PentionSystem/ .
-
-COPY ./gaussianPuff /PentionSystem/gaussianPuff
-COPY ./ClassificatoreNPS/datasetNPS ./ClassificatoreNPS/datasetNPS
-
+COPY . .
 
 EXPOSE 8004
 

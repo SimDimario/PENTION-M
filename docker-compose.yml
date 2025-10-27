@@ -1,45 +1,36 @@
-services:
+version: "3.9"
 
+services:
   classificatore_nps:
-    build:
-      context: .
-      dockerfile: ./ClassificatoreNPS/Dockerfile
+    image: clas_nps:latest
     container_name: clas_nps
     ports:
       - "8000:8000"
     restart: unless-stopped
 
   correction_dispersion:
-    build:
-      context: .
-      dockerfile: ./CorrectionDispersion/Dockerfile
+    image: correction_dispersion:latest
     container_name: correction_dispersion
     ports:
       - "8001:8001"
     restart: unless-stopped
 
   gaussian_puff:
-    build:
-      context: .
-      dockerfile: ./gaussianPuff/Dockerfile
+    image: gaussian_dispersion_model:latest
     container_name: gaussian_dispersion_model
     ports:
       - "8002:8002"
     restart: unless-stopped
 
   source_localization:
-    build:
-      context: .
-      dockerfile: ./EmissionSourceLocalization/Dockerfile
+    image: loc_emission_source:latest
     container_name: loc_emission_source
     ports:
       - "8003:8003"
     restart: unless-stopped
 
   pention_system:
-    build:
-      context: .
-      dockerfile: ./PentionSystem/Dockerfile
+    image: pention-frontend:latest
     container_name: pention_system
     ports:
       - "8004:8004"

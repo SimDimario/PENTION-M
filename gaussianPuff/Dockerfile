@@ -1,12 +1,11 @@
-FROM python:3.10-slim
+FROM python:3.10-slim-bookworm
 
 WORKDIR /gaussianPuff
 
-COPY ./gaussianPuff/requirements.txt .
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt --verbose
 
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY ./gaussianPuff/ .
+COPY . .
 
 EXPOSE 8002
 

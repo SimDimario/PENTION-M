@@ -13,12 +13,10 @@ from Sensor import SensorSubstance, SensorAir
 N_SIMULATIONS = 100
 N_SENSORS = 10
 SAVE_DIR = "./CorrectionDispersion/dataset"
-SAVE_DIR_CONC_REAL= f"./CorrectionDispersion/dataset/real_dispersion"
+SAVE_DIR_CONC_REAL= f"./CorrectionDispersion/dataset/real_dispersion_2025_09_10"
 BINARY_MAP_PATH = os.path.join(os.path.dirname(__file__), "binary_maps_data/roma_italy_bbox.npy")
 
 os.makedirs(SAVE_DIR, exist_ok=True)
-os.makedirs(SAVE_DIR_CONC_REAL, exist_ok=True)
-
 
 # Caricamento mappa binaria (1 = suolo libero, 0 = edificio)
 binary_map = np.load(BINARY_MAP_PATH)

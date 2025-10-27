@@ -4,4 +4,3 @@ streamlit
 matplotlib
 streamlit-folium
 windrose
-scipy
