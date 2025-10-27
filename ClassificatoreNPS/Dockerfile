@@ -4,10 +4,9 @@ WORKDIR /ClassificatoreNPS
 
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt --verbose
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-COPY model ./model
 
 EXPOSE 8000
 

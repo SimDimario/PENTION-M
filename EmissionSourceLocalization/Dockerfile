@@ -1,9 +1,10 @@
 FROM python:3.10-slim-bookworm
 
-WORKDIR /EmissionSouceLocalization
+WORKDIR /EmissionSourceLocalization
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt --verbose
+
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 

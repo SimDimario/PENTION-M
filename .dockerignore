@@ -1,0 +1,24 @@
+# Ignora modelli pesanti
+*.npy
+*.pkl
+*.keras
+*.zip
+*.csv
+*.txt
+*.png
+*.gif
+*.jpg
+*.jpeg
+*.mp4
+
+# File Jupyter inutili per build
+*.ipynb
+
+# Cartelle inutili
+__pycache__/
+*.pyc
+.cache/
+venv/
+.venv/
+.idea/
+*.log

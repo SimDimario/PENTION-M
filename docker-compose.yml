@@ -2,35 +2,35 @@ version: "3.9"
 
 services:
   classificatore_nps:
-    image: clas_nps:latest
+    build: ./ClassificatoreNPS
     container_name: clas_nps
     ports:
       - "8000:8000"
     restart: unless-stopped
 
   correction_dispersion:
-    image: correction_dispersion:latest
+    build: ./CorrectionDispersion
     container_name: correction_dispersion
     ports:
       - "8001:8001"
     restart: unless-stopped
 
   gaussian_puff:
-    image: gaussian_dispersion_model:latest
+    build: ./gaussianPuff
     container_name: gaussian_dispersion_model
     ports:
       - "8002:8002"
     restart: unless-stopped
 
   source_localization:
-    image: loc_emission_source:latest
+    build: ./EmissionSourceLocalization
     container_name: loc_emission_source
     ports:
       - "8003:8003"
     restart: unless-stopped
 
   pention_system:
-    image: pention-frontend:latest
+    build: ./PentionSystem
     container_name: pention_system
     ports:
       - "8004:8004"
