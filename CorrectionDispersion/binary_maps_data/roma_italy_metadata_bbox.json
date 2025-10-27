@@ -1,0 +1,22 @@
+{
+    "city": "Roma, Italy",
+    "grid_size": 500,
+    "bounds": [
+        290792.34326801647,
+        4641150.164053066,
+        292254.2335591335,
+        4642132.593826234
+    ],
+    "cell_size": [
+        2.9237805822340306,
+        1.9648595463372767
+    ],
+    "crs": "epsg 32633",
+    "total_buildings": 1461,
+    "building_cells": 148578,
+    "free_cells": 101422,
+    "total_cells": 250000,
+    "resolution (m)": 2.9237805822340306,
+    "building_density": 59.4312,
+    "mean_height": 4.482504
+}

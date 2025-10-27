@@ -1,0 +1,8 @@
+*.bin filter=lfs diff=lfs merge=lfs -text
+**/dataset/**/*.npy filter=lfs diff=lfs merge=lfs -text
+**/dataset/**/*.npz filter=lfs diff=lfs merge=lfs -text
+**/models/**/*.pth filter=lfs diff=lfs merge=lfs -text
+**/models/**/*.pt filter=lfs diff=lfs merge=lfs -text
+**/models/*.pth filter=lfs diff=lfs merge=lfs -text
+CorrectionDispersion/models/*.pth filter=lfs diff=lfs merge=lfs -text
+CorrectionDispersion/dataset/real_dispersion/*.npy filter=lfs diff=lfs merge=lfs -text

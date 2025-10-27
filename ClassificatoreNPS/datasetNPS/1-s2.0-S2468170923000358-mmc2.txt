@@ -1,0 +1,21 @@
+Dataset Description for MS_dataset.csv
+
+Sources
+
+1.)	MS_dataset.csv
+	Scientific Working Group for the Analysis of Seized Drugs. 
+	SWGDRUG Mass Spectral Library. Version 3.11. URL:https://www.swgdrug.org/ms.htm
+
+Label
+0:	Cannabinoid analogues
+1:	Cathinone analogues
+2:	Phenethylamine analogues
+3:	Piperazine analogues
+4:	Tryptamine analogues
+5:	Fentanyl analogues
+6:	Other compounds
+
+Attributes
+Name:	Chemical Name
+1-600:	Abundance Peaks at Each Mass/charge ratio
+Label:	NPS Class

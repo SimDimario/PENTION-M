@@ -1,0 +1,29 @@
+# Dati e dataset pesanti
+dataset/
+*.csv
+*.json
+
+# File di log
+*.log
+
+# Cache di Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Cartelle di ambiente virtuale
+venv/
+env/
+
+# File di configurazione locali
+.env
+*.ini
+
+# Output di modelli temporanei
+*.h5
+*.keras
+*.pkl
+
+# Cartelle di sviluppo
+.ipynb_checkpoints/
+dataset/
