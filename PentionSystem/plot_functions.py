@@ -11,7 +11,7 @@ def plot_plan_view(C1, x, y, dispersion_placeholder, stability_class=1):
 
         # Se il risultato è 3D (es. da Gaussian Model), integra lungo il tempo
         if C1.ndim == 3:
-            data = np.trapezoid(C1, axis=2) * 1e6  # µg/m³
+            data = np.trapz(C1, axis=2) * 1e6  # µg/m³
         else:
             # Se è 2D (es. da CorrectionDispersion), usa direttamente la mappa
             data = C1 * 1e6  # µg/m³

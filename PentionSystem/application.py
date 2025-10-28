@@ -17,6 +17,18 @@ API_CLASSIFICATORE = "http://clas_nps:8000"
 API_GAUSSIAN = "http://gaussian_dispersion_model:8002"
 API_SOURCE = "http://loc_emission_source:8003"
 
+def safe_markdown(placeholder, text, level="info"):
+    try:
+        placeholder.markdown(text)
+    except Exception as e:
+        print(f"[WARNING] Placeholder update failed: {e}")
+        if level == "error":
+            st.error(text)
+        elif level == "warning":
+            st.warning(text)
+        else:
+            st.info(text)
+
 
 def run_application(payload):
     
@@ -42,7 +54,12 @@ def run_application(payload):
     
     binary_map = np.array(data.get("map"), dtype=np.float32)
     metadata = data.get("metadata", {})
+    # dopo aver creato free_cells
     free_cells = np.argwhere(binary_map == 1)
+    if free_cells.size == 0:
+        st.error("La mappa binaria non contiene celle libere per posizionare sensori/sorgente.")
+        return
+
     building_cells = np.sum(binary_map == 0)
 
     with metadata_section:
@@ -67,7 +84,7 @@ def run_application(payload):
     wind_speed, wind_type, stability_type, stability_value, humidify, dry_size, RH = sensor_air.sample_meteorology()
 
     if weather_section is not None:
-        weather_placeholder.markdown(
+        safe_markdown(weather_placeholder,
             f"💨 **Wind speed (m/s):** {wind_speed}  \n"
             f"💨 **Wind type:** {wind_type}  \n"
             f"📈 **Stability:** {stability_type}  \n"
@@ -122,13 +139,14 @@ def run_application(payload):
     print(type(substance_nps))
     print(len(substance_nps))
 
+    # subito dopo la classificazione
     if substance_nps:
         most_common_substance = Counter(substance_nps).most_common(1)[0][0]
-        print(most_common_substance)
         nps = NPS.from_string(most_common_substance)
     else:
         most_common_substance = None
-        print("Nessuna sostanza presente")
+        nps = NPS.OTHER_COMPOUNDS  # ✅ fallback sicuro per ModelConfig
+
 
     if nps_section is not None:
         if substance_nps:
@@ -333,27 +351,145 @@ def run_application(payload):
     from streamlit_folium import st_folium
 
     if map_section is not None:
-        m=plot_dispersion_on_map(payload["min_lat"], payload["min_lon"],
-                                       payload["max_lat"], payload["max_lon"], 
-                                       sensors_substance, real_dispersion_map, x, y)
+        m = plot_dispersion_on_map(
+            payload["min_lat"], payload["min_lon"],
+            payload["max_lat"], payload["max_lon"],
+            sensors_substance, real_dispersion_map, x, y
+        )
         map_section.subheader("🗺️ Dispersion map")
         st_folium(m, width=700, height=500)
         m.save("dispersion_map.html")
 
-    plot_plan_view(real_dispersion_map, x_grid, y_grid, map_section)
+    # plot_plan_view(real_dispersion_map, x_grid, y_grid, map_section)  # ← commentata
 
     progress = 100
     progress_bar.progress(progress)
     status_text.text("Simulation completed ✅")
     print("END")
+
     st.session_state.simulation_results = {
-        "weather": {"wind_speed": wind_speed, "wind_type": wind_type, "stability": stability_type, "RH": RH},
+        "weather": {
+            "wind_speed": wind_speed,
+            "wind_type": wind_type,
+            "stability": stability_type,
+            "RH": RH,
+            "wind_dir": wind_dir.tolist() if isinstance(wind_dir, np.ndarray) else wind_dir,  # ✅ NEW
+        },
         "sensors": sensors_substance,
         "nps": most_common_substance,
         "source": (x, y),
         "dispersion_map": real_dispersion_map,
-        "metadata": metadata
+        "metadata": {
+            **metadata,
+            "bounds": (payload["min_lon"], payload["min_lat"], payload["max_lon"], payload["max_lat"]),  # ✅ NEW
+        },
+        "grid": {  # ✅ NEW: per ridisegnare la plan-view
+            "x_grid": x_grid.tolist() if isinstance(x_grid, np.ndarray) else x_grid,
+            "y_grid": y_grid.tolist() if isinstance(y_grid, np.ndarray) else y_grid,
+        }
     }
+
+
+    return {
+        "weather": {
+            "wind_speed": wind_speed,
+            "wind_type": wind_type,
+            "stability": stability_type,
+            "RH": RH,
+            "wind_dir": wind_dir.tolist() if isinstance(wind_dir, np.ndarray) else wind_dir,  # ✅ NEW
+        },
+        "sensors": sensors_substance,
+        "nps": most_common_substance,
+        "source": (x, y),
+        "dispersion_map": real_dispersion_map,
+        "metadata": {
+            **metadata,
+            "bounds": (payload["min_lon"], payload["min_lat"], payload["max_lon"], payload["max_lat"]),  # ✅ NEW
+        },
+        "grid": {  # ✅ NEW: per ridisegnare la plan-view
+            "x_grid": x_grid.tolist() if isinstance(x_grid, np.ndarray) else x_grid,
+            "y_grid": y_grid.tolist() if isinstance(y_grid, np.ndarray) else y_grid,
+        }
+    }
+
+
+def render_results_from_state(results):
+    # 1) Meteo
+    if results.get("weather"):
+        w = results["weather"]
+        safe_markdown(
+            weather_placeholder,
+            f"- **Wind speed (m/s):** {w.get('wind_speed')}  \n"
+            f"- **Wind type:** {w.get('wind_type')}  \n"
+            f"- **Stability:** {w.get('stability')}  \n"
+            f"- **Relative Humidity (%):** {w.get('RH')}"
+        )
+        # Wind rose
+        if w.get("wind_dir") is not None and w.get("wind_speed") is not None:
+            wd = np.array(w["wind_dir"])
+            ws = w["wind_speed"]
+            plot_wind_rose(wd, ws, wind_rose_placeholder)
+
+    # 2) Sensori
+    if results.get("sensors"):
+        sensor_info = [{"ID": s.id, "x": s.x, "y": s.y,
+                        "Status": "Operating" if not s.is_fault else "Faulty"}
+                       for s in results["sensors"]]
+        sensors_placeholder.table(sensor_info)
+
+    # 3) NPS
+    if results.get("nps") is not None:
+        if results["nps"]:
+            nps_placeholder.write(results["nps"])
+        else:
+            nps_placeholder.warning("No NPS identified.")
+
+    # 4) Sorgente
+    if results.get("source") is not None:
+        origin_lat, origin_lon = results["source"]
+        if origin_lat is not None and origin_lon is not None:
+            source_placeholder.write(f"Lat: {origin_lat}, Long: {origin_lon}")
+        else:
+            source_placeholder.warning("Source not estimated.")
+
+    # 5) Dispersione (plan view + folium)
+    disp = results.get("dispersion_map")
+    grid = results.get("grid", {})
+    meta = results.get("metadata", {})
+    bounds = meta.get("bounds") or (
+        meta.get("min_lon"), meta.get("min_lat"), meta.get("max_lon"), meta.get("max_lat")
+    )
+
+    if disp is not None:
+        # Plan view
+        xg = np.array(grid.get("x_grid")) if grid.get("x_grid") is not None else None
+        yg = np.array(grid.get("y_grid")) if grid.get("y_grid") is not None else None
+
+        if xg is not None and yg is not None:
+            plot_plan_view(np.array(disp), xg, yg, dispersion_placeholder)
+        else:
+            # fallback: griglie uniformi
+            if bounds and all(v is not None for v in bounds) and isinstance(disp, np.ndarray):
+                min_lon, min_lat, max_lon, max_lat = bounds
+                ny, nx = disp.shape[:2]
+                x_lin = np.linspace(min_lon, max_lon, nx)
+                y_lin = np.linspace(min_lat, max_lat, ny)
+                Xg, Yg = np.meshgrid(x_lin, y_lin)
+                plot_plan_view(np.array(disp), Xg, Yg, dispersion_placeholder)
+
+        # Folium map
+        if bounds and all(v is not None for v in bounds):
+            min_lon, min_lat, max_lon, max_lat = bounds
+            m = plot_dispersion_on_map(
+                min_lat, min_lon, max_lat, max_lon,
+                results.get("sensors") or [], np.array(disp),
+                *(results.get("source") or (None, None))
+            )
+            from streamlit_folium import st_folium
+            st_folium(m, width=700, height=500)
+
+    st.sidebar.success("✅ Simulation results loaded successfully")
+
 
 # ---------------- INTERFACCIA STREAMLIT ---------------- #
 st.set_page_config(page_title="PentionSystem", layout="wide")
@@ -369,17 +505,25 @@ if "simulation_results" not in st.session_state:
 
 st.markdown(
     """
-    <div style="
-        position: sticky; 
-        top: 0; 
-        background-color: white; 
-        padding: 20px; 
-        z-index: 999; 
-        font-size: 36px; 
-        font-weight: bold;
-        text-align: center;
-    ">
-        💊 PENTION - NPS Source emission identification system
+    <style>
+        /* HEADER STICKY */
+        .main-header {
+            position: sticky;
+            top: 0;
+            background: linear-gradient(90deg, #3a0ca3, #4361ee, #4cc9f0);
+            color: white;
+            padding: 1.5rem 0;
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            box-shadow: 0px 2px 8px rgba(0,0,0,0.15);
+            border-radius: 0 0 10px 10px;
+            z-index: 999;
+        }
+    </style>
+    <div class="main-header">
+        💊 PENTION — NPS Emission Source Identification
     </div>
     """,
     unsafe_allow_html=True
@@ -397,26 +541,46 @@ n_sensors = st.sidebar.slider("Number of sensors", min_value=5, max_value=50, va
 st.sidebar.markdown(
     """
     <style>
-    .start-btn > button {
-        background-color: #28a745 !important;
-        color: white !important;
-        font-weight: bold;
-        border-radius: 8px;
-        width: 100%;
-        padding: 0.5em 0;
-    }
-    .stop-btn > button {
-        background-color: #dc3545 !important;
-        color: white !important;
-        font-weight: bold;
-        border-radius: 8px;
-        width: 100%;
-        padding: 0.5em 0;
-    }
+        /* Sidebar header */
+        [data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #f8f9fa 10%, #ffffff 90%);
+            border-right: 2px solid #f1f3f5;
+        }
+
+        /* Start button */
+        div[data-testid="stButton"] > button:first-child {
+            background-color: #4cc9f0 !important;
+            color: white !important;
+            border-radius: 10px;
+            border: none;
+            font-weight: 600;
+            padding: 0.6em;
+            transition: 0.3s;
+        }
+        div[data-testid="stButton"] > button:first-child:hover {
+            background-color: #4895ef !important;
+            transform: scale(1.03);
+        }
+
+        /* Stop button */
+        div[data-testid="stButton"] > button:nth-child(2) {
+            background-color: #ef233c !important;
+            color: white !important;
+            border-radius: 10px;
+            border: none;
+            font-weight: 600;
+            padding: 0.6em;
+            transition: 0.3s;
+        }
+        div[data-testid="stButton"] > button:nth-child(2):hover {
+            background-color: #d90429 !important;
+            transform: scale(1.03);
+        }
     </style>
     """,
     unsafe_allow_html=True
 )
+
 
 col1, col2 = st.sidebar.columns(2)
 
@@ -431,66 +595,50 @@ with col2:
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Layout colonne: lato-sinistra, centro (mappa), lato-destra
-col_left, col_center, col_right = st.columns([1, 3, 1])
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "🌦 Meteo", "🧪 NPS Detected", "📍 Source", "🗺 Dispersion", "📡 Sensors"
+])
 
-with col_left:
-    weather_section = st.container()
-    dispersion_section = st.container()
-    metadata_section = st.container()
+with tab1:
+    st.subheader("🌦 Meteo Conditions")
+    weather_placeholder = st.empty()
 
-with col_center:
+with tab2:
+    st.subheader("🧪 NPS Classification")
+    nps_placeholder = st.empty()
+
+with tab3:
+    st.subheader("📍 Source Estimation")
+    source_placeholder = st.empty()
+
+with tab4:
+    st.subheader("🌫 Dispersion Simulation & Wind Rose")
+    dispersion_placeholder = st.empty()
+    wind_rose_placeholder = st.empty()
     map_section = st.container()
 
-with col_right:
-    nps_section = st.container()
-    source_section = st.container()
-    wind_rose_section = st.container()
-
-with weather_section:
-    st.markdown("**⛅Meteo conditions**")
-    weather_placeholder = st.empty()
-    weather_placeholder.markdown(
-        f"💨 **Wind speed (m/s):** N/A  \n"
-        f"💨 **Wind type:** N/A  \n"
-        f"📈 **Stability:** N/A  \n"
-        f"♒︎ **Relative Humidity (%):** N/A"
-    )
-
-with dispersion_section:
-    st.markdown("**🗺️ Dispersion map**")
-    dispersion_placeholder = st.empty()
-
-sensors_section = st.container()
-
-with metadata_section:
-    st.markdown("**🏙️ Info city map**")
-    metadata_placeholder = st.empty()
-
-with sensors_section:
-    st.markdown("**🛰️ Sensor**")
+with tab5:
+    st.subheader("📡 Sensor Data")
     sensors_placeholder = st.empty()
-    sensors_placeholder.write("No data available.")
-
-with nps_section:
-    st.markdown("**🧪 Nps predicted by sensor**")
-    nps_placeholder = st.empty()
-    nps_placeholder.write("N/A")
-
-with source_section:
-    st.markdown("**📍 Source estimated**")
-    source_placeholder = st.empty()
-    source_placeholder.write("N/A")
-
-with wind_rose_section:
-    st.markdown("🧭 **Wind rose**")
-    wind_rose_placeholder = st.empty()
 
 progress_bar = st.sidebar.progress(0)
 status_text = st.sidebar.empty()
 
+st.sidebar.markdown("---")
+st.sidebar.caption("Developed for PENTION-S | Streamlit UI optimized")
+
+# 🔧 Placeholder compatibili con la nuova UI
+metadata_section = st.container()
+metadata_placeholder = metadata_section.empty()
+
+weather_section = tab1
+nps_section = tab2
+source_section = tab3
+dispersion_section = tab4
+sensors_section = tab5
+
 # ---------------- START SIMULATION ---------------- #
 if start:
-
     status_text.success("Simulation started ✅")
 
     payload = {
@@ -503,7 +651,10 @@ if start:
         "Number of sensors": n_sensors
     }
 
-    run_application(payload)
+    with st.spinner("⏳ Running full simulation... please wait."):
+        results = run_application(payload)
+        st.session_state.simulation_results = results or st.session_state.simulation_results
+
 
 elif stop:
 
@@ -532,29 +683,5 @@ elif stop:
     map_section.empty()
 else:
     results = st.session_state.simulation_results
-
-    if results["weather"] is not None:
-        weather_placeholder.markdown(
-            f"- **Wind speed (m/s):** {results['weather']['wind_speed']}  \n"
-            f"- **Wind type:** {results['weather']['wind_type']}  \n"
-            f"- **Stability:** {results['weather']['stability']}  \n"
-            f"- **Relative Humidity (%):** {results['weather']['RH']}"
-        )
-
-    if results["sensors"] is not None:
-        sensor_info = [{"ID": s.id, "x": s.x, "y": s.y, "Status": "Operating" if not s.is_fault else "Faulty"}
-                       for s in results["sensors"]]
-        sensors_placeholder.table(sensor_info)
-
-    if results["nps"] is not None:
-        if results["nps"]:
-            nps_placeholder.write(results["nps"])
-        else:
-            nps_placeholder.warning("No NPS identified.")
-
-    if results["source"] is not None:
-        origin_lat, origin_lon = results["source"]
-        if origin_lat is not None and origin_lon is not None:
-            source_placeholder.write(f"Lat: {origin_lat}, Long: {origin_lon}")
-        else:
-            source_placeholder.warning("Source not estimated.")
+    if results and any(v is not None for v in results.values()):
+        render_results_from_state(results)
