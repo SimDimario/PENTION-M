@@ -35,12 +35,15 @@ def load_model(binary_map, m=500, device=None, pretrained_path=None):
     loaded_model = MCxM_CNN(binary_map, m=m, n_channel=1, n_mask_correction=3, wind_dim=2, n_global_features=0).to(device)
 
     try:
-        loaded_model.load_state_dict(torch.load(model_path, map_location=device))
+        # ✅ Forza il caricamento completo (compatibile con modelli salvati prima di PyTorch 2.6)
+        state_dict = torch.load(model_path, map_location=device, weights_only=False)
+        loaded_model.load_state_dict(state_dict)
         loaded_model.eval()
         logger.info("Model loaded and set to eval mode.")
     except Exception as e:
         logger.error(f"Error loading model: {e}")
         raise e
+
     return loaded_model
 
 def correct_dispersion(wind_dir, wind_speed, concentration_map, building_map, global_feature=None, device=None, m=500, pretrained_path=None):
