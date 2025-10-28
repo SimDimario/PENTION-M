@@ -9,8 +9,13 @@ def plot_plan_view(C1, x, y, dispersion_placeholder, stability_class=1):
     with dispersion_placeholder:
         fig, ax_main = plt.subplots(figsize=(8, 6))
 
-        # Integra la concentrazione nel tempo lungo l'asse 2 (T)
-        data = np.trapezoid(C1, axis=2) * 1e6  # µg/m³ #type:ignore
+        # Se il risultato è 3D (es. da Gaussian Model), integra lungo il tempo
+        if C1.ndim == 3:
+            data = np.trapezoid(C1, axis=2) * 1e6  # µg/m³
+        else:
+            # Se è 2D (es. da CorrectionDispersion), usa direttamente la mappa
+            data = C1 * 1e6  # µg/m³
+
         vmin = np.percentile(data, 5)
         vmax = np.percentile(data, 95)
 
