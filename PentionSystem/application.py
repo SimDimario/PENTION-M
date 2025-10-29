@@ -42,6 +42,10 @@ def run_application(payload):
     payload.pop("Number of sensors", None)
 
     progress = 0
+    # Pulisce la tab Map prima di disegnare una nuova mappa
+    if final_map_section is not None:
+        final_map_section.empty()
+
     progress_bar.progress(progress)
 
     # --- Binary map generation
@@ -61,18 +65,20 @@ def run_application(payload):
         return
 
     building_cells = np.sum(binary_map == 0)
-    with metadata_section:
-        metadata_placeholder.markdown(
-            f"**Griglia**: {metadata.get('grid_size', 'N/A')}×{metadata.get('grid_size', 'N/A')}\n"
-            f"**Edifici totali**: {metadata.get('total_buildings', 'N/A')}\n"
-            f"**Celle edifici**: {int(np.sum(building_cells)) if isinstance(building_cells, np.ndarray) else building_cells:,}\n"
-            f"**Celle libere**: {int(np.sum(free_cells)) if isinstance(free_cells, np.ndarray) else free_cells:,}\n"
-            f"**CRS**: {metadata.get('crs', 'N/A')}\n"
-            f"**Risoluzione**: {metadata.get('resolution (m)', 'N/A')} m\n"
-            f"**Densità edifici**: {float(metadata.get('building_density', np.nan)):.1f}%\n"
-            f"**Altezza media edifici**: {float(metadata.get('mean_height', np.nan))} m\n"
-            f"**Città**: {metadata.get('city', 'N/A')}"
-        )
+    metadata_section.markdown(f"""
+    ### ℹ️ Informazioni sulla griglia
+
+    - **Griglia**: {metadata.get('grid_size', 'N/A')}×{metadata.get('grid_size', 'N/A')}
+    - **Edifici totali**: {metadata.get('total_buildings', 'N/A')}
+    - **Celle edifici**: {int(np.sum(building_cells)) if isinstance(building_cells, np.ndarray) else building_cells:,}
+    - **Celle libere**: {int(np.sum(free_cells)) if isinstance(free_cells, np.ndarray) else free_cells:,}
+    - **CRS**: {metadata.get('crs', 'N/A')}
+    - **Risoluzione**: {metadata.get('resolution (m)', 'N/A')} m
+    - **Densità edifici**: {float(metadata.get('building_density', np.nan)):.1f}%
+    - **Altezza media edifici**: {float(metadata.get('mean_height', np.nan))} m
+    - **Città**: {metadata.get('city', 'N/A')}
+    """)
+
 
     progress += 20
     progress_bar.progress(progress)
@@ -99,7 +105,7 @@ def run_application(payload):
                                            noise_level=round(np.random.uniform(0.0, 0.0005), 4))
         sensors_substance.append(sensor_substance)
 
-    plot_binary_map(binary_map, metadata['bounds'], map_section, sensors_substance, dark=dark_mode)
+    plot_binary_map(binary_map, metadata['bounds'], binary_map_section, sensors_substance, dark=dark_mode)
 
     mass_spectrum = []
     for sensor in sensors_substance:
@@ -337,14 +343,19 @@ def run_application(payload):
 
     from streamlit_folium import st_folium
 
-    if map_section is not None:
+    if final_map_section is not None:
         m = plot_dispersion_on_map(
             payload["min_lat"], payload["min_lon"],
             payload["max_lat"], payload["max_lon"],
             sensors_substance, real_dispersion_map, x, y, dark=dark_mode)
-        map_section.subheader("🗺️ Dispersion map")
-        st_folium(m, width=700, height=500)
+
+        # ✅ usa il container correttamente
+        final_map_section.empty()  # pulisci prima
+        with final_map_section.container():  
+            from streamlit_folium import st_folium
+            st_folium(m, width=700, height=500)
         m.save("dispersion_map.html")
+
 
     # plot_plan_view(real_dispersion_map, x_grid, y_grid, map_section)  # ← commentata
 
@@ -470,8 +481,11 @@ def render_results_from_state(results):
                 min_lat, min_lon, max_lat, max_lon,
                 results.get("sensors") or [], np.array(disp),
                 *(results.get("source") or (None, None)), dark=dark_mode)
-            from streamlit_folium import st_folium
-            st_folium(m, width=700, height=500)
+            if 'final_map_section' in globals() and final_map_section is not None:
+                final_map_section.empty()
+                with final_map_section.container():
+                    from streamlit_folium import st_folium
+                    st_folium(m, width=700, height=500)
 
     st.sidebar.success("✅ Simulation results loaded successfully")
 
@@ -617,9 +631,10 @@ with col2:
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Layout colonne: lato-sinistra, centro (mappa), lato-destra
-tab1, tab2, tab3, tab4 = st.tabs([
-    "🌦 Meteo", "🧪 Detection & Source", "🗺 Dispersion", "📡 Sensors"
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "🌦 Meteo", "🧪 Detection & Source", "📈 Simulation", "🗺 Map","📡 Sensors"
 ])
+
 
 with tab1:
     st.subheader("🌦 Meteo Conditions")
@@ -632,27 +647,36 @@ with tab2:
     source_placeholder = st.empty()
 
 with tab3:
-    st.subheader("🌫 Dispersion Simulation & Wind Rose")
-    dispersion_placeholder = st.empty()
-    wind_rose_placeholder = st.empty()
-    map_section = st.container()
+    st.subheader("📈 Dispersion Simulation & Wind Rose")
+    metadata_section = st.container()
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        dispersion_placeholder = st.empty()
+    with col2:
+        wind_rose_placeholder = st.empty()
+    binary_map_container = st.container()  # ✅ per la mappa binaria
 
 with tab4:
+    st.subheader("🗺 Final Dispersion Map")
+    map_container = st.container()
+
+with tab5:
     st.subheader("📡 Sensor Data")
     sensors_placeholder = st.empty()
 
+
 progress_bar = st.sidebar.progress(0)
 status_text = st.sidebar.empty()
-
-# 🔧 Placeholder compatibili con la nuova UI
-metadata_section = st.container()
-metadata_placeholder = metadata_section.empty()
 
 weather_section = tab1
 nps_section = tab2
 source_section = tab2
 dispersion_section = tab3
-sensors_section = tab4
+sensors_section = tab5
+
+# ⛔️ NON usare "map_section" (ambiguo)
+binary_map_section = binary_map_container  # solo per la griglia binaria
+final_map_section = map_container
 
 # ---------------- START SIMULATION ---------------- #
 if start:
@@ -697,7 +721,8 @@ elif stop:
     source_placeholder.write("N/A")
     wind_rose_placeholder.empty()
     dispersion_placeholder.empty()
-    map_section.empty()
+    final_map_section.empty()
+
 else:
     results = st.session_state.simulation_results
     if results and any(v is not None for v in results.values()):

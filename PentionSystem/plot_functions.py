@@ -40,7 +40,8 @@ def plot_plan_view(C1, x, y, dispersion_placeholder, dark=False):
         ax_main.set_ylabel('y (m)')
         ax_main.axis('equal')
 
-        st.pyplot(fig, clear_figure=False)
+        st.pyplot(fig, clear_figure=True, width='content')
+
 
 def plot_wind_rose(wind_dir, wind_speed, wind_rose_placeholder, dark=False):
     with wind_rose_placeholder:
@@ -67,7 +68,7 @@ def plot_wind_rose(wind_dir, wind_speed, wind_rose_placeholder, dark=False):
             ax_inset.set_legend(loc='lower right', title='Wind speed (m/s)')
             ax_inset.set_title("Rosa dei venti")
 
-            st.pyplot(fig, clear_figure=True)
+            st.pyplot(fig, clear_figure=True, width='content')
 
 def plot_binary_map(binary_map, bounds, map_section, sensors=None, dark=False):
     with map_section:
@@ -114,7 +115,8 @@ def plot_binary_map(binary_map, bounds, map_section, sensors=None, dark=False):
             cbar.ax.yaxis.set_tick_params(color=cbar_color)
             plt.setp(cbar.ax.yaxis.get_ticklabels(), color=cbar_color)
 
-        st.pyplot(fig, clear_figure=True)
+        st.pyplot(fig, clear_figure=True, width='content')
+
 
 def plot_dispersion_on_map(min_lat, min_lon, max_lat, max_lon, sensors, dispersion_map, source_lat=None, source_lon=None, title="Mappa Dispersione", dark=False):
 
