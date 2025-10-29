@@ -373,25 +373,26 @@ def run_application(payload):
             min_lat, min_lon, max_lat, max_lon,
             sensors_substance, real_dispersion_map, x, y, dark=dark_mode
         )
+        st.session_state["final_map"] = m  # ✅ salva la mappa
         if final_map_section is not None:
             with final_map_section:
-                st_folium(m, width=700, height=500, key="final_map")  # key stabile
+                st_folium(m, width=700, height=500, key="final_map")
         m.save("dispersion_map.html")
 
     status_text.text("Rendering final map and saving results...")
     progress = advance_progress(progress_bar, progress, 100)
 
     status_text.text("Simulation completed ✅")
-    time.sleep(0.3)
     print("END")
 
+    # ✅ salva i risultati nello stato (deve essere PRIMA del rerun)
     st.session_state.simulation_results = {
         "weather": {
             "wind_speed": wind_speed,
             "wind_type": wind_type,
             "stability": stability_type,
             "RH": RH,
-            "wind_dir": wind_dir.tolist() if isinstance(wind_dir, np.ndarray) else wind_dir,  # ✅ NEW
+            "wind_dir": wind_dir.tolist() if isinstance(wind_dir, np.ndarray) else wind_dir,
         },
         "sensors": sensors_substance,
         "nps": most_common_substance,
@@ -399,35 +400,17 @@ def run_application(payload):
         "dispersion_map": real_dispersion_map,
         "metadata": {
             **metadata,
-            "bounds": (payload["min_lon"], payload["min_lat"], payload["max_lon"], payload["max_lat"]),  # ✅ NEW
+            "bounds": (payload["min_lon"], payload["min_lat"], payload["max_lon"], payload["max_lat"]),
         },
-        "grid": {  # ✅ NEW: per ridisegnare la plan-view
+        "grid": {
             "x_grid": x_grid.tolist() if isinstance(x_grid, np.ndarray) else x_grid,
             "y_grid": y_grid.tolist() if isinstance(y_grid, np.ndarray) else y_grid,
         }
     }
 
-    return {
-        "weather": {
-            "wind_speed": wind_speed,
-            "wind_type": wind_type,
-            "stability": stability_type,
-            "RH": RH,
-            "wind_dir": wind_dir.tolist() if isinstance(wind_dir, np.ndarray) else wind_dir,  # ✅ NEW
-        },
-        "sensors": sensors_substance,
-        "nps": most_common_substance,
-        "source": (x, y),
-        "dispersion_map": real_dispersion_map,
-        "metadata": {
-            **metadata,
-            "bounds": (payload["min_lon"], payload["min_lat"], payload["max_lon"], payload["max_lat"]),  # ✅ NEW
-        },
-        "grid": {  # ✅ NEW: per ridisegnare la plan-view
-            "x_grid": x_grid.tolist() if isinstance(x_grid, np.ndarray) else x_grid,
-            "y_grid": y_grid.tolist() if isinstance(y_grid, np.ndarray) else y_grid,
-        }
-    }
+    # ✅ dopo aver salvato tutto nello stato
+    st.session_state["final_map"] = m  # già presente, ma lo ribadiamo per sicurezza
+    st.rerun()  # 🔹 forza il refresh e ricostruisce l'interfaccia
 
 def render_results_from_state(results):
     # 1) Meteo
@@ -676,7 +659,12 @@ with tab3:
 
 with tab4:
     st.subheader("🗺 Final Dispersion Map")
-    final_map_section = st.container()  # ⬅️ unico container stabile per la mappa
+    final_map_section = st.container()
+    # Se esiste già una mappa in sessione, la ridisegni
+    if "final_map" in st.session_state and st.session_state["final_map"] is not None:
+        with final_map_section:
+            st_folium(st.session_state["final_map"], width=700, height=500, key="final_map")
+
 
 with tab5:
     st.subheader("📡 Sensor Data")
