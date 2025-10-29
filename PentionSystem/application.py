@@ -60,25 +60,34 @@ def run_application(payload):
     binary_map = np.array(data.get("map"), dtype=np.float32)
     metadata = data.get("metadata", {})
     free_cells = np.argwhere(binary_map == 1)
+
     if free_cells.size == 0:
         st.error("La mappa binaria non contiene celle libere per posizionare sensori/sorgente.")
         return
 
     building_cells = np.sum(binary_map == 0)
+
+    res = metadata.get('resolution (m)')
+    res_fmt = f"{float(res):.2f}" if res is not None else "N/A"
+
+    mean_h = metadata.get('mean_height')
+    mean_h_fmt = f"{float(mean_h):.1f}" if mean_h is not None else "N/A"
+
     metadata_section.markdown(f"""
     ### ℹ️ Informazioni sulla griglia
-
-    - **Griglia**: {metadata.get('grid_size', 'N/A')}×{metadata.get('grid_size', 'N/A')}
-    - **Edifici totali**: {metadata.get('total_buildings', 'N/A')}
-    - **Celle edifici**: {int(np.sum(building_cells)) if isinstance(building_cells, np.ndarray) else building_cells:,}
-    - **Celle libere**: {int(np.sum(free_cells)) if isinstance(free_cells, np.ndarray) else free_cells:,}
-    - **CRS**: {metadata.get('crs', 'N/A')}
-    - **Risoluzione**: {metadata.get('resolution (m)', 'N/A')} m
+    - **Griglia**: {metadata.get('grid_size','N/A')}×{metadata.get('grid_size','N/A')}
+    - **Edifici totali**: {metadata.get('total_buildings','N/A')}
+    - **Celle edifici**: {int(building_cells):,}
+    - **Celle libere**: {int(len(free_cells)):,}
+    - **CRS**: {metadata.get('crs','N/A')}
+    - **Risoluzione**: {res_fmt} m
     - **Densità edifici**: {float(metadata.get('building_density', np.nan)):.1f}%
-    - **Altezza media edifici**: {float(metadata.get('mean_height', np.nan))} m
-    - **Città**: {metadata.get('city', 'N/A')}
+    - **Altezza media edifici**: {mean_h_fmt} m
+    - **Città**: {metadata.get('city','N/A')}
     """)
 
+    # ✅ Salva la sezione metadati nello stato per mantenerla dopo il refresh
+    st.session_state["metadata_text"] = metadata
 
     progress += 20
     progress_bar.progress(progress)
@@ -338,26 +347,20 @@ def run_application(payload):
     real_dispersion_map = np.array(real_dispersion_map)
     print(f"mapp finale {type(real_dispersion_map)}")
     print(real_dispersion_map.shape)
-    #progress += 20
-    #progress_bar.progress(progress)
 
     from streamlit_folium import st_folium
 
-    if final_map_section is not None:
+    if bounds and all(v is not None for v in bounds):
+        min_lon, min_lat, max_lon, max_lat = bounds
         m = plot_dispersion_on_map(
-            payload["min_lat"], payload["min_lon"],
-            payload["max_lat"], payload["max_lon"],
-            sensors_substance, real_dispersion_map, x, y, dark=dark_mode)
-
-        # ✅ usa il container correttamente
-        final_map_section.empty()  # pulisci prima
-        with final_map_section.container():  
-            from streamlit_folium import st_folium
-            st_folium(m, width=700, height=500)
+            min_lat, min_lon, max_lat, max_lon,
+            sensors_substance, real_dispersion_map, x, y, dark=dark_mode
+        )
+        if final_map_section is not None:
+            with final_map_section:
+                st_folium(m, width=700, height=500, key="final_map")  # key stabile
         m.save("dispersion_map.html")
 
-
-    # plot_plan_view(real_dispersion_map, x_grid, y_grid, map_section)  # ← commentata
 
     progress = 100
     progress_bar.progress(progress)
@@ -409,7 +412,6 @@ def run_application(payload):
         }
     }
 
-
 def render_results_from_state(results):
     # 1) Meteo
     if results.get("weather"):
@@ -448,6 +450,24 @@ def render_results_from_state(results):
             source_placeholder.write(f"Lat: {origin_lat}, Long: {origin_lon}")
         else:
             source_placeholder.warning("Source not estimated.")
+
+    # 4b) Metadati griglia — ristampa dopo il refresh
+    meta = results.get("metadata") or st.session_state.get("metadata_text")
+    if meta:
+        metadata_section.markdown(f"""
+        ### ℹ️ Informazioni sulla griglia
+
+        - **Griglia**: {meta.get('grid_size', 'N/A')}×{meta.get('grid_size', 'N/A')}
+        - **Edifici totali**: {meta.get('total_buildings', 'N/A')}
+        - **Celle edifici**: {meta.get('building_cells', 'N/A')}
+        - **Celle libere**: {meta.get('free_cells', 'N/A')}
+        - **CRS**: {meta.get('crs', 'N/A')}
+        - **Risoluzione**: {meta.get('resolution (m)', 'N/A')} m
+        - **Densità edifici**: {float(meta.get('building_density', np.nan)):.1f}%
+        - **Altezza media edifici**: {float(meta.get('mean_height', np.nan))} m
+        - **Città**: {meta.get('city', 'N/A')}
+        """)
+
 
     # 5) Dispersione (plan view + folium)
     disp = results.get("dispersion_map")
@@ -647,18 +667,29 @@ with tab2:
     source_placeholder = st.empty()
 
 with tab3:
-    st.subheader("📈 Dispersion Simulation & Wind Rose")
+    # ⬇️ PRIMA i metadati
     metadata_section = st.container()
+
+    # separatore visivo
+    st.markdown("---")
+
+    # ⬇️ POI il titolo dei grafici
+    st.subheader("📈 Dispersion Simulation & Wind Rose")
+
+    # e infine i grafici
     col1, col2 = st.columns([1, 1])
     with col1:
         dispersion_placeholder = st.empty()
     with col2:
         wind_rose_placeholder = st.empty()
-    binary_map_container = st.container()  # ✅ per la mappa binaria
+
+    binary_map_container = st.container()
+
 
 with tab4:
     st.subheader("🗺 Final Dispersion Map")
-    map_container = st.container()
+    final_map_section = st.container()  # ⬅️ unico container stabile per la mappa
+
 
 with tab5:
     st.subheader("📡 Sensor Data")
@@ -676,7 +707,6 @@ sensors_section = tab5
 
 # ⛔️ NON usare "map_section" (ambiguo)
 binary_map_section = binary_map_container  # solo per la griglia binaria
-final_map_section = map_container
 
 # ---------------- START SIMULATION ---------------- #
 if start:
