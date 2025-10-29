@@ -4,12 +4,12 @@ from collections import Counter
 import requests
 from plot_functions import *
 from utils import *
+import time
 import streamlit as st
-
+from streamlit_folium import st_folium
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path:
     sys.path.append(project_root)
-
 from gaussianPuff.Sensor import SensorSubstance, SensorAir
 from gaussianPuff.config import NPS, OutputType, DispersionModelType, ModelConfig
 
@@ -37,20 +37,40 @@ if "theme" not in st.session_state:
 
 dark_mode = st.session_state.get("theme") == "dark"
 
+def advance_progress(progress_bar, progress, target, steps=5, delay=0.15):
+    step_size = (target - progress) / steps
+    for _ in range(steps):
+        progress += step_size
+        progress_bar.progress(int(progress))
+        time.sleep(delay)
+    return int(target)
+
 def run_application(payload):
     n_sensors = payload.get("Number of sensors", 10)
     payload.pop("Number of sensors", None)
 
     progress = 0
+    progress_bar.progress(progress)
+
     # Pulisce la tab Map prima di disegnare una nuova mappa
     if final_map_section is not None:
         final_map_section.empty()
 
-    progress_bar.progress(progress)
+    status_text.text("Initializing simulation...")
+    progress_bar.progress(0)
 
-    # --- Binary map generation
-    status_text.text("Binary map generation...")
+    # 🔹 Piccolo preload visivo (muove la barra lentamente fino all'8%)
+    for i in range(8):
+        progress_bar.progress(i + 1)
+        time.sleep(0.2)
+
+    status_text.text("Binary map generation in progress... ⏳")
+
+    # Avvia effettivamente la chiamata API (questa parte richiede più tempo)
     response = requests.post(f"{API_CORRECTION}/generate_binary_map", json=payload)
+
+    # Quando finisce, porta la barra al 15% (fine della fase)
+    progress = advance_progress(progress_bar, 8, 15)
 
     if response.status_code != 200 or response.json().get("status_code") != "success":
         st.error("Error in binary map generation.")
@@ -88,13 +108,13 @@ def run_application(payload):
 
     # ✅ Salva la sezione metadati nello stato per mantenerla dopo il refresh
     st.session_state["metadata_text"] = metadata
-
-    progress += 20
-    progress_bar.progress(progress)
+    status_text.text("Binary map generated successfully ✅")
 
     # --- Meteo condition
     status_text.text("Sample meteo condition...")
     sensor_air = SensorAir(sensor_id=00, x=0.0, y=0.0, z=2.0)
+    progress = advance_progress(progress_bar, progress, 25)
+
     wind_speed, wind_type, stability_type, stability_value, humidify, dry_size, RH = sensor_air.sample_meteorology()
 
     if weather_section is not None:
@@ -116,6 +136,8 @@ def run_application(payload):
 
     plot_binary_map(binary_map, metadata['bounds'], binary_map_section, sensors_substance, dark=dark_mode)
 
+    progress = advance_progress(progress_bar, progress, 35)
+
     mass_spectrum = []
     for sensor in sensors_substance:
         recording = sensor.run_sensor(wind_speed, stability_type, RH, wind_type)
@@ -126,9 +148,6 @@ def run_application(payload):
         sensor_info = [{"ID": s.id, "x": s.x, "y": s.y, "Status": "Operating" if not s.is_fault else "Faulty"}
                        for s in sensors_substance]
         sensors_placeholder.table(sensor_info)
-
-    progress += 20
-    progress_bar.progress(progress) 
 
     # --- NPS classification
     status_text.text("NPS classification...")
@@ -157,10 +176,8 @@ def run_application(payload):
         else:
             nps_placeholder.warning("No NPS identified.")
 
-    progress += 20
-    progress_bar.progress(progress)
+    progress = advance_progress(progress_bar, progress, 45)
 
-    #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     x_src, y_src = random_position(free_cells)
     h_src = round(np.random.uniform(1, 10), 2)  # altezza del pennacchio
     Q = round(np.random.uniform(0.0001, 0.01), 4)  # tasso di emissione
@@ -186,9 +203,10 @@ def run_application(payload):
 
     bounds = (payload["min_lon"], payload["min_lat"], payload["max_lon"], payload["max_lat"])
 
-    response_gauss = requests.post(f"{API_GAUSSIAN}/start_simulation",
-                                   json={"config": param_gaussian_model.to_dict(),
-                                         "bounds": bounds})
+    response_gauss = requests.post(f"{API_GAUSSIAN}/start_simulation", json={"config": param_gaussian_model.to_dict(), "bounds": bounds})
+
+    status_text.text("Running Gaussian dispersion model...")
+    progress = advance_progress(progress_bar, progress, 60)
 
     print("risposta ottenuta")
     print(f"code: {response_gauss.status_code}")
@@ -225,8 +243,6 @@ def run_application(payload):
     plot_plan_view(C1, x, y, dispersion_placeholder, dark=dark_mode)
     plot_wind_rose(wind_dir, wind_speed, wind_rose_placeholder, dark=dark_mode)
 
-    #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     # --- Localizzazione sorgente
     status_text.text("Source estimation...")
 
@@ -262,6 +278,9 @@ def run_application(payload):
         "n_sensor_operating": n_sensor_operating
     })
 
+    status_text.text("Estimating source location...")
+    progress = advance_progress(progress_bar, progress, 70)
+
     if response_loc.status_code != 200:
         st.error("Error in prediction of source.")
 
@@ -274,9 +293,6 @@ def run_application(payload):
             source_placeholder.markdown(f"Lat: {x}, Long: {y}")
         else:
             source_placeholder.warning("Source not estimated.")
-
-    progress += 20
-    progress_bar.progress(progress)
 
     # --- gaussian plume dispersion (raw simulation) 
     status_text.text("Raw dispersion simulation...")
@@ -302,7 +318,10 @@ def run_application(payload):
     response_gauss = requests.post(f"{API_GAUSSIAN}/start_simulation",
                                    json={"config": param_gaussian_model.to_dict(),
                                          "bounds": bounds})
-        
+    
+    status_text.text("Refining Gaussian simulation...")
+    progress = advance_progress(progress_bar, progress, 80)
+
     if response_gauss.status_code != 200:
         st.error("Error in Gaussian puff simulation.")
         return sensors_substance, substance_nps, None, None, None, metadata
@@ -325,9 +344,6 @@ def run_application(payload):
     status_text.text("Wind rose graph generation...")
     plot_wind_rose(wind_dir, wind_speed, wind_rose_placeholder)
 
-    progress += 20
-    progress_bar.progress(progress)
-
     # --- Dispersion simulation + correction
     status_text.text("Dispersion simulation...")
     response_mcxm = requests.post(f"{API_CORRECTION}/correct_dispersion",
@@ -338,6 +354,9 @@ def run_application(payload):
                                       "building_map": binary_map.tolist(),
                                       "global_features": None
                                   })
+    
+    status_text.text("Applying CNN correction model...")
+    progress = advance_progress(progress_bar, progress, 90)
 
     if response_mcxm.status_code != 200: 
         st.error("Errore nella correzione della dispersione.") 
@@ -347,8 +366,6 @@ def run_application(payload):
     real_dispersion_map = np.array(real_dispersion_map)
     print(f"mapp finale {type(real_dispersion_map)}")
     print(real_dispersion_map.shape)
-
-    from streamlit_folium import st_folium
 
     if bounds and all(v is not None for v in bounds):
         min_lon, min_lat, max_lon, max_lat = bounds
@@ -361,10 +378,11 @@ def run_application(payload):
                 st_folium(m, width=700, height=500, key="final_map")  # key stabile
         m.save("dispersion_map.html")
 
+    status_text.text("Rendering final map and saving results...")
+    progress = advance_progress(progress_bar, progress, 100)
 
-    progress = 100
-    progress_bar.progress(progress)
     status_text.text("Simulation completed ✅")
+    time.sleep(0.3)
     print("END")
 
     st.session_state.simulation_results = {
@@ -388,7 +406,6 @@ def run_application(payload):
             "y_grid": y_grid.tolist() if isinstance(y_grid, np.ndarray) else y_grid,
         }
     }
-
 
     return {
         "weather": {
@@ -468,7 +485,6 @@ def render_results_from_state(results):
         - **Città**: {meta.get('city', 'N/A')}
         """)
 
-
     # 5) Dispersione (plan view + folium)
     disp = results.get("dispersion_map")
     grid = results.get("grid", {})
@@ -504,11 +520,10 @@ def render_results_from_state(results):
             if 'final_map_section' in globals() and final_map_section is not None:
                 final_map_section.empty()
                 with final_map_section.container():
-                    from streamlit_folium import st_folium
+
                     st_folium(m, width=700, height=500)
 
     st.sidebar.success("✅ Simulation results loaded successfully")
-
 
 # ---------------- INTERFACCIA STREAMLIT ---------------- #
 st.set_page_config(page_title="PentionSystem", layout="wide")
@@ -574,7 +589,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
 # Sidebar input
 st.sidebar.header("Insert simulation parameters")
 min_lat = st.sidebar.number_input("Min Lat", value=41.89, format="%.5f")
@@ -617,44 +631,19 @@ st.sidebar.markdown(
             background-color: #4895ef !important;
             transform: scale(1.03);
         }
-
-        div[data-testid="stButton"] > button:nth-child(2) {
-            background-color: #ef233c !important;
-            color: white !important;
-            border-radius: 10px;
-            font-weight: 600;
-            padding: 0.6em;
-            transition: 0.3s;
-        }
-
-        div[data-testid="stButton"] > button:nth-child(2):hover {
-            background-color: #d90429 !important;
-            transform: scale(1.03);
-        }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-
-
-col1, col2 = st.sidebar.columns(2)
-
-with col1:
-    st.markdown('<div class="start-btn">', unsafe_allow_html=True)
-    start = st.button("▶ Start")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-with col2:
-    st.markdown('<div class="stop-btn">', unsafe_allow_html=True)
-    stop = st.button("⏹ Stop")
-    st.markdown('</div>', unsafe_allow_html=True)
+st.markdown('<div class="start-btn">', unsafe_allow_html=True)
+start = st.sidebar.button("▶ Start")
+st.markdown('</div>', unsafe_allow_html=True)
 
 # Layout colonne: lato-sinistra, centro (mappa), lato-destra
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🌦 Meteo", "🧪 Detection & Source", "📈 Simulation", "🗺 Map","📡 Sensors"
 ])
-
 
 with tab1:
     st.subheader("🌦 Meteo Conditions")
@@ -685,16 +674,13 @@ with tab3:
 
     binary_map_container = st.container()
 
-
 with tab4:
     st.subheader("🗺 Final Dispersion Map")
     final_map_section = st.container()  # ⬅️ unico container stabile per la mappa
 
-
 with tab5:
     st.subheader("📡 Sensor Data")
     sensors_placeholder = st.empty()
-
 
 progress_bar = st.sidebar.progress(0)
 status_text = st.sidebar.empty()
@@ -725,33 +711,6 @@ if start:
     with st.spinner("⏳ Running full simulation... please wait."):
         results = run_application(payload)
         st.session_state.simulation_results = results or st.session_state.simulation_results
-
-
-elif stop:
-
-    st.session_state.simulation_results = {
-        "weather": None,
-        "sensors": None,
-        "nps": None,
-        "source": None,
-        "dispersion_map": None,
-        "metadata": None
-    }
-    progress_bar.progress(0)
-    status_text.text("Simulation stopped ❌")
-
-    weather_placeholder.markdown(
-        f"💨 **Wind speed (m/s):** N/A  \n"
-        f"💨 **Wind type:** N/A  \n"
-        f"📈 **Stability:** N/A  \n"
-        f"♒︎ **Relative Humidity (%):** N/A"
-    )
-    sensors_placeholder.write("No data available.")
-    nps_placeholder.write("N/A")
-    source_placeholder.write("N/A")
-    wind_rose_placeholder.empty()
-    dispersion_placeholder.empty()
-    final_map_section.empty()
 
 else:
     results = st.session_state.simulation_results
