@@ -4,6 +4,7 @@ from collections import Counter
 import requests
 from plot_functions import *
 from utils import *
+import streamlit as st
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path:
@@ -29,9 +30,14 @@ def safe_markdown(placeholder, text, level="info"):
         else:
             st.info(text)
 
+# Detect dark mode from localStorage
+if "theme" not in st.session_state:
+    theme_base = st.get_option("theme.base") or "light"
+    st.session_state["theme"] = "dark" if "dark" in theme_base.lower() else "light"
+
+dark_mode = st.session_state.get("theme") == "dark"
 
 def run_application(payload):
-    
     n_sensors = payload.get("Number of sensors", 10)
     payload.pop("Number of sensors", None)
 
@@ -40,28 +46,21 @@ def run_application(payload):
 
     # --- Binary map generation
     status_text.text("Binary map generation...")
-
     response = requests.post(f"{API_CORRECTION}/generate_binary_map", json=payload)
 
-    if response.status_code != 200:
+    if response.status_code != 200 or response.json().get("status_code") != "success":
         st.error("Error in binary map generation.")
         return None
-    
+
     data = response.json()
-    if data.get("status_code") != "success":
-        st.error("Error in binary map generation.")
-        return None
-    
     binary_map = np.array(data.get("map"), dtype=np.float32)
     metadata = data.get("metadata", {})
-    # dopo aver creato free_cells
     free_cells = np.argwhere(binary_map == 1)
     if free_cells.size == 0:
         st.error("La mappa binaria non contiene celle libere per posizionare sensori/sorgente.")
         return
 
     building_cells = np.sum(binary_map == 0)
-
     with metadata_section:
         metadata_placeholder.markdown(
             f"**Griglia**: {metadata.get('grid_size', 'N/A')}×{metadata.get('grid_size', 'N/A')}\n"
@@ -94,14 +93,13 @@ def run_application(payload):
     # --- Sensor substance
     status_text.text("Air sampling...")
     sensors_substance = []
-  
     for i in range(n_sensors):
         x, y = random_position(free_cells)
         sensor_substance = SensorSubstance(i, x=x, y=y, z=2.0,
                                            noise_level=round(np.random.uniform(0.0, 0.0005), 4))
         sensors_substance.append(sensor_substance)
 
-    plot_binary_map(binary_map, metadata['bounds'], map_section, sensors_substance)
+    plot_binary_map(binary_map, metadata['bounds'], map_section, sensors_substance, dark=dark_mode)
 
     mass_spectrum = []
     for sensor in sensors_substance:
@@ -109,11 +107,8 @@ def run_application(payload):
         recording = [rec for rec in recording if not np.isnan(rec).any()]
         mass_spectrum.extend(recording)
 
-    print(f"1->{type(mass_spectrum)}") # list
-    print(f"2->{type(mass_spectrum[0])}") # numpy.ndarray
-       
     if sensors_section is not None:
-        sensor_info = [{"ID": s.id, "x": s.x, "y": s.y, "Status": "Operating" if not s.is_fault else "Faulty",}
+        sensor_info = [{"ID": s.id, "x": s.x, "y": s.y, "Status": "Operating" if not s.is_fault else "Faulty"}
                        for s in sensors_substance]
         sensors_placeholder.table(sensor_info)
 
@@ -126,27 +121,20 @@ def run_application(payload):
 
     if mass_spectrum:
         spectra_json = [m.tolist() for m in mass_spectrum]
-        print(f"spectra_json: {type(spectra_json)}")
         response_dnn = requests.post(f"{API_CLASSIFICATORE}/predict_dnn", json={"spectra": spectra_json})
 
         if response_dnn.status_code == 200:
             predictions = response_dnn.json().get("predictions", [])
-            print(len(predictions))
             substance_nps = [pred for pred in predictions if pred in nps_classes]
         else:
             st.error(f"Errore API {response_dnn.status_code}")
 
-    print(type(substance_nps))
-    print(len(substance_nps))
-
-    # subito dopo la classificazione
     if substance_nps:
         most_common_substance = Counter(substance_nps).most_common(1)[0][0]
         nps = NPS.from_string(most_common_substance)
     else:
         most_common_substance = None
-        nps = NPS.OTHER_COMPOUNDS  # ✅ fallback sicuro per ModelConfig
-
+        nps = NPS.OTHER_COMPOUNDS
 
     if nps_section is not None:
         if substance_nps:
@@ -219,9 +207,8 @@ def run_application(payload):
     print(y.shape)
 
     status_text.text("Dispersion map generation...")
-    plot_plan_view(C1, x, y, dispersion_placeholder)
-    status_text.text("Wind rose graph generation...")
-    plot_wind_rose(wind_dir, wind_speed, wind_rose_placeholder)
+    plot_plan_view(C1, x, y, dispersion_placeholder, dark=dark_mode)
+    plot_wind_rose(wind_dir, wind_speed, wind_rose_placeholder, dark=dark_mode)
 
     #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -354,8 +341,7 @@ def run_application(payload):
         m = plot_dispersion_on_map(
             payload["min_lat"], payload["min_lon"],
             payload["max_lat"], payload["max_lon"],
-            sensors_substance, real_dispersion_map, x, y
-        )
+            sensors_substance, real_dispersion_map, x, y, dark=dark_mode)
         map_section.subheader("🗺️ Dispersion map")
         st_folium(m, width=700, height=500)
         m.save("dispersion_map.html")
@@ -428,7 +414,7 @@ def render_results_from_state(results):
         if w.get("wind_dir") is not None and w.get("wind_speed") is not None:
             wd = np.array(w["wind_dir"])
             ws = w["wind_speed"]
-            plot_wind_rose(wd, ws, wind_rose_placeholder)
+            plot_wind_rose(wd, ws, wind_rose_placeholder, dark=dark_mode)
 
     # 2) Sensori
     if results.get("sensors"):
@@ -466,7 +452,7 @@ def render_results_from_state(results):
         yg = np.array(grid.get("y_grid")) if grid.get("y_grid") is not None else None
 
         if xg is not None and yg is not None:
-            plot_plan_view(np.array(disp), xg, yg, dispersion_placeholder)
+            plot_plan_view(np.array(disp), xg, yg, dispersion_placeholder, dark=dark_mode)
         else:
             # fallback: griglie uniformi
             if bounds and all(v is not None for v in bounds) and isinstance(disp, np.ndarray):
@@ -475,7 +461,7 @@ def render_results_from_state(results):
                 x_lin = np.linspace(min_lon, max_lon, nx)
                 y_lin = np.linspace(min_lat, max_lat, ny)
                 Xg, Yg = np.meshgrid(x_lin, y_lin)
-                plot_plan_view(np.array(disp), Xg, Yg, dispersion_placeholder)
+                plot_plan_view(np.array(disp), xg, yg, dispersion_placeholder, dark=dark_mode)
 
         # Folium map
         if bounds and all(v is not None for v in bounds):
@@ -483,8 +469,7 @@ def render_results_from_state(results):
             m = plot_dispersion_on_map(
                 min_lat, min_lon, max_lat, max_lon,
                 results.get("sensors") or [], np.array(disp),
-                *(results.get("source") or (None, None))
-            )
+                *(results.get("source") or (None, None)), dark=dark_mode)
             from streamlit_folium import st_folium
             st_folium(m, width=700, height=500)
 
@@ -506,12 +491,16 @@ if "simulation_results" not in st.session_state:
 st.markdown(
     """
     <style>
-        /* HEADER STICKY */
+        html, body, [data-testid="stAppViewContainer"] {
+            background-color: transparent;
+        }
+
+        /* HEADER STICKY: cambia stile se in dark mode */
         .main-header {
             position: sticky;
             top: 0;
-            background: linear-gradient(90deg, #3a0ca3, #4361ee, #4cc9f0);
-            color: white;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            color: var(--text-color);
             padding: 1.5rem 0;
             text-align: center;
             font-size: 2rem;
@@ -521,6 +510,28 @@ st.markdown(
             border-radius: 0 0 10px 10px;
             z-index: 999;
         }
+
+        /* COLOR VARS: chiaro/scuro automatici */
+        :root {
+            --primary-color: #3a0ca3;
+            --secondary-color: #4cc9f0;
+            --text-color: #ffffff;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            html.dark :root {
+                --primary-color: #1e1e2f;
+                --secondary-color: #3a3a5a;
+                --text-color: #f1f1f1;
+                --sidebar-bg: #1e1e2f;
+                --sidebar-border: #333;
+            }
+
+
+            .main-header {
+                box-shadow: 0px 2px 8px rgba(255,255,255,0.15);
+            }
+        }
     </style>
     <div class="main-header">
         💊 PENTION — NPS Emission Source Identification
@@ -528,6 +539,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
 
 # Sidebar input
 st.sidebar.header("Insert simulation parameters")
@@ -541,37 +553,46 @@ n_sensors = st.sidebar.slider("Number of sensors", min_value=5, max_value=50, va
 st.sidebar.markdown(
     """
     <style>
-        /* Sidebar header */
         [data-testid="stSidebar"] {
-            background: linear-gradient(180deg, #f8f9fa 10%, #ffffff 90%);
-            border-right: 2px solid #f1f3f5;
+            background: var(--sidebar-bg, #f8f9fa);
+            border-right: 2px solid var(--sidebar-border, #f1f3f5);
         }
 
-        /* Start button */
+        :root {
+            --sidebar-bg: #f8f9fa;
+            --sidebar-border: #e0e0e0;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --sidebar-bg: #1e1e2f;
+                --sidebar-border: #333;
+            }
+        }
+
         div[data-testid="stButton"] > button:first-child {
             background-color: #4cc9f0 !important;
             color: white !important;
             border-radius: 10px;
-            border: none;
             font-weight: 600;
             padding: 0.6em;
             transition: 0.3s;
         }
+
         div[data-testid="stButton"] > button:first-child:hover {
             background-color: #4895ef !important;
             transform: scale(1.03);
         }
 
-        /* Stop button */
         div[data-testid="stButton"] > button:nth-child(2) {
             background-color: #ef233c !important;
             color: white !important;
             border-radius: 10px;
-            border: none;
             font-weight: 600;
             padding: 0.6em;
             transition: 0.3s;
         }
+
         div[data-testid="stButton"] > button:nth-child(2):hover {
             background-color: #d90429 !important;
             transform: scale(1.03);
@@ -580,6 +601,7 @@ st.sidebar.markdown(
     """,
     unsafe_allow_html=True
 )
+
 
 
 col1, col2 = st.sidebar.columns(2)
@@ -595,8 +617,8 @@ with col2:
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Layout colonne: lato-sinistra, centro (mappa), lato-destra
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "🌦 Meteo", "🧪 NPS Detected", "📍 Source", "🗺 Dispersion", "📡 Sensors"
+tab1, tab2, tab3, tab4 = st.tabs([
+    "🌦 Meteo", "🧪 Detection & Source", "🗺 Dispersion", "📡 Sensors"
 ])
 
 with tab1:
@@ -606,26 +628,21 @@ with tab1:
 with tab2:
     st.subheader("🧪 NPS Classification")
     nps_placeholder = st.empty()
-
-with tab3:
     st.subheader("📍 Source Estimation")
     source_placeholder = st.empty()
 
-with tab4:
+with tab3:
     st.subheader("🌫 Dispersion Simulation & Wind Rose")
     dispersion_placeholder = st.empty()
     wind_rose_placeholder = st.empty()
     map_section = st.container()
 
-with tab5:
+with tab4:
     st.subheader("📡 Sensor Data")
     sensors_placeholder = st.empty()
 
 progress_bar = st.sidebar.progress(0)
 status_text = st.sidebar.empty()
-
-st.sidebar.markdown("---")
-st.sidebar.caption("Developed for PENTION-S | Streamlit UI optimized")
 
 # 🔧 Placeholder compatibili con la nuova UI
 metadata_section = st.container()
@@ -633,9 +650,9 @@ metadata_placeholder = metadata_section.empty()
 
 weather_section = tab1
 nps_section = tab2
-source_section = tab3
-dispersion_section = tab4
-sensors_section = tab5
+source_section = tab2
+dispersion_section = tab3
+sensors_section = tab4
 
 # ---------------- START SIMULATION ---------------- #
 if start:

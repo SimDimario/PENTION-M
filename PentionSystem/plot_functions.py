@@ -5,9 +5,19 @@ from windrose import WindroseAxes
 import folium
 from folium.plugins import HeatMap
 
-def plot_plan_view(C1, x, y, dispersion_placeholder, stability_class=1):
+def plot_plan_view(C1, x, y, dispersion_placeholder, dark=False):
     with dispersion_placeholder:
         fig, ax_main = plt.subplots(figsize=(8, 6))
+
+        if dark:
+            fig.patch.set_facecolor('#0e1117')
+            ax_main.set_facecolor('#0e1117')
+            ax_main.tick_params(colors='white')
+            ax_main.xaxis.label.set_color('white')
+            ax_main.yaxis.label.set_color('white')
+            cbar_color = 'white'
+        else:
+            cbar_color = 'black'
 
         # Se il risultato è 3D (es. da Gaussian Model), integra lungo il tempo
         if C1.ndim == 3:
@@ -21,19 +31,34 @@ def plot_plan_view(C1, x, y, dispersion_placeholder, stability_class=1):
 
         # Plot della concentrazione integrata
         pcm = ax_main.pcolor(x, y, data, cmap='jet', shading='auto', vmin=vmin, vmax=vmax)
-        fig.colorbar(pcm, ax=ax_main, label=r'$\mu g \cdot m^{-3}$')
+        cbar = fig.colorbar(pcm, ax=ax_main, label=r'$\mu g \cdot m^{-3}$')
+        cbar.set_label(r'$\mu g \cdot m^{-3}$', color=cbar_color)
+        cbar.ax.yaxis.set_tick_params(color=cbar_color)
+        plt.setp(cbar.ax.yaxis.get_ticklabels(), color=cbar_color)
+
         ax_main.set_xlabel('x (m)')
         ax_main.set_ylabel('y (m)')
         ax_main.axis('equal')
 
         st.pyplot(fig, clear_figure=False)
 
-def plot_wind_rose(wind_dir, wind_speed, wind_rose_placeholder):
+def plot_wind_rose(wind_dir, wind_speed, wind_rose_placeholder, dark=False):
     with wind_rose_placeholder:
         if wind_dir is not None and wind_speed is not None:
             fig = plt.figure(figsize=(6, 6))
 
             ax_inset = WindroseAxes.from_ax(fig=fig)
+
+            if dark:
+                fig.patch.set_facecolor('#0e1117')
+                ax_inset.set_facecolor('#0e1117')
+                ax_inset.tick_params(colors='white')
+                ax_inset.spines['polar'].set_color('white')
+                ax_inset.title.set_color('white')
+            else:
+                ax_inset.tick_params(colors='black')
+                ax_inset.spines['polar'].set_color('black')
+                ax_inset.title.set_color('black')
 
             # Plot rosa dei venti con direzioni e velocità
             wind_dir = np.array(wind_dir) % 360
@@ -44,10 +69,19 @@ def plot_wind_rose(wind_dir, wind_speed, wind_rose_placeholder):
 
             st.pyplot(fig, clear_figure=True)
 
-def plot_binary_map(binary_map, bounds, map_section, sensors=None):
+def plot_binary_map(binary_map, bounds, map_section, sensors=None, dark=False):
     with map_section:
 
         fig, ax = plt.subplots(figsize=(8, 8))
+        if dark:
+            fig.patch.set_facecolor('#0e1117')
+            ax.set_facecolor('#0e1117')
+            ax.tick_params(colors='white')
+            ax.xaxis.label.set_color('white')
+            ax.yaxis.label.set_color('white')
+            cbar_color = 'white'
+        else:
+            cbar_color = 'black'
 
         x_min, y_min, x_max, y_max = bounds
         im = ax.imshow(binary_map, cmap='gray', extent=(x_min, x_max, y_min, y_max), origin='lower')
@@ -75,24 +109,28 @@ def plot_binary_map(binary_map, bounds, map_section, sensors=None):
             by_label = dict(zip(labels, handles))
             ax.legend(by_label.values(), by_label.keys(), loc="upper right")
 
-        cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-        cbar.set_label("Occupazione")
+            cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+            cbar.set_label("Occupazione", color=cbar_color)
+            cbar.ax.yaxis.set_tick_params(color=cbar_color)
+            plt.setp(cbar.ax.yaxis.get_ticklabels(), color=cbar_color)
 
         st.pyplot(fig, clear_figure=True)
 
-def plot_dispersion_on_map(min_lat, min_lon, max_lat, max_lon, sensors, dispersion_map, source_lat=None, source_lon=None,
-                           title="Mappa Dispersione", wind_dir=None, wind_speed=None, puff_list=None, stability_class=1, n_show=10):
+def plot_dispersion_on_map(min_lat, min_lon, max_lat, max_lon, sensors, dispersion_map, source_lat=None, source_lon=None, title="Mappa Dispersione", dark=False):
+
     center_lat = (min_lat + max_lat) / 2
     center_lon = (min_lon + max_lon) / 2
 
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=14, tiles="cartodbpositron")
+    tiles = "CartoDB dark_matter" if dark else "OpenStreetMap"
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=14, tiles=tiles, control_scale=True)
 
     # Sensori
     for s in sensors:
         folium.Marker(
             [s.y, s.x],
             popup=f"Sensor {s.id}",
-            icon=folium.Icon(color="blue", icon="info-sign")
+            icon=folium.Icon(color="lightblue", icon="info-sign")
+
         ).add_to(m)
 
     # Sorgente stimata
@@ -100,7 +138,8 @@ def plot_dispersion_on_map(min_lat, min_lon, max_lat, max_lon, sensors, dispersi
         folium.Marker(
             [source_lat, source_lon],
             popup="Sorgente Stimata",
-            icon=folium.Icon(color="red", icon="fire")
+            icon=folium.Icon(color="orange", icon="fire")
+
         ).add_to(m)
 
     # Heatmap della dispersione
