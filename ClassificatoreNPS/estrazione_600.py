@@ -43,7 +43,7 @@ def parse_msp_fixed_600(filepath, max_mz=600):
 def save_spectra_csv(compounds, output_csv, max_mz=600):
     with open(output_csv, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        header = ["Name"] + [f"m/z_{i}" for i in range(max_mz)]
+        header = ["Name"] + [str(i + 1) for i in range(max_mz)]
         writer.writerow(header)
 
         for c in compounds:

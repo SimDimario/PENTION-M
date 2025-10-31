@@ -63,7 +63,7 @@ def save_extended_csv(compounds, output_csv, max_mz=1200):
         header = [
             "Name", "Formula", "MW", "ExactMass", "InChIKey",
             "CASNO", "Comment", "ID"
-        ] + [f"m/z_{i}" for i in range(effective_mz)]
+        ] + [str(i + 1) for i in range(max_mz)]
         writer.writerow(header)
 
         for c in compounds:
@@ -76,7 +76,7 @@ def save_extended_csv(compounds, output_csv, max_mz=1200):
 
 # ====== USO ======
 msp_file = "ClassificatoreNPS/datasetNPS/SWGDRUG 3.MSP"
-output_csv = "ClassificatoreNPS/datasetNPS/swgdrug_full_trimmed.csv"
+output_csv = "ClassificatoreNPS/datasetNPS/swgdrug_full.csv"
 mz_limit = 1200
 
 compounds = parse_msp_extended_fixed(msp_file, max_mz=mz_limit)
