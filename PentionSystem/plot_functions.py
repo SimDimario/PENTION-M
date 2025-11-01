@@ -164,9 +164,4 @@ def plot_dispersion_on_map(min_lat, min_lon, max_lat, max_lon, sensors, dispersi
             min_opacity=0.2
         ).add_to(m)
 
-    title_html = f'''
-         <h3 align="center" style="font-size:18px"><b>{title}</b></h3>
-         '''
-    m.get_root().html.add_child(folium.Element(title_html))
-
     return m

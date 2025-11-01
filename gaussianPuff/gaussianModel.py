@@ -129,8 +129,8 @@ def run_dispersion_model(config: ModelConfig, bounds: Optional[Tuple] = None):
 
                     # Converti la direzione del vento (da cui proviene) in direzione del movimento (verso cui va)
                     theta_rad = np.radians(270 - wind_dir[t])
-                    dx = wind_speed[t] * np.cos(theta_rad) * 3600  # distanza oraria in metri
-                    dy = wind_speed[t] * np.sin(theta_rad) * 3600
+                    dx = wind_speed[t] * np.cos(theta_rad) * dt * 3600  # distanza oraria in metri
+                    dy = wind_speed[t] * np.sin(theta_rad) * dt * 3600
 
                     puff.x += dx
                     puff.y += dy

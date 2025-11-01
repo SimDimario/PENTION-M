@@ -104,7 +104,7 @@ class ModelConfig:
     y_slice: int = 1
     grid_size: int= 500
     dispersion_model: DispersionModelType = DispersionModelType.PLUME
-    config_puff: 'Optional[ConfigPuff]' = field(default_factory=ConfigPuff) if dispersion_model == DispersionModelType.PUFF else None
+    config_puff: Optional[ConfigPuff] = None
 
     def to_dict(self):
         d = asdict(self)

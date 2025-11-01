@@ -255,7 +255,7 @@ class SensorAir:
 
     def sample_meteorology(self):
         wind_type = random.choice([WindType.CONSTANT ,WindType.PREVAILING, WindType.FLUCTUATING])
-        stability_type = StabilityType.CONSTANT
+        stability_type = random.choice([StabilityType.CONSTANT, StabilityType.ANNUAL])
         if stability_type == StabilityType.CONSTANT:
             stability_value = random.choice([
                 PasquillGiffordStability.VERY_UNSTABLE,
@@ -271,7 +271,7 @@ class SensorAir:
         
         wind_speed = self._assign_wind_speed(stability_value)  
         humidify = random.choice([True, False])
-        dry_size = 1.0
+        dry_size = round(np.random.uniform(0.5, 2.5), 2)
         RH = round(np.random.uniform(0, 0.99), 2) if humidify else 0.0
 
         return wind_speed, wind_type, stability_type, stability_value, humidify, dry_size, RH

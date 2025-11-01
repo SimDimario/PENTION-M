@@ -8,7 +8,7 @@ import numpy as np
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from gaussianPuff.gaussianModel import run_dispersion_model
-from gaussianPuff.config import ModelConfig, WindType, StabilityType, PasquillGiffordStability, NPS, OutputType
+from gaussianPuff.config import ModelConfig, WindType, StabilityType, PasquillGiffordStability, NPS, OutputType, DispersionModelType, ConfigPuff
 from gaussianPuff.plot_utils import plot_plan_view
 import uvicorn
 
@@ -56,6 +56,9 @@ def start_simulation(payload: dict):
         stability_value=PasquillGiffordStability.from_string(raw_config["stability_value"])
         nps_type= NPS.from_string(raw_config["aerosol_type"])
 
+        dispersion_model = DispersionModelType(raw_config["dispersion_model"].lower()) \
+            if "dispersion_model" in raw_config and raw_config["dispersion_model"] else DispersionModelType.PLUME
+
         config = ModelConfig(
             days=raw_config["days"],
             RH=raw_config["RH"],
@@ -70,9 +73,11 @@ def start_simulation(payload: dict):
             dry_size=raw_config["dry_size"],
             x_slice=raw_config["x_slice"],
             y_slice=raw_config["y_slice"],
-            dispersion_model=raw_config["config_puff"],
-            config_puff=raw_config["config_puff"]
+            grid_size=raw_config.get("grid_size", 500),
+            dispersion_model=dispersion_model,
+            config_puff=ConfigPuff(**raw_config["config_puff"]) if raw_config.get("config_puff") else None
         )
+
 
         bounds = payload.get("bounds", None)
         logger.info(f"Configurazione modello creata: {config}")

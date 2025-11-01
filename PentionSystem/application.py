@@ -1,12 +1,14 @@
 import os
 import sys
 from collections import Counter
+import streamlit.components.v1 as components
 import requests
 from plot_functions import *
 from utils import *
 import time
 import streamlit as st
 from streamlit_folium import st_folium
+from folium import Map
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path:
     sys.path.append(project_root)
@@ -52,24 +54,18 @@ def run_application(payload):
     progress = 0
     progress_bar.progress(progress)
 
-    # Pulisce la tab Map prima di disegnare una nuova mappa
     if final_map_section is not None:
         final_map_section.empty()
 
     status_text.text("Initializing simulation...")
     progress_bar.progress(0)
 
-    # 🔹 Piccolo preload visivo (muove la barra lentamente fino all'8%)
     for i in range(8):
         progress_bar.progress(i + 1)
         time.sleep(0.2)
 
     status_text.text("Binary map generation in progress... ⏳")
-
-    # Avvia effettivamente la chiamata API (questa parte richiede più tempo)
     response = requests.post(f"{API_CORRECTION}/generate_binary_map", json=payload)
-
-    # Quando finisce, porta la barra al 15% (fine della fase)
     progress = advance_progress(progress_bar, 8, 15)
 
     if response.status_code != 200 or response.json().get("status_code") != "success":
@@ -82,7 +78,7 @@ def run_application(payload):
     free_cells = np.argwhere(binary_map == 1)
 
     if free_cells.size == 0:
-        st.error("La mappa binaria non contiene celle libere per posizionare sensori/sorgente.")
+        st.error("The binary map does not contain free cells to place sensors or the source.")
         return
 
     building_cells = np.sum(binary_map == 0)
@@ -94,19 +90,18 @@ def run_application(payload):
     mean_h_fmt = f"{float(mean_h):.1f}" if mean_h is not None else "N/A"
 
     metadata_section.markdown(f"""
-    ### ℹ️ Informazioni sulla griglia
-    - **Griglia**: {metadata.get('grid_size','N/A')}×{metadata.get('grid_size','N/A')}
-    - **Edifici totali**: {metadata.get('total_buildings','N/A')}
-    - **Celle edifici**: {int(building_cells):,}
-    - **Celle libere**: {int(len(free_cells)):,}
+    ### ℹ️ Grid Information
+    - **Grid**: {metadata.get('grid_size','N/A')}×{metadata.get('grid_size','N/A')}
+    - **Total buildings**: {metadata.get('total_buildings','N/A')}
+    - **Building cells**: {int(building_cells):,}
+    - **Free cells**: {int(len(free_cells)):,}
     - **CRS**: {metadata.get('crs','N/A')}
-    - **Risoluzione**: {res_fmt} m
-    - **Densità edifici**: {float(metadata.get('building_density', np.nan)):.1f}%
-    - **Altezza media edifici**: {mean_h_fmt} m
-    - **Città**: {metadata.get('city','N/A')}
+    - **Resolution**: {res_fmt} m
+    - **Building density**: {float(metadata.get('building_density', np.nan)):.1f}%
+    - **Average building height**: {mean_h_fmt} m
+    - **City**: {metadata.get('city','N/A')}
     """)
 
-    # ✅ Salva la sezione metadati nello stato per mantenerla dopo il refresh
     st.session_state["metadata_text"] = metadata
     status_text.text("Binary map generated successfully ✅")
 
@@ -130,12 +125,10 @@ def run_application(payload):
     sensors_substance = []
     for i in range(n_sensors):
         x, y = random_position(free_cells)
-        sensor_substance = SensorSubstance(i, x=x, y=y, z=2.0,
-                                           noise_level=round(np.random.uniform(0.0, 0.0005), 4))
+        sensor_substance = SensorSubstance(i, x=x, y=y, z=2.0, noise_level=round(np.random.uniform(0.0, 0.0005), 4))
         sensors_substance.append(sensor_substance)
 
     plot_binary_map(binary_map, metadata['bounds'], binary_map_section, sensors_substance, dark=dark_mode)
-
     progress = advance_progress(progress_bar, progress, 35)
 
     mass_spectrum = []
@@ -161,7 +154,7 @@ def run_application(payload):
             predictions = response_dnn.json().get("predictions", [])
             substance_nps = [pred for pred in predictions if pred in nps_classes]
         else:
-            st.error(f"Errore API {response_dnn.status_code}")
+            st.error(f"API error {response_dnn.status_code}")
 
     if substance_nps:
         most_common_substance = Counter(substance_nps).most_common(1)[0][0]
@@ -179,8 +172,8 @@ def run_application(payload):
     progress = advance_progress(progress_bar, progress, 45)
 
     x_src, y_src = random_position(free_cells)
-    h_src = round(np.random.uniform(1, 10), 2)  # altezza del pennacchio
-    Q = round(np.random.uniform(0.0001, 0.01), 4)  # tasso di emissione
+    h_src = round(np.random.uniform(1, 10), 2)
+    Q = round(np.random.uniform(0.0001, 0.01), 4)
     stacks = [(x_src, y_src, Q, h_src)]
 
     print(stability_value)
@@ -248,12 +241,8 @@ def run_application(payload):
 
     payload_sensors = []
     for s in sensors_substance:
-
         if not s.is_fault:
-
             s.sample_substance(C1, x, y, times)
-            # s.sample_substance_synthetic()
-
             for idx, (t_idx, conc) in enumerate(zip(s.times, s.noisy_concentrations)):
                 if idx >= len(wind_dir):
                     break
@@ -359,7 +348,7 @@ def run_application(payload):
     progress = advance_progress(progress_bar, progress, 90)
 
     if response_mcxm.status_code != 200: 
-        st.error("Errore nella correzione della dispersione.") 
+        st.error("Error during dispersion correction.")
         return sensors_substance, substance_nps, x, y, C1, metadata
     
     real_dispersion_map = response_mcxm.json().get("predictions", [])
@@ -373,19 +362,13 @@ def run_application(payload):
             min_lat, min_lon, max_lat, max_lon,
             sensors_substance, real_dispersion_map, x, y, dark=dark_mode
         )
-        st.session_state["final_map"] = m  # ✅ salva la mappa
-        if final_map_section is not None:
-            with final_map_section:
-                st_folium(m, width=700, height=500, key="final_map")
+        st.session_state["final_map"] = m
         m.save("dispersion_map.html")
+        st.session_state["final_map_path"] = "dispersion_map.html"
 
     status_text.text("Rendering final map and saving results...")
-    progress = advance_progress(progress_bar, progress, 100)
+    progress = advance_progress(progress_bar, progress, 95)
 
-    status_text.text("Simulation completed ✅")
-    print("END")
-
-    # ✅ salva i risultati nello stato (deve essere PRIMA del rerun)
     st.session_state.simulation_results = {
         "weather": {
             "wind_speed": wind_speed,
@@ -408,12 +391,11 @@ def run_application(payload):
         }
     }
 
-    # ✅ dopo aver salvato tutto nello stato
-    st.session_state["final_map"] = m  # già presente, ma lo ribadiamo per sicurezza
-    st.rerun()  # 🔹 forza il refresh e ricostruisce l'interfaccia
+    print("END")
+    st.rerun()
 
 def render_results_from_state(results):
-    # 1) Meteo
+    # 1) Weather
     if results.get("weather"):
         w = results["weather"]
         safe_markdown(
@@ -429,7 +411,7 @@ def render_results_from_state(results):
             ws = w["wind_speed"]
             plot_wind_rose(wd, ws, wind_rose_placeholder, dark=dark_mode)
 
-    # 2) Sensori
+    # 2) Sensor
     if results.get("sensors"):
         sensor_info = [{"ID": s.id, "x": s.x, "y": s.y,
                         "Status": "Operating" if not s.is_fault else "Faulty"}
@@ -443,7 +425,7 @@ def render_results_from_state(results):
         else:
             nps_placeholder.warning("No NPS identified.")
 
-    # 4) Sorgente
+    # 4) Source
     if results.get("source") is not None:
         origin_lat, origin_lon = results["source"]
         if origin_lat is not None and origin_lon is not None:
@@ -451,7 +433,7 @@ def render_results_from_state(results):
         else:
             source_placeholder.warning("Source not estimated.")
 
-    # 4b) Metadati griglia — ristampa dopo il refresh
+    # 4b) Metadata
     meta = results.get("metadata") or st.session_state.get("metadata_text")
     if meta:
         metadata_section.markdown(f"""
@@ -468,7 +450,7 @@ def render_results_from_state(results):
         - **Città**: {meta.get('city', 'N/A')}
         """)
 
-    # 5) Dispersione (plan view + folium)
+    # 5) Dispersion (plan view + folium)
     disp = results.get("dispersion_map")
     grid = results.get("grid", {})
     meta = results.get("metadata", {})
@@ -484,7 +466,6 @@ def render_results_from_state(results):
         if xg is not None and yg is not None:
             plot_plan_view(np.array(disp), xg, yg, dispersion_placeholder, dark=dark_mode)
         else:
-            # fallback: griglie uniformi
             if bounds and all(v is not None for v in bounds) and isinstance(disp, np.ndarray):
                 min_lon, min_lat, max_lon, max_lat = bounds
                 ny, nx = disp.shape[:2]
@@ -506,9 +487,10 @@ def render_results_from_state(results):
 
                     st_folium(m, width=700, height=500)
 
+    progress_bar.progress(100)
     st.sidebar.success("✅ Simulation results loaded successfully")
 
-# ---------------- INTERFACCIA STREAMLIT ---------------- #
+# ---------------- INTERFACE STREAMLIT ---------------- #
 st.set_page_config(page_title="PentionSystem", layout="wide")
 if "simulation_results" not in st.session_state:
     st.session_state.simulation_results = {
@@ -527,7 +509,7 @@ st.markdown(
             background-color: transparent;
         }
 
-        /* HEADER STICKY: cambia stile se in dark mode */
+        /* HEADER STICKY: changes style when dark mode is active */
         .main-header {
             position: sticky;
             top: 0;
@@ -558,7 +540,6 @@ st.markdown(
                 --sidebar-bg: #1e1e2f;
                 --sidebar-border: #333;
             }
-
 
             .main-header {
                 box-shadow: 0px 2px 8px rgba(255,255,255,0.15);
@@ -623,13 +604,12 @@ st.markdown('<div class="start-btn">', unsafe_allow_html=True)
 start = st.sidebar.button("▶ Start")
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Layout colonne: lato-sinistra, centro (mappa), lato-destra
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "🌦 Meteo", "🧪 Detection & Source", "📈 Simulation", "🗺 Map","📡 Sensors"
+    "🌦 Weather", "🧪 Detection & Source", "📈 Simulation", "🗺 Map", "📡 Sensors"
 ])
 
 with tab1:
-    st.subheader("🌦 Meteo Conditions")
+    st.subheader("🌦 Weather Conditions")
     weather_placeholder = st.empty()
 
 with tab2:
@@ -639,32 +619,29 @@ with tab2:
     source_placeholder = st.empty()
 
 with tab3:
-    # ⬇️ PRIMA i metadati
     metadata_section = st.container()
-
-    # separatore visivo
     st.markdown("---")
-
-    # ⬇️ POI il titolo dei grafici
     st.subheader("📈 Dispersion Simulation & Wind Rose")
-
-    # e infine i grafici
     col1, col2 = st.columns([1, 1])
     with col1:
         dispersion_placeholder = st.empty()
     with col2:
         wind_rose_placeholder = st.empty()
-
     binary_map_container = st.container()
 
 with tab4:
     st.subheader("🗺 Final Dispersion Map")
     final_map_section = st.container()
-    # Se esiste già una mappa in sessione, la ridisegni
-    if "final_map" in st.session_state and st.session_state["final_map"] is not None:
-        with final_map_section:
-            st_folium(st.session_state["final_map"], width=700, height=500, key="final_map")
-
+    with final_map_section:
+        final_map_path = st.session_state.get("final_map_path")
+        if final_map_path and os.path.exists(final_map_path):
+            with open(final_map_path, "r", encoding="utf-8") as f:
+                html_content = f.read()
+            components.html(html_content, height=500)
+        elif final_map_path is None:
+            st.info("ℹ️ No map has been generated yet.")
+        else:
+            st.error("❌ Error loading the map.")
 
 with tab5:
     st.subheader("📡 Sensor Data")
@@ -679,8 +656,7 @@ source_section = tab2
 dispersion_section = tab3
 sensors_section = tab5
 
-# ⛔️ NON usare "map_section" (ambiguo)
-binary_map_section = binary_map_container  # solo per la griglia binaria
+binary_map_section = binary_map_container
 
 # ---------------- START SIMULATION ---------------- #
 if start:

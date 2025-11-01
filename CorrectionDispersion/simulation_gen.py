@@ -49,15 +49,17 @@ def assign_wind_speed(stability: PasquillGiffordStability) -> float:
 
 def sample_meteorology():
     wind_type = random.choice([WindType.CONSTANT ,WindType.PREVAILING, WindType.FLUCTUATING])
-    stability_type = StabilityType.CONSTANT
-    stability_value =  random.choice([PasquillGiffordStability.VERY_UNSTABLE, 
-                                      PasquillGiffordStability.MODERATELY_UNSTABLE, 
-                                      PasquillGiffordStability.SLIGHTLY_UNSTABLE, 
-                                      PasquillGiffordStability.NEUTRAL,  
-                                      PasquillGiffordStability.MODERATELY_STABLE, 
-                                      PasquillGiffordStability.VERY_STABLE]) if stability_type == StabilityType.CONSTANT else 0
+    stability_type = random.choice([StabilityType.CONSTANT, StabilityType.ANNUAL])
+    stability_value =  random.choice([
+        PasquillGiffordStability.VERY_UNSTABLE, 
+        PasquillGiffordStability.MODERATELY_UNSTABLE, 
+        PasquillGiffordStability.SLIGHTLY_UNSTABLE, 
+        PasquillGiffordStability.NEUTRAL,  
+        PasquillGiffordStability.MODERATELY_STABLE, 
+        PasquillGiffordStability.VERY_STABLE
+    ]) if stability_type == StabilityType.CONSTANT else 0
     
-    wind_speed = assign_wind_speed(stability_value) # type: ignore
+    wind_speed = assign_wind_speed(stability_value)  # type: ignore
 
     return wind_speed, wind_type, stability_type, stability_value
 
@@ -121,26 +123,29 @@ for i in range(N_SIMULATIONS):
     # nps considerato casuale
     aerosol_type = random.choice(list(NPS))
 
-    # humidify
-    #humidify = random.choice([True, False])
+    # tipo di modello di dispersione scelto a caso
+    disp_model = random.choice([DispersionModelType.PLUME, DispersionModelType.PUFF])
 
-    days=10
+    # humidify viene già da SensorAir (ok)
+    days = random.choice([5, 10, 15])
     config = ModelConfig(
         days=days,
         aerosol_type=aerosol_type,
         dry_size=1.0,
         humidify=humidify,
-        RH=round(np.random.uniform(0, 0.99),2) if humidify else 0.0,
+        RH=round(np.random.uniform(0, 0.99), 2) if humidify else 0.0,
         stability_profile=stability_type,
-        stability_value=stability_value, # type: ignore
+        stability_value=stability_value,  # type: ignore
         wind_type=wind_type,
         wind_speed=wind_speed,
         output=OutputType.PLAN_VIEW,
         stacks=stacks,
         x_slice=26,
         y_slice=1,
-        dispersion_model=DispersionModelType.PLUME,
+        dispersion_model=disp_model,
+        config_puff=ConfigPuff() if disp_model == DispersionModelType.PUFF else None
     )
+
 
     # Calcola concentrazioni con modello gaussiano
     C1, (x, y, z), times, stability, wind_dir, stab_label, wind_label, puff = run_dispersion_model(config)
