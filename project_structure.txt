@@ -3,6 +3,7 @@
 ├── .gitattributes
 ├── .gitignore
 ├── ClassificatoreNPS
+│   ├── Applying Machine Learning Algorithms to New Psychoactive Substances Screening.ipynb
 │   ├── Dockerfile
 │   ├── NPSClassifier.ipynb
 │   ├── __init__.py
@@ -13,13 +14,20 @@
 │   ├── datasetNPS
 │   │   ├── 1-s2.0-S2468170923000358-mmc1.csv
 │   │   ├── 1-s2.0-S2468170923000358-mmc2.txt
-│   │   └── 1-s2.0-S2468170923000358-mmc3.zip
+│   │   ├── 1-s2.0-S2468170923000358-mmc3.zip
+│   │   └── PENTION_EI_Complete.csv
 │   ├── dnn_model_structure.png
 │   ├── model
+│   │   ├── Claudio
+│   │   │   ├── balanced_random_forest_brf.pkl
+│   │   │   ├── balanced_random_forest_brf_hmp.pkl
+│   │   │   ├── balanced_random_forest_rfe.pkl
+│   │   │   ├── dnn_model_structure.png
+│   │   │   ├── dnn_spectra_version.keras
+│   │   │   └── scale_dnn.pkl
 │   │   ├── balanced_random_forest_brf.pkl
 │   │   ├── balanced_random_forest_brf_hmp.pkl
 │   │   ├── balanced_random_forest_rfe.pkl
-│   │   ├── dnn_model_structure.png
 │   │   ├── dnn_spectra_version.keras
 │   │   └── scale_dnn.pkl
 │   ├── requirements.txt
@@ -165,6 +173,137 @@
 │   ├── service_correction.py
 │   ├── simulation_gen.py
 │   └── train_model.py
+├── CorrectionDispersion_PIML
+│   ├── .dockerignore
+│   ├── CNNDataset.py
+│   ├── Dockerfile
+│   ├── MCxM_PIML.py
+│   ├── __init__.py
+│   ├── add_gps_features.py
+│   ├── api_correction_piml.py
+│   ├── binary_map_gen.py
+│   ├── binary_maps_data
+│   │   ├── amsterdam_netherlands_bbox.npy
+│   │   └── amsterdam_netherlands_metadata_bbox.json
+│   ├── cnn_train_pipeline_piml.py
+│   ├── dataset
+│   │   ├── nps_simulated_dataset_gaussiano_2025-11-09_PIML.csv
+│   │   ├── nps_simulated_dataset_gaussiano_2025-11-09_PIML_processed.csv
+│   │   └── real_dispersion
+│   │       ├── sim_0_conc_real_2025-11-09.npy
+│   │       ├── sim_10_conc_real_2025-11-09.npy
+│   │       ├── sim_11_conc_real_2025-11-09.npy
+│   │       ├── sim_12_conc_real_2025-11-09.npy
+│   │       ├── sim_13_conc_real_2025-11-09.npy
+│   │       ├── sim_14_conc_real_2025-11-09.npy
+│   │       ├── sim_15_conc_real_2025-11-09.npy
+│   │       ├── sim_16_conc_real_2025-11-09.npy
+│   │       ├── sim_17_conc_real_2025-11-09.npy
+│   │       ├── sim_18_conc_real_2025-11-09.npy
+│   │       ├── sim_19_conc_real_2025-11-09.npy
+│   │       ├── sim_1_conc_real_2025-11-09.npy
+│   │       ├── sim_20_conc_real_2025-11-09.npy
+│   │       ├── sim_21_conc_real_2025-11-09.npy
+│   │       ├── sim_22_conc_real_2025-11-09.npy
+│   │       ├── sim_23_conc_real_2025-11-09.npy
+│   │       ├── sim_24_conc_real_2025-11-09.npy
+│   │       ├── sim_25_conc_real_2025-11-09.npy
+│   │       ├── sim_26_conc_real_2025-11-09.npy
+│   │       ├── sim_27_conc_real_2025-11-09.npy
+│   │       ├── sim_28_conc_real_2025-11-09.npy
+│   │       ├── sim_29_conc_real_2025-11-09.npy
+│   │       ├── sim_2_conc_real_2025-11-09.npy
+│   │       ├── sim_30_conc_real_2025-11-09.npy
+│   │       ├── sim_31_conc_real_2025-11-09.npy
+│   │       ├── sim_32_conc_real_2025-11-09.npy
+│   │       ├── sim_33_conc_real_2025-11-09.npy
+│   │       ├── sim_34_conc_real_2025-11-09.npy
+│   │       ├── sim_35_conc_real_2025-11-09.npy
+│   │       ├── sim_36_conc_real_2025-11-09.npy
+│   │       ├── sim_37_conc_real_2025-11-09.npy
+│   │       ├── sim_38_conc_real_2025-11-09.npy
+│   │       ├── sim_39_conc_real_2025-11-09.npy
+│   │       ├── sim_3_conc_real_2025-11-09.npy
+│   │       ├── sim_40_conc_real_2025-11-09.npy
+│   │       ├── sim_41_conc_real_2025-11-09.npy
+│   │       ├── sim_42_conc_real_2025-11-09.npy
+│   │       ├── sim_43_conc_real_2025-11-09.npy
+│   │       ├── sim_44_conc_real_2025-11-09.npy
+│   │       ├── sim_45_conc_real_2025-11-09.npy
+│   │       ├── sim_46_conc_real_2025-11-09.npy
+│   │       ├── sim_47_conc_real_2025-11-09.npy
+│   │       ├── sim_48_conc_real_2025-11-09.npy
+│   │       ├── sim_49_conc_real_2025-11-09.npy
+│   │       ├── sim_4_conc_real_2025-11-09.npy
+│   │       ├── sim_50_conc_real_2025-11-09.npy
+│   │       ├── sim_51_conc_real_2025-11-09.npy
+│   │       ├── sim_52_conc_real_2025-11-09.npy
+│   │       ├── sim_53_conc_real_2025-11-09.npy
+│   │       ├── sim_54_conc_real_2025-11-09.npy
+│   │       ├── sim_55_conc_real_2025-11-09.npy
+│   │       ├── sim_56_conc_real_2025-11-09.npy
+│   │       ├── sim_57_conc_real_2025-11-09.npy
+│   │       ├── sim_58_conc_real_2025-11-09.npy
+│   │       ├── sim_59_conc_real_2025-11-09.npy
+│   │       ├── sim_5_conc_real_2025-11-09.npy
+│   │       ├── sim_60_conc_real_2025-11-09.npy
+│   │       ├── sim_61_conc_real_2025-11-09.npy
+│   │       ├── sim_62_conc_real_2025-11-09.npy
+│   │       ├── sim_63_conc_real_2025-11-09.npy
+│   │       ├── sim_64_conc_real_2025-11-09.npy
+│   │       ├── sim_65_conc_real_2025-11-09.npy
+│   │       ├── sim_66_conc_real_2025-11-09.npy
+│   │       ├── sim_67_conc_real_2025-11-09.npy
+│   │       ├── sim_68_conc_real_2025-11-09.npy
+│   │       ├── sim_69_conc_real_2025-11-09.npy
+│   │       ├── sim_6_conc_real_2025-11-09.npy
+│   │       ├── sim_70_conc_real_2025-11-09.npy
+│   │       ├── sim_71_conc_real_2025-11-09.npy
+│   │       ├── sim_72_conc_real_2025-11-09.npy
+│   │       ├── sim_73_conc_real_2025-11-09.npy
+│   │       ├── sim_74_conc_real_2025-11-09.npy
+│   │       ├── sim_75_conc_real_2025-11-09.npy
+│   │       ├── sim_76_conc_real_2025-11-09.npy
+│   │       ├── sim_77_conc_real_2025-11-09.npy
+│   │       ├── sim_78_conc_real_2025-11-09.npy
+│   │       ├── sim_79_conc_real_2025-11-09.npy
+│   │       ├── sim_7_conc_real_2025-11-09.npy
+│   │       ├── sim_80_conc_real_2025-11-09.npy
+│   │       ├── sim_81_conc_real_2025-11-09.npy
+│   │       ├── sim_82_conc_real_2025-11-09.npy
+│   │       ├── sim_83_conc_real_2025-11-09.npy
+│   │       ├── sim_84_conc_real_2025-11-09.npy
+│   │       ├── sim_85_conc_real_2025-11-09.npy
+│   │       ├── sim_86_conc_real_2025-11-09.npy
+│   │       ├── sim_87_conc_real_2025-11-09.npy
+│   │       ├── sim_88_conc_real_2025-11-09.npy
+│   │       ├── sim_89_conc_real_2025-11-09.npy
+│   │       ├── sim_8_conc_real_2025-11-09.npy
+│   │       ├── sim_90_conc_real_2025-11-09.npy
+│   │       ├── sim_91_conc_real_2025-11-09.npy
+│   │       ├── sim_92_conc_real_2025-11-09.npy
+│   │       ├── sim_93_conc_real_2025-11-09.npy
+│   │       ├── sim_94_conc_real_2025-11-09.npy
+│   │       ├── sim_95_conc_real_2025-11-09.npy
+│   │       ├── sim_96_conc_real_2025-11-09.npy
+│   │       ├── sim_97_conc_real_2025-11-09.npy
+│   │       ├── sim_98_conc_real_2025-11-09.npy
+│   │       ├── sim_99_conc_real_2025-11-09.npy
+│   │       └── sim_9_conc_real_2025-11-09.npy
+│   ├── dataset_preprocessing_piml.py
+│   ├── loss_function_piml.py
+│   ├── models
+│   │   ├── mcxm_piml_model_best.pth
+│   │   └── mcxm_piml_model_final.pth
+│   ├── plots
+│   │   ├── distribuzioni_variabili_categoriche.png
+│   │   ├── distribuzioni_variabili_continue.png
+│   │   ├── matrice_correlazione.png
+│   │   └── training_curves_piml.png
+│   ├── requirements.txt
+│   ├── service_correction_piml.py
+│   ├── simulation_gen.py
+│   └── train_model.py
 ├── EmissionSourceLocalization
 │   ├── Dockerfile
 │   ├── __init__.py
@@ -182,20 +321,56 @@
 │   └── service_source_localizzation.py
 ├── PentionSystem
 │   ├── Dockerfile
-│   ├── app.py
 │   ├── application.py
-│   ├── controllers.py
-│   ├── dispersion_map.html
 │   ├── flow.png
 │   ├── plot_functions.py
 │   ├── requirements.txt
-│   ├── ui.py
 │   └── utils.py
+├── UI_old
+│   ├── .dockerignore
+│   ├── Dockerfile
+│   ├── api_clients
+│   │   ├── classifier_client.py
+│   │   ├── correction_client.py
+│   │   ├── gaussian_client.py
+│   │   └── localization_client.py
+│   ├── app.py
+│   ├── components
+│   │   ├── run_simulation.py
+│   │   ├── sidebar_config.py
+│   │   └── visualization.py
+│   ├── requirements.txt
+│   └── utils
+│       ├── build_config.py
+│       └── map_utils.py
 ├── docker-compose.yml
 ├── documents
 │   ├── Descrizione_documenti_prof.docx
+│   ├── PENTION-M_Architecture.drawio
 │   ├── PENTION_initial_requirements_elicitation.xlsx
+│   ├── Paper utili
+│   │   ├── Journal of Chemistry - 2022 - Bărbulescu - Computer‐Aided Classification of New Psychoactive Substances.pdf
+│   │   ├── PENTION-M
+│   │   │   ├── 2503.18849v1.pdf
+│   │   │   ├── A+comprehensive+review+of+physics-informed+deep+learning+and+its+applications+in+geoenergy+development.pdf
+│   │   │   ├── MLOps_for_Cyberphysical_Production_Systems_Challenges_and_Solutions.pdf
+│   │   │   ├── Spiegazione paper.docx
+│   │   │   ├── fluids-10-00226-v2.pdf
+│   │   │   ├── kashinath-et-al-2021-physics-informed-machine-learning-case-studies-for-weather-and-climate-modelling.pdf
+│   │   │   ├── paper13.pdf
+│   │   │   ├── s42979-023-02282-2.pdf
+│   │   │   └── s44379-025-00016-0.pdf
+│   │   ├── Scheda di utilità dei paper.txt
+│   │   ├── analytica-06-00017.pdf
+│   │   └── deep-learning-enabled-ms-ms-spectrum-prediction-facilitates-automated-identification-of-novel-psychoactive-substances.pdf
 │   ├── Requirements Elicitations Interview.docx
+│   ├── Workshop-4-11-2025
+│   │   ├── (Audio) 2025-11-04.m4a
+│   │   ├── 2025-11-04 09-59-04.mkv
+│   │   ├── PENTION_LEA_Workshop_DutchPolice_Meeting_Summary_2025-11-04.docx
+│   │   ├── PENTION_LEA_Workshop_DutchPolice_Meeting_Summary_2025-11-04.pdf
+│   │   ├── Trascrizione meeting PENTION.txt
+│   │   └── Workshop-requirement engineering.pptx
 │   ├── descrizionecodice.docx
 │   └── spiegazione sintetica.docx
 ├── gaussianPuff
@@ -221,4 +396,16 @@
 │   ├── sigmaCalculation.py
 │   └── test_dispersion.py
 ├── project_structure.txt
-└── struttura.py
+├── struttura.py
+└── test_datasetNPS
+    ├── 1-s2.0-S2468170923000358-mmc1.csv
+    ├── 6963 molecole.csv
+    ├── Found_in_MoNA_AllSpectra_EI_fixed.csv
+    ├── HighResNPS_Consensus.xlsx
+    ├── MoNA-export-All_Spectra.msp
+    ├── NotFound_EI_Spectra.csv
+    ├── PENTION_EI_Dataset.csv
+    ├── SWGDRUG_3.MSP
+    ├── inserimento_spettro_da_dataset_precedenti.py
+    ├── spettri_tramite_MoNA_o_SDBS.py
+    └── unione_dataset.py

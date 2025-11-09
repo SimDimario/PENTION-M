@@ -1,0 +1,22 @@
+{
+    "city": "Amsterdam, Netherlands",
+    "grid_size": 500,
+    "bounds": [
+        -192684.18304063054,
+        5844216.394659924,
+        -179397.42378914822,
+        5857877.137997829
+    ],
+    "cell_size": [
+        26.57351850296464,
+        27.321486675810068
+    ],
+    "crs": "epsg 32633",
+    "total_buildings": 174975,
+    "building_cells": 90330,
+    "free_cells": 159670,
+    "total_cells": 250000,
+    "resolution (m)": 26.57351850296464,
+    "building_density": 36.132,
+    "mean_height": 6.910770224078998
+}

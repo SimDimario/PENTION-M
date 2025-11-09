@@ -27,6 +27,18 @@ services:
       - "8003:8003"
     restart: unless-stopped
 
+  correction_piml:
+    build: ./CorrectionDispersion_PIML
+    container_name: correction_dispersion_piml
+    ports:
+      - "8008:8008"
+    restart: unless-stopped
+    depends_on:
+      - gaussian_puff
+    volumes:
+      - ./CorrectionDispersion_PIML:/CorrectionDispersion_PIML
+
+
   pention_system:
     build: ./PentionSystem
     container_name: pention_system
@@ -36,4 +48,3 @@ services:
     volumes:
       - ./gaussianPuff:/PentionSystem/gaussianPuff
       - ./ClassificatoreNPS:/PentionSystem/ClassificatoreNPS
-
