@@ -4,14 +4,14 @@ import pandas as pd
 import os
 import random
 import sys
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from tqdm import tqdm
 
 # === FIX PATHS ============================================================
-# Calcola il path assoluto alla root del progetto (Pention-System)
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 GAUSSIAN_PATH = os.path.join(ROOT_DIR, "gaussianPuff")
 sys.path.extend([ROOT_DIR, GAUSSIAN_PATH])
 
-# Importa correttamente i moduli dal package gaussianPuff
 from gaussianPuff.config import (
     ModelConfig, StabilityType, WindType, OutputType, NPS,
     PasquillGiffordStability, DispersionModelType, ConfigPuff
@@ -19,12 +19,15 @@ from gaussianPuff.config import (
 from gaussianPuff.gaussianModel import run_dispersion_model
 from gaussianPuff.Sensor import SensorAir
 
-
 # === PARAMETRI ============================================================
-N_SIMULATIONS = 100
+N_SIMULATIONS = 1000
+SAVE_EVERY = 100
+KEEP_NPY_UNTIL = 300
+N_WORKERS = 8   # ⬅️ usa 8 processi in parallelo (puoi aumentare fino a 12–14)
 SAVE_DIR = "./CorrectionDispersion_PIML/dataset"
 SAVE_DIR_CONC = os.path.join(SAVE_DIR, "real_dispersion")
 BINARY_MAP_PATH = os.path.join(os.path.dirname(__file__), "binary_maps_data/amsterdam_netherlands_bbox.npy")
+
 os.makedirs(SAVE_DIR_CONC, exist_ok=True)
 
 binary_map = np.load(BINARY_MAP_PATH)
@@ -47,8 +50,6 @@ def stability_index(stab):
     return mapping.get(stab, 0)
 
 def sigma_from_distance(distance, stab_index):
-    """Approssima σy, σz da distanza (m) e stabilità (Pasquill–Gifford)."""
-    # coeff empirici
     a_y = [0.22, 0.16, 0.11, 0.08, 0.06, 0.04]
     b_y = [0.90, 0.88, 0.86, 0.83, 0.80, 0.78]
     idx = max(0, min(5, stab_index - 1))
@@ -56,22 +57,17 @@ def sigma_from_distance(distance, stab_index):
     sigma_z = 0.5 * sigma_y
     return round(float(sigma_y), 3), round(float(sigma_z), 3)
 
-records = []
 
-for i in range(N_SIMULATIONS):
-    print(f"[SIM] {i+1}/{N_SIMULATIONS}")
-
-    # --- Meteo e stabilità ---
+# === FUNZIONE PARALLELA ===================================================
+def run_single_simulation(i, csv_date, keep_until=KEEP_NPY_UNTIL):
     sensor_air = SensorAir(sensor_id=0, x=0.0, y=0.0, z=2.0)
     wind_speed, wind_type, stability_type, stability_value, humidify, dry_size, RH = sensor_air.sample_meteorology()
 
-    # --- Sorgente ---
     x_src, y_src = random_position()
     h_src = round(np.random.uniform(1, 10), 2)
     Q = round(np.random.uniform(0.0001, 0.01), 4)
     stacks = [(x_src, y_src, Q, h_src)]
 
-    # --- Configurazione modello ---
     disp_model = random.choice([DispersionModelType.PLUME, DispersionModelType.PUFF])
     config = ModelConfig(
         days=random.choice([5, 10, 15]),
@@ -89,23 +85,25 @@ for i in range(N_SIMULATIONS):
         config_puff=ConfigPuff() if disp_model == DispersionModelType.PUFF else None
     )
 
-    # --- Simulazione gaussiana ---
     C1, (x, y, z), times, stability, wind_dir, stab_label, wind_label, puff = run_dispersion_model(config)
 
-    # --- Calcolo σy, σz fisici ---
     dist = np.mean(np.sqrt((x - x_src) ** 2 + (y - y_src) ** 2))
     sigma_y, sigma_z = sigma_from_distance(dist, stability_index(stability_value))
 
-    # --- Salvataggio mappa ---
-    fname = f"sim_{i}_conc_real_{datetime.datetime.now().date()}.npy"
-    np.save(os.path.join(SAVE_DIR_CONC, fname), C1)
+    fname = f"sim_{i}_conc_real_{csv_date}.npy"
+    conc_path = os.path.join(SAVE_DIR_CONC, fname)
 
-    # --- Media direzione vento ---
+    # salva o elimina npy
+    if i < keep_until:
+        np.save(conc_path, C1)
+    else:
+        np.save(conc_path, C1)
+        os.remove(conc_path)
+
     wind_angle_mean = float(np.degrees(np.arctan2(np.mean(np.sin(np.deg2rad(wind_dir))),
                                                  np.mean(np.cos(np.deg2rad(wind_dir))))))
 
-    # --- Record simulazione ---
-    records.append({
+    return {
         "simulation_id": i,
         "real_concentration_name_file": fname,
         "wind_speed": wind_speed,
@@ -121,12 +119,45 @@ for i in range(N_SIMULATIONS):
         "source_h": h_src,
         "emission_rate": Q,
         "dispersion_model": disp_model.name
-    })
+    }
 
-# --- Salvataggio CSV aggregato ---
-df = pd.DataFrame(records)
-csv_path = os.path.join(SAVE_DIR, f"nps_simulated_dataset_gaussiano_{datetime.datetime.now().date()}_PIML.csv")
-df.to_csv(csv_path, index=False)
+# === MAIN LOOP PARALLELIZZATO ============================================
+if __name__ == "__main__":
+    csv_date = datetime.datetime.now().date()
+    temp_csv_path = os.path.join(SAVE_DIR, f"nps_simulated_dataset_gaussiano_{csv_date}_PIML_partial.csv")
 
-print(f"\n✅ Dataset PIML generato: {csv_path}")
-print(f"Totale simulazioni: {len(df)}")
+    results = []
+
+    print(f"🚀 Avvio simulazioni con {N_WORKERS} processi paralleli...")
+    with ProcessPoolExecutor(max_workers=N_WORKERS) as executor:
+        # Usa solo executor.map → più efficiente e stabile su Windows
+        for result in tqdm(
+            executor.map(run_single_simulation, range(N_SIMULATIONS), [csv_date] * N_SIMULATIONS),
+            total=N_SIMULATIONS,
+            desc="Simulazioni in corso",
+            dynamic_ncols=True
+        ):
+            results.append(result)
+
+            # Checkpoint ogni SAVE_EVERY simulazioni
+            if len(results) % SAVE_EVERY == 0:
+                df_partial = pd.DataFrame(results)
+                df_partial["gps_x"] = df_partial["source_x"] / df_partial["source_x"].max()
+                df_partial["gps_y"] = df_partial["source_y"] / df_partial["source_y"].max()
+                df_partial.to_csv(temp_csv_path, index=False)
+                print(f"\n💾 Checkpoint salvato ({len(results)}/{N_SIMULATIONS}) → {temp_csv_path}")
+                sys.stdout.flush()  # forza aggiornamento output
+
+    # === SALVATAGGIO FINALE =============================================
+    df = pd.DataFrame(results)
+    df["gps_x"] = df["source_x"] / df["source_x"].max()
+    df["gps_y"] = df["source_y"] / df["source_y"].max()
+
+    csv_path = os.path.join(SAVE_DIR, f"nps_simulated_dataset_gaussiano_{csv_date}_PIML.csv")
+    df.to_csv(csv_path, index=False)
+
+    print(f"\n✅ Dataset PIML completo generato: {csv_path}")
+    print(f"Totale simulazioni: {len(df)}")
+    print(f"📊 GPS normalizzato incluso nel dataset.")
+    print(f"💾 Prime {KEEP_NPY_UNTIL} mappe salvate in: {SAVE_DIR_CONC}")
+    print(f"⚡ Le restanti sono state eliminate per risparmiare spazio.")

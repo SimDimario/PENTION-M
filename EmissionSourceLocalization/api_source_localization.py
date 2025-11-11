@@ -7,7 +7,7 @@ import logging
 import numpy as np
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-from service_source_localizzation import predict_source
+from EmissionSourceLocalization.service_source_localization import predict_source
 
 logging.basicConfig(
     level=logging.INFO,

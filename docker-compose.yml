@@ -38,6 +38,16 @@ services:
     volumes:
       - ./CorrectionDispersion_PIML:/CorrectionDispersion_PIML
 
+  source_localization_piml:
+    build: ./EmissionSourceLocalization_PIML
+    container_name: loc_emission_source_piml
+    ports:
+      - "8010:8010"
+    restart: unless-stopped
+    depends_on:
+      - gaussian_puff
+    volumes:
+      - ./EmissionSourceLocalization_PIML:/EmissionSourceLocalization_PIML
 
   pention_system:
     build: ./PentionSystem

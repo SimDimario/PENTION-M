@@ -56,7 +56,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BINARY_MAP_PATH = os.path.join(SCRIPT_DIR, "binary_maps_data/amsterdam_netherlands_bbox.npy")
 METADATA_MAP_PATH = os.path.join(SCRIPT_DIR, "binary_maps_data/amsterdam_netherlands_metadata_bbox.json")
 REAL_CONC_PATH = os.path.join(SCRIPT_DIR, "dataset", "real_dispersion")
-CSV_PATH = os.path.join(SCRIPT_DIR, "dataset", "nps_simulated_dataset_gaussiano_2025-11-09_PIML_processed.csv")
+CSV_PATH = os.path.join(SCRIPT_DIR, "dataset", "nps_simulated_dataset_gaussiano_2025-11-10_PIML_processed.csv")
 PLOT_DIR = os.path.join(SCRIPT_DIR, "plots")
 os.makedirs(PLOT_DIR, exist_ok=True)
 
