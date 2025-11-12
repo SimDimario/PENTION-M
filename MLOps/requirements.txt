@@ -1,0 +1,13 @@
+# Core web framework
+fastapi==0.110.2
+uvicorn[standard]==0.29.0
+
+# Data & JSON handling
+pydantic==1.10.15
+requests==2.32.3
+
+# Utilities
+numpy==1.26.4
+
+# Optional for logging/diagnostics
+python-multipart==0.0.9

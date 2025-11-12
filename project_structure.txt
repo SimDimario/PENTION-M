@@ -427,6 +427,14 @@
 │   │   └── scaler_piml.pkl
 │   ├── requirements.txt
 │   └── service_source_localization_piml.py
+├── MLOps
+│   ├── Dockerfile
+│   ├── SensorSim_M.py
+│   ├── api_ingestion.py
+│   ├── forensic_logger.py
+│   ├── mock_retrain.py
+│   ├── monitoring_service.py
+│   └── requirements.txt
 ├── PentionSystem
 │   ├── Dockerfile
 │   ├── application.py
@@ -451,6 +459,8 @@
 │   └── utils
 │       ├── build_config.py
 │       └── map_utils.py
+├── cls
+├── docker
 ├── docker-compose.yml
 ├── documents
 │   ├── Descrizione_documenti_prof.docx
@@ -503,8 +513,17 @@
 │   ├── requirements.txt
 │   ├── sigmaCalculation.py
 │   └── test_dispersion.py
+├── logs
+│   ├── forensic
+│   │   ├── bundle_20251111_202408_e056af4d.json
+│   │   ├── bundle_20251111_202847_2fd1d3b3.json
+│   │   ├── bundle_20251111_203054_39c05bc6.json
+│   │   └── bundle_20251111_203720_8fe74c0b.json
+│   ├── ingestion_log.jsonl
+│   └── monitoring_log.jsonl
 ├── project_structure.txt
 ├── struttura.py
+├── test_MLOps_end2end.py
 └── test_datasetNPS
     ├── 1-s2.0-S2468170923000358-mmc1.csv
     ├── 6963 molecole.csv

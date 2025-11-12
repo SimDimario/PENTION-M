@@ -1,0 +1,1 @@
+{"time": "2025-11-11T20:37:20.280252", "simulation_id": "sim_test_001", "model_version": "v1.0.0", "latency_ms": 120, "drift_score": 0.0972, "mse_free": 0.00023, "stability_index": 4.0, "confidence": 0.92}

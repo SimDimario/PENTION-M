@@ -49,6 +49,60 @@ services:
     volumes:
       - ./EmissionSourceLocalization_PIML:/EmissionSourceLocalization_PIML
 
+  # -------------------- MLOps Layer 1–5 --------------------
+  mlops_ingestion:
+    build: ./MLOps
+    container_name: mlops_ingestion
+    command: uvicorn api_ingestion:app --host 0.0.0.0 --port 8011
+    ports:
+      - "8011:8011"
+    volumes:
+      - ./MLOps:/MLOps
+      - ./logs:/logs
+    restart: unless-stopped
+    depends_on:
+      - correction_piml
+      - source_localization_piml
+
+  mlops_monitoring:
+    build: ./MLOps
+    container_name: mlops_monitoring
+    command: uvicorn monitoring_service:app --host 0.0.0.0 --port 8012
+    ports:
+      - "8012:8012"
+    volumes:
+      - ./MLOps:/MLOps
+      - ./logs:/logs
+    restart: unless-stopped
+
+  mlops_forensic:
+    build: ./MLOps
+    container_name: mlops_forensic
+    command: uvicorn forensic_logger:app --host 0.0.0.0 --port 8013
+    ports:
+      - "8013:8013"
+    volumes:
+      - ./MLOps:/MLOps
+      - ./logs:/logs
+    restart: unless-stopped
+    depends_on:
+      - mlops_ingestion
+      - mlops_monitoring
+
+  mlops_retrain:
+    build: ./MLOps
+    container_name: mlops_retrain
+    command: uvicorn mock_retrain:app --host 0.0.0.0 --port 8014
+    ports:
+      - "8014:8014"
+    volumes:
+      - ./MLOps:/MLOps
+      - ./logs:/logs
+    restart: unless-stopped
+    depends_on:
+      - mlops_monitoring
+
+  # -------------------- UI / Streamlit --------------------
   pention_system:
     build: ./PentionSystem
     container_name: pention_system
@@ -58,3 +112,4 @@ services:
     volumes:
       - ./gaussianPuff:/PentionSystem/gaussianPuff
       - ./ClassificatoreNPS:/PentionSystem/ClassificatoreNPS
+      - ./logs:/logs

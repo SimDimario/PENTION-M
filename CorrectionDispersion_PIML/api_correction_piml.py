@@ -13,6 +13,17 @@ from service_correction_piml import correct_dispersion_piml
 from binary_map_gen import generate_binary_map, convert_np
 import uvicorn
 
+# === CARICAMENTO BINARY MAP DI DEFAULT (per allineare il modello) ===
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_MAP_PATH = os.path.join(SCRIPT_DIR, "binary_maps_data", "amsterdam_netherlands_bbox.npy")
+
+if os.path.exists(DEFAULT_MAP_PATH):
+    DEFAULT_BUILDING_MAP = np.load(DEFAULT_MAP_PATH)
+    print(f"[INFO] Loaded default building map: {DEFAULT_BUILDING_MAP.shape}")
+else:
+    print("[WARN] Default binary map not found — using empty map.")
+    DEFAULT_BUILDING_MAP = np.zeros((500, 500), dtype=np.float32)
+
 app = FastAPI()
 
 class BBox(BaseModel):
@@ -21,7 +32,7 @@ class BBox(BaseModel):
     max_lon: float
     max_lat: float
     grid_size: int = 300
-    place: str = "Roma, Italy"
+    place: str = "Amsterdam, Netherlands"
 
 class DispersionInput(BaseModel):
     wind_speed: float
@@ -61,7 +72,12 @@ def generate_map(bbox: BBox):
 def predict_endpoint(payload: DispersionInput):
 
     conc_map = np.array(payload.concentration_map, dtype=np.float32)
-    build_map = np.array(payload.building_map, dtype=np.float32)
+    build_map = (
+        np.array(payload.building_map, dtype=np.float32)
+        if len(payload.building_map) > 0
+        else DEFAULT_BUILDING_MAP
+    )
+
     glob_feat = np.array(payload.global_features, dtype=np.float32) if payload.global_features else None
 
     correction_map = correct_dispersion_piml(payload.wind_dir, payload.wind_speed, conc_map, build_map, glob_feat)

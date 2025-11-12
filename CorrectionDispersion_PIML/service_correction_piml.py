@@ -32,7 +32,7 @@ def load_model(binary_map, m=500, device=None, pretrained_path=None):
     model_path = os.path.join(SCRIPT_DIR, "models", "mcxm_piml_model_best.pth")
     logger.info(f"Loading MCxM_CNN model from {model_path} (device={device})")
 
-    loaded_model = MCxM_PIML(binary_map, m=m, n_channel=1, wind_dim=2, n_global_features=0).to(device)
+    loaded_model = MCxM_PIML(binary_map, m=m, n_channel=1, wind_dim=2, n_global_features=2).to(device)
 
     try:
         # ✅ Forza il caricamento completo (compatibile con modelli salvati prima di PyTorch 2.6)
@@ -46,42 +46,56 @@ def load_model(binary_map, m=500, device=None, pretrained_path=None):
 
     return loaded_model
 
-def correct_dispersion_piml(wind_dir, wind_speed, concentration_map, building_map, global_feature=None, device=None, m=500, pretrained_path=None):
+def correct_dispersion_piml(wind_dir,wind_speed,concentration_map,building_map,global_feature=None,device=None,m=500,pretrained_path=None):
     logger.info("Starting dispersion correction...")
 
+    # === Device setup ===
     if device is None:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logger.debug(f"Using device: {device}")
 
     logger.info(f"building map: {building_map.shape}")
 
+    # === Load model ===
     model = load_model(building_map, m=m, device=device, pretrained_path=pretrained_path)
 
-    cm_agg=np.mean(concentration_map, axis=2) #shape: (500,500
+    # === Validate and fix concentration_map shape ===
+    if concentration_map is None or concentration_map.size == 0:
+        logger.warning("Empty concentration_map received — using zeros fallback.")
+        concentration_map = np.zeros((m, m, 1), dtype=np.float32)
+    elif concentration_map.ndim == 1:
+        logger.warning(f"1D concentration_map of shape {concentration_map.shape} — reshaping to (m, m, 1).")
+        concentration_map = concentration_map.reshape(m, m, 1)
+    elif concentration_map.ndim == 2:
+        logger.warning(f"2D concentration_map of shape {concentration_map.shape} — adding fake time axis.")
+        concentration_map = concentration_map[:, :, np.newaxis]
+
+    # === Aggregate concentration map ===
+    cm_agg = np.mean(concentration_map, axis=2)
     mc = torch.tensor(cm_agg, dtype=torch.float32, device=device).unsqueeze(0).unsqueeze(0)
     logger.debug(f"Concentration map tensor shape: {mc.shape}")
 
-    #local_maps = building_map.unsqueeze(0)  # [1, 1, m, m]
-
-    wind_dir_cos , wind_dir_sin = calculate_mean_direction(wind_dir)
+    # === Wind features ===
+    wind_dir_cos, wind_dir_sin = calculate_mean_direction(wind_dir)
     degree_angle = np.degrees(np.arctan2(wind_dir_sin, wind_dir_cos)) % 360
-
-    logger.debug(f"Wind direction: {degree_angle}°, ")
+    logger.debug(f"Wind direction: {degree_angle}°")
 
     wind_features = torch.tensor([[wind_speed, degree_angle]], dtype=torch.float32, device=device)
     logger.debug(f"Wind features tensor: {wind_features}")
 
+    # === Global features ===
     if global_feature is not None:
-        global_features = torch.tensor(global_feature, dtype=torch.float32, device=device).unsqueeze(0)
-        logger.debug(f"Global features tensor shape: {global_features.shape}")
+        global_features = torch.tensor(global_feature[:2], dtype=torch.float32, device=device).unsqueeze(0)
+        logger.debug(f"Global features trimmed to first 2 values: {global_features.tolist()}")
     else:
         global_features = None
 
+    # === Model inference ===
     logger.info("Running model inference...")
     with torch.no_grad():
         try:
             output = model(mc, wind_features, global_features)
-            output = output.detach().cpu().numpy()[0] # togli batch, shape (m, m)
+            output = output.detach().cpu().numpy()[0]  # shape (m, m)
             logger.info(f"Inference completed. Output shape: {output.shape}")
         except Exception as e:
             logger.error(f"Error during model inference: {e}")
