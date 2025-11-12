@@ -5,6 +5,23 @@ import time
 import json
 import os
 import random
+import sys
+
+# --- Fix import manuale ---
+sys.path.extend(["/MLOps", "/CorrectionDispersion_PIML", "/gaussianPuff"])
+
+import importlib.util
+
+# --- Loader dinamico per il retraining reale PIML ---
+def load_piml_retrain():
+    """Carica dinamicamente il modulo service_train_piml.py da /CorrectionDispersion_PIML"""
+    module_path = "/CorrectionDispersion_PIML/service_train_piml.py"
+    if not os.path.exists(module_path):
+        raise FileNotFoundError(f"Modulo non trovato: {module_path}")
+    spec = importlib.util.spec_from_file_location("service_train_piml", module_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 # ============================================================
 # MOCK RETRAIN SERVICE – Layer 5 (Feedback & ModelOps)
@@ -17,9 +34,9 @@ MONITOR_LOG = os.path.join(LOG_DIR, "monitoring_log.jsonl")
 RETRAIN_LOG = os.path.join(LOG_DIR, "modelops_retrain_log.jsonl")
 os.makedirs(LOG_DIR, exist_ok=True)
 
-CHECK_INTERVAL = 60  # secondi tra controlli
-DRIFT_THRESHOLD = 0.05  # soglia di drift medio per trigger
-MIN_EVENTS = 10  # minimo eventi recenti per valutare
+CHECK_INTERVAL = 10     # controlla ogni 10 secondi (solo per test)
+DRIFT_THRESHOLD = 0.12  # soglia media più realistica
+MIN_EVENTS = 5          # bastano pochi eventi
 
 running = True  # flag di controllo thread
 
@@ -42,12 +59,10 @@ def load_recent_monitoring(n: int = 50):
             continue
     return data
 
-
 def append_log(path: str, entry: dict):
     """Aggiunge una riga JSONL a un log file."""
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, default=str) + "\n")
-
 
 def compute_mean_drift(events):
     """Calcola il drift medio sugli ultimi eventi."""
@@ -56,18 +71,30 @@ def compute_mean_drift(events):
         return 0.0
     return sum(vals) / len(vals)
 
-
 def simulate_retrain():
-    """Simula la procedura di retraining (placeholder)."""
-    new_version = f"XGBoost_v{random.randint(2, 9)}.{random.randint(0, 9)}"
+    """Simula un retraining fisico-informato (mock)."""
+    base_model = "XGBoost" if random.random() > 0.5 else "RF_PIML"
+    new_version = f"{base_model}_v{datetime.utcnow().strftime('%H%M%S')}"
     metrics = {
-        "accuracy": round(random.uniform(0.82, 0.88), 3),
-        "far": round(random.uniform(0.03, 0.05), 3),
-        "training_samples": random.randint(2400, 2700),
-        "duration_min": round(random.uniform(4.5, 6.0), 2),
+        "accuracy": round(random.uniform(0.84, 0.91), 3),
+        "far": round(random.uniform(0.02, 0.05), 3),
+        "training_samples": random.randint(2600, 2800),
+        "duration_min": round(random.uniform(4.0, 6.0), 2),
+        "drift_reset": True,
     }
     return new_version, metrics
 
+def read_previous_model_version():
+    """Legge la versione precedente del modello dal registry, se presente."""
+    registry_path = os.path.join(LOG_DIR, "model_registry.json")
+    if not os.path.exists(registry_path):
+        return None
+    try:
+        with open(registry_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("current_model_version")
+    except Exception:
+        return None
 
 def retrain_loop():
     """Loop continuo che monitora il drift e simula retraining."""
@@ -91,20 +118,38 @@ def retrain_loop():
         }
 
         if retrain_needed:
-            new_version, metrics = simulate_retrain()
+            try:
+                piml_mod = load_piml_retrain()
+                new_version, metrics = piml_mod.retrain_model()
+            except Exception as e:
+                print(f"[RetrainService] ⚠️ Retraining reale fallito: {e}")
+                new_version, metrics = simulate_retrain()
             entry.update({
                 "new_model_version": new_version,
                 "metrics": metrics,
-                "status": "retrained"
+                "status": "retrained",
+                "duration_min": metrics.get("duration_min", "N/A"),
+                "previous_model_version": read_previous_model_version(),
             })
+
             print(f"[RetrainService] ⚙️ Retraining simulato → Nuova versione: {new_version}")
+
+            # **Aggiorna il file di registry con la nuova versione**
+            registry_path = os.path.join(LOG_DIR, "model_registry.json")
+            with open(registry_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "last_update": entry["timestamp"],
+                    "current_model_version": new_version,
+                    "previous_model_version": entry.get("previous_model_version"),
+                    "metrics": metrics
+                }, f, indent=2)
+
         else:
             entry["status"] = "stable"
 
         append_log(RETRAIN_LOG, entry)
 
     print("[RetrainService] 🛑 Loop terminato")
-
 
 # ============================================================
 # ENDPOINTS
@@ -142,7 +187,6 @@ def trigger_manual():
     append_log(RETRAIN_LOG, entry)
     print(f"[RetrainService] 🧠 Retraining manuale → {new_version}")
     return {"status": "ok", "message": "Manual retrain completed", "new_version": new_version}
-
 
 # ============================================================
 # THREAD DI BACKGROUND

@@ -75,15 +75,10 @@ class ForensicEvent(BaseModel):
 # ============================================================
 
 def write_bundle(event: dict) -> str:
-    """
-    Crea un file JSON firmato e con hash SHA-256 per ogni evento ricevuto.
-    Ritorna il percorso del file creato.
-    """
     ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     bundle_name = f"bundle_{ts}_{uuid.uuid4().hex[:8]}.json"
     path = os.path.join(FORENSIC_DIR, bundle_name)
 
-    # Calcolo hash e firma simulata
     serialized = json.dumps(event, sort_keys=True, default=str)
     hash_value = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
     signature = f"sig_{uuid.uuid4().hex[:16]}"
@@ -101,11 +96,9 @@ def write_bundle(event: dict) -> str:
 
     return path
 
-
 def list_bundles(n: int = 20) -> List[str]:
     files = sorted(os.listdir(FORENSIC_DIR), reverse=True)
     return files[:n]
-
 
 def load_bundle(filename: str) -> dict:
     path = os.path.join(FORENSIC_DIR, filename)
@@ -113,7 +106,6 @@ def load_bundle(filename: str) -> dict:
         raise FileNotFoundError(filename)
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
-
 
 # ============================================================
 # ENDPOINTS
@@ -123,14 +115,39 @@ def load_bundle(filename: str) -> dict:
 def health():
     return {"status": "ok", "service": "forensic_logger", "time": datetime.utcnow().isoformat()}
 
-
 @app.post("/log_forensic")
 def log_forensic(event: ForensicEvent):
-    """
-    Riceve un evento completo (es. dal servizio /ingest_data)
-    e genera un forensic bundle firmato.
-    """
     event_dict = json.loads(event.json(by_alias=True))
+
+    # === 🔍 Aggiunta metadati forensi sugli artifact ===
+    artifacts = {}
+    try:
+        model_path = "/CorrectionDispersion_PIML/models/mcxm_piml_model_best.pth"
+        if os.path.exists(model_path):
+            with open(model_path, "rb") as mf:
+                artifacts["model_hash"] = hashlib.sha256(mf.read()).hexdigest()
+        else:
+            artifacts["model_hash"] = "missing"
+
+        dataset_dir = "/CorrectionDispersion_PIML/dataset/real_dispersion"
+        if os.path.exists(dataset_dir):
+            maps = sorted([f for f in os.listdir(dataset_dir) if f.endswith(".npy")])
+            if maps:
+                latest_map = os.path.join(dataset_dir, maps[-1])
+                with open(latest_map, "rb") as cf:
+                    artifacts["concentration_map_hash"] = hashlib.sha256(cf.read()).hexdigest()
+            else:
+                artifacts["concentration_map_hash"] = "none_found"
+        else:
+            artifacts["concentration_map_hash"] = "no_dataset_dir"
+
+        tdv = event_dict.get("ModelOps", {}).get("training_data_version", "")
+        artifacts["training_data_version"] = tdv or "unknown"
+
+    except Exception as e:
+        artifacts["error"] = str(e)
+
+    event_dict["artifacts"] = artifacts
 
     try:
         path = write_bundle(event_dict)
@@ -144,17 +161,13 @@ def log_forensic(event: ForensicEvent):
         "path": path,
     }
 
-
 @app.get("/forensic_bundles")
 def get_bundles(last_n: int = Query(10, ge=1, le=100)):
-    """Restituisce la lista degli ultimi N bundle presenti."""
     files = list_bundles(last_n)
     return {"status": "ok", "count": len(files), "bundles": files}
 
-
 @app.get("/forensic_bundle/{filename}")
 def get_bundle(filename: str):
-    """Ritorna il contenuto di un bundle specifico (per verifiche forensi)."""
     try:
         data = load_bundle(filename)
         return {"status": "ok", "bundle": data}
@@ -163,16 +176,62 @@ def get_bundle(filename: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.delete("/forensic_bundle/{filename}")
 def delete_bundle(filename: str):
-    """Elimina manualmente un bundle forense (uso di manutenzione)."""
     path = os.path.join(FORENSIC_DIR, filename)
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="Bundle not found")
     os.remove(path)
     return {"status": "ok", "deleted": filename}
 
+# ============================================================
+# Verifica integrità forense
+# ============================================================
+
+@app.get("/verify_bundle/{filename}")
+def verify_bundle(filename: str):
+    """
+    Ricalcola gli hash del modello e della mappa di concentrazione
+    e li confronta con quelli salvati nel bundle forense.
+    """
+    try:
+        bundle = load_bundle(filename)
+        artifacts = bundle.get("event", {}).get("artifacts", {})
+        result = {"bundle": filename, "verified": True, "details": {}}
+
+        # Verifica hash del modello
+        model_path = "/CorrectionDispersion_PIML/models/mcxm_piml_model_best.pth"
+        if os.path.exists(model_path):
+            with open(model_path, "rb") as mf:
+                current_model_hash = hashlib.sha256(mf.read()).hexdigest()
+            match = current_model_hash == artifacts.get("model_hash")
+            result["details"]["model_hash_match"] = match
+            if not match:
+                result["verified"] = False
+        else:
+            result["details"]["model_hash_match"] = False
+            result["verified"] = False
+
+        # Verifica hash della mappa di concentrazione
+        dataset_dir = "/CorrectionDispersion_PIML/dataset/real_dispersion"
+        if os.path.exists(dataset_dir):
+            maps = sorted([f for f in os.listdir(dataset_dir) if f.endswith(".npy")])
+            if maps:
+                latest_map = os.path.join(dataset_dir, maps[-1])
+                with open(latest_map, "rb") as cf:
+                    current_map_hash = hashlib.sha256(cf.read()).hexdigest()
+                match = current_map_hash == artifacts.get("concentration_map_hash")
+                result["details"]["concentration_map_hash_match"] = match
+                if not match:
+                    result["verified"] = False
+        else:
+            result["details"]["concentration_map_hash_match"] = False
+            result["verified"] = False
+
+        return result
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ============================================================
 # AVVIO LOCALE

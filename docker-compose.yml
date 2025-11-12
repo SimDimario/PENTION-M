@@ -58,7 +58,9 @@ services:
       - "8011:8011"
     volumes:
       - ./MLOps:/MLOps
+      - ./gaussianPuff:/gaussianPuff
       - ./logs:/logs
+      - ./CorrectionDispersion_PIML:/CorrectionDispersion_PIML
     restart: unless-stopped
     depends_on:
       - correction_piml
@@ -73,6 +75,8 @@ services:
     volumes:
       - ./MLOps:/MLOps
       - ./logs:/logs
+      - ./gaussianPuff:/gaussianPuff
+      - ./CorrectionDispersion_PIML:/CorrectionDispersion_PIML
     restart: unless-stopped
 
   mlops_forensic:
@@ -84,6 +88,8 @@ services:
     volumes:
       - ./MLOps:/MLOps
       - ./logs:/logs
+      - ./gaussianPuff:/gaussianPuff
+      - ./CorrectionDispersion_PIML:/CorrectionDispersion_PIML
     restart: unless-stopped
     depends_on:
       - mlops_ingestion
@@ -98,6 +104,8 @@ services:
     volumes:
       - ./MLOps:/MLOps
       - ./logs:/logs
+      - ./gaussianPuff:/gaussianPuff
+      - ./CorrectionDispersion_PIML:/CorrectionDispersion_PIML
     restart: unless-stopped
     depends_on:
       - mlops_monitoring

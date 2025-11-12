@@ -144,6 +144,56 @@ class SensorSimM:
                 "compliance_tags": ["GDPR", "LEA_audit_ok"]
             }
         }
+    
+# ============================================================
+# Sensor Network Generator (STEP 2)
+# ============================================================
+
+def generate_sensor_network_from_map(conc_map: np.ndarray,
+                                     building_map: np.ndarray,
+                                     n_sensors: int = 5,
+                                     fault_rate: float = 0.1,
+                                     seed: int | None = None):
+    """
+    Genera una rete di sensori fisici a partire da una mappa di concentrazione.
+    - Evita celle occupate (building_map == 1)
+    - Campiona concentrazione reale
+    - Aggiunge rumore e fault_rate
+    """
+    if seed is not None:
+        np.random.seed(seed)
+
+    h, w = conc_map.shape
+    building_mask = (np.array(building_map) > 0).astype(bool)
+
+    sensors = []
+    attempts = 0
+    while len(sensors) < n_sensors and attempts < n_sensors * 10:
+        x = np.random.randint(0, w)
+        y = np.random.randint(0, h)
+        if building_mask[y, x]:
+            attempts += 1
+            continue
+
+        conc_value = conc_map[y, x] + np.random.normal(0, 0.01)
+        is_fault = np.random.rand() < fault_rate
+
+        sensors.append({
+            "sensor_id": len(sensors) + 1,
+            "sensor_is_fault": is_fault,
+            "time": 0.0,
+            "conc": float(np.clip(conc_value, 0, 1)),
+            "wind_dir_x": 0.0,
+            "wind_dir_y": 0.0,
+            "wind_speed": 0.0,
+            "wind_type": 1,
+            "gps_x": x,
+            "gps_y": y,
+            "stability_value": 4.0
+        })
+        attempts += 1
+
+    return sensors
 
 # ============================================================
 # Test manuale

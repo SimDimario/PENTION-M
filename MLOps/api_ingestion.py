@@ -5,6 +5,21 @@ from datetime import datetime
 import requests
 import json
 import os
+import sys
+import time
+MODEL_REGISTRY_PATH = "/logs/model_registry.json"
+
+import numpy as np
+from SensorSim_M import generate_sensor_network_from_map
+
+# --- Fix import path per gaussianPuff (garantito) ---
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append("/gaussianPuff")
+sys.path.append("/MLOps")
+
+# --- Collegamento GaussianPuff ---
+from gaussianPuff.gaussianModel import run_dispersion_model
+from gaussianPuff.config import ModelConfig, StabilityType, WindType, OutputType, DispersionModelType, PasquillGiffordStability
 
 # ============================================================
 # API INGESTION SERVICE – Layer 1 (PENTION-M)
@@ -99,6 +114,40 @@ class SimulationData(BaseModel):
 # FUNZIONI DI SUPPORTO
 # ============================================================
 
+def generate_concentration_map_from_gaussian(sensor_air: dict):
+    """
+    Esegue una simulazione GaussianPuff e restituisce la mappa di concentrazione 2D.
+    """
+    try:
+        # Configurazione base del modello
+        config = ModelConfig(
+            days=1,
+            RH=0.6,  # umidità relativa media
+            aerosol_type=None,  # o NPS.CATHINONE_ANALOGUES se vuoi specificarlo
+            humidify=False,
+            stability_profile=StabilityType.CONSTANT,
+            stability_value=PasquillGiffordStability.SLIGHTLY_UNSTABLE,
+            wind_type=WindType.CONSTANT,
+            wind_speed=sensor_air["wind_speed_mps"],
+            output=OutputType.PLAN_VIEW,
+            dispersion_model=DispersionModelType.PLUME,
+            stacks=[(0, 0, 10.0, 20.0)],
+            grid_size=500
+        )
+
+        C1, (x_grid, y_grid, z_grid), *_ = run_dispersion_model(config)
+        # Prendiamo la media temporale come mappa 2D (ground-level)
+        conc_map = np.mean(C1, axis=2)
+        # Normalizziamo tra 0–1 per stabilità numerica
+        conc_map = conc_map / np.max(conc_map + 1e-8)
+        return conc_map.tolist()
+
+    except Exception as e:
+        print(f"[WARN] GaussianPuff simulation failed: {e}")
+        # Restituisci una mappa coerente con il modello PIML (500x500)
+        return np.zeros((500, 500)).tolist()
+
+
 def append_log(entry: dict):
     """Salva i log in formato JSON lines"""
     with open(LOG_FILE, "a", encoding="utf-8") as f:
@@ -145,13 +194,26 @@ def ingest_data(sim_data: SimulationData):
     import numpy as np  # necessario per la generazione dei sensori
 
     # Inoltro ai moduli PIML (endpoint attuali)
+    # === Esecuzione GaussianPuff e generazione mappa fisica ===
+    conc_map_real = generate_concentration_map_from_gaussian({
+        "wind_speed_mps": sim_data.SensorAir.wind_speed_mps
+    })
+
+    # Carica mappa edifici reale se disponibile
+    try:
+        from CorrectionDispersion_PIML.api_correction_piml import DEFAULT_BUILDING_MAP
+        building_map_real = DEFAULT_BUILDING_MAP.tolist()
+    except Exception:
+        building_map_real = []
+
+    # === Invio reale al servizio CorrectionDispersion_PIML ===
     resp_correction = safe_post(
         "http://correction_dispersion_piml:8008/correct_dispersion",
         {
             "wind_speed": sim_data.SensorAir.wind_speed_mps,
             "wind_dir": [sim_data.SensorAir.wind_dir_deg],
-            "concentration_map": [],
-            "building_map": [],
+            "concentration_map": conc_map_real,
+            "building_map": building_map_real,
             "global_features": [
                 sim_data.PIML_Features.sigma_y,
                 sim_data.PIML_Features.sigma_z,
@@ -162,22 +224,10 @@ def ingest_data(sim_data: SimulationData):
         label="CorrectionDispersion_PIML"
     )
 
-    # === Costruisci sensori simulati per EmissionSourceLocalization_PIML ===
-    payload_sensors = []
-    for i in range(5):  # simuliamo 5 sensori attivi
-        payload_sensors.append({
-            "sensor_id": i + 1,
-            "sensor_is_fault": False,
-            "time": 0.0,
-            "conc": round(sim_data.SensorSubstance.concentration_series_mg_m3[0] * (1 - i * 0.05), 5),
-            "wind_dir_x": np.cos(np.radians(sim_data.SensorAir.wind_dir_deg)),
-            "wind_dir_y": np.sin(np.radians(sim_data.SensorAir.wind_dir_deg)),
-            "wind_speed": sim_data.SensorAir.wind_speed_mps,
-            "wind_type": 1,
-            "gps_x": sim_data.SensorGPS.longitude + (i * 0.0005),
-            "gps_y": sim_data.SensorGPS.latitude + (i * 0.0005),
-            "stability_value": sim_data.PIML_Features.stability_index
-        })
+    # === Generazione sensori fisici campionati dalla mappa ===
+    conc_map_np = np.array(conc_map_real)
+    building_map_np = np.array(building_map_real) if len(building_map_real) > 0 else np.zeros_like(conc_map_np)
+    payload_sensors = generate_sensor_network_from_map(conc_map_np, building_map_np, n_sensors=5, fault_rate=0.1, seed=42)
 
     resp_localization = safe_post(
         "http://loc_emission_source_piml:8010/predict_source_piml",
@@ -189,6 +239,18 @@ def ingest_data(sim_data: SimulationData):
     )
 
     # === Inoltro ai servizi MLOps (monitoring + forensic) ===
+
+    # === Carica eventuale versione aggiornata del modello dal registry ===
+    if os.path.exists(MODEL_REGISTRY_PATH):
+        try:
+            with open(MODEL_REGISTRY_PATH, "r", encoding="utf-8") as f:
+                registry = json.load(f)
+            new_version = registry.get("current_model_version")
+            if new_version:
+                sim_data.Monitoring.model_version = new_version
+                print(f"[INFO] ✅ Caricata versione modello aggiornata: {new_version}")
+        except Exception as e:
+            print(f"[WARN] Impossibile leggere il registry: {e}")
 
     # Costruzione payload compatibile con MonitoringEvent
     monitoring_payload = {
@@ -226,7 +288,20 @@ def ingest_data(sim_data: SimulationData):
             "retraining_trigger": sim_data.ModelOps.retraining_trigger
         }
     }
-    safe_post("http://mlops_monitoring:8012/monitor_event", monitoring_payload, label="Monitoring")
+    # === Calcolo latenza reale e invio ai servizi MLOps ===
+    t0 = time.time()
+    resp_monitoring = safe_post("http://mlops_monitoring:8012/monitor_event", monitoring_payload, label="Monitoring")
+    t1 = time.time()
+    latency_ms = round((t1 - t0) * 1000, 2)
+
+    # Aggiorna anche il drift in base alla risposta
+    drift_value = resp_monitoring.get("stored", {}).get("drift_score", sim_data.Monitoring.drift_score)
+
+    # Aggiorna il payload con la latenza reale (per log interni e forensic)
+    monitoring_payload["Monitoring"]["latency_ms"] = latency_ms
+    monitoring_payload["Monitoring"]["drift_score"] = drift_value
+
+    print(f"[INFO] Latenza reale misurata: {latency_ms} ms, drift: {drift_value}")
 
     # Costruzione payload compatibile con ForensicEvent
     forensic_payload = {

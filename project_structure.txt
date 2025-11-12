@@ -400,6 +400,7 @@
 │   │   └── training_curves_piml.png
 │   ├── requirements.txt
 │   ├── service_correction_piml.py
+│   ├── service_train_piml.py
 │   ├── simulation_gen.py
 │   └── train_model.py
 ├── EmissionSourceLocalization
@@ -430,6 +431,7 @@
 ├── MLOps
 │   ├── Dockerfile
 │   ├── SensorSim_M.py
+│   ├── __init__.py
 │   ├── api_ingestion.py
 │   ├── forensic_logger.py
 │   ├── mock_retrain.py
@@ -518,8 +520,17 @@
 │   │   ├── bundle_20251111_202408_e056af4d.json
 │   │   ├── bundle_20251111_202847_2fd1d3b3.json
 │   │   ├── bundle_20251111_203054_39c05bc6.json
-│   │   └── bundle_20251111_203720_8fe74c0b.json
+│   │   ├── bundle_20251111_203720_8fe74c0b.json
+│   │   ├── bundle_20251112_095535_56a7c86e.json
+│   │   ├── bundle_20251112_095932_65de6088.json
+│   │   ├── bundle_20251112_100459_df97d670.json
+│   │   ├── bundle_20251112_101028_a70b905f.json
+│   │   ├── bundle_20251112_102412_e3cdd32a.json
+│   │   ├── bundle_20251112_103015_d36c7d45.json
+│   │   ├── bundle_20251112_105042_e4598839.json
+│   │   └── bundle_20251112_105356_25676806.json
 │   ├── ingestion_log.jsonl
+│   ├── modelops_retrain_log.jsonl
 │   └── monitoring_log.jsonl
 ├── project_structure.txt
 ├── struttura.py

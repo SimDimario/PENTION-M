@@ -1,0 +1,69 @@
+{
+  "timestamp": "2025-11-12T13:19:04.760388",
+  "bundle_name": "bundle_20251112_131904_e00f3310.json",
+  "hash_sha256": "ac2be10898ba824c2025e5c36995426547b750a0372eefe64e648a6bf677fde6",
+  "signature": "sig_c4042871246946f3",
+  "event": {
+    "simulation_id": "verify_test_01",
+    "timestamp": "2025-11-12T14:20:00Z",
+    "SensorAir": {
+      "temperature_C": 20.5,
+      "humidity_%": 0.6,
+      "wind_speed_mps": 3.5,
+      "wind_dir_deg": 180,
+      "stability_class": "NEUTRAL"
+    },
+    "SensorSubstance": {
+      "compound_name": "TestSubstance",
+      "molecular_formula": "C10H12",
+      "concentration_series_mg_m3": [
+        0.01,
+        0.02,
+        0.03
+      ],
+      "unit": "mg/m3",
+      "noise_level": 0.02
+    },
+    "SensorGPS": {
+      "latitude": 52.37,
+      "longitude": 4.89,
+      "altitude_m": 1.5
+    },
+    "PIML_Features": {
+      "sigma_y": 0.1,
+      "sigma_z": 0.05,
+      "pe_number": 0.8,
+      "stability_index": 4
+    },
+    "Inference": {
+      "predicted_class": "TestClass",
+      "confidence_score": 0.9,
+      "dispersion_map_id": "map_test"
+    },
+    "Monitoring": {
+      "model_version": "v1.0.0",
+      "drift_score": 0.1,
+      "latency_ms": 150,
+      "mse_free": 0.0003
+    },
+    "ModelOps": {
+      "model_registry_id": "mdl_test_v1",
+      "training_data_version": "PIML_DS_v_current",
+      "retraining_trigger": false
+    },
+    "ForensicExport": {
+      "export_file": "bundle_test.json",
+      "hash_sha256": "dummyhash",
+      "signature": "sig_test",
+      "compliance_tags": [
+        "GDPR",
+        "ISO27001"
+      ]
+    },
+    "artifacts": {
+      "model_hash": "c2b6f75b3b9fc2cbe2b9beadd40590f227f79b2b049a487154aff43af3874b7e",
+      "concentration_map_hash": "d408b2f40dd402c36ec84c14d73c8626a23b2b6fa3b523820530af1403c9acaa",
+      "training_data_version": "PIML_DS_v_current"
+    }
+  }
+}

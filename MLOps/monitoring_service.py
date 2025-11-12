@@ -121,6 +121,32 @@ def compute_simple_drift(event: MonitoringEvent) -> float:
         return 0.0
     return max(0.0, min(score / contrib, 1.0))
 
+def compute_latency_trend(events: list[dict]) -> float:
+    """Valuta se la latenza media sta crescendo (return 0–1)."""
+    if len(events) < 2:
+        return 0.0
+    last = [e.get("latency_ms", 0) for e in events[-5:]]
+    mean_recent = sum(last) / len(last)
+    mean_all = sum(e.get("latency_ms", 0) for e in events) / len(events)
+    return round(min(max((mean_recent - mean_all) / max(mean_all, 1.0), 0.0), 1.0), 3)
+
+def compute_drift_dynamic(event: MonitoringEvent, history: list[dict]) -> float:
+    """Combina drift semplice con variazioni nel tempo di stabilità/confidenza."""
+    base_drift = compute_simple_drift(event)
+    if not history:
+        return base_drift
+    try:
+        last = history[-1]
+        prev_stab = float(last.get("stability_index", 4.0) or 4.0)
+        prev_conf = float(last.get("confidence", 1.0) or 1.0)
+        curr_stab = float(getattr(event.PIML_Features, "stability_index", 4.0))
+        curr_conf = float(getattr(event.Inference, "confidence_score", 1.0))
+        delta_stab = abs(curr_stab - prev_stab) / 6.0
+        delta_conf = abs(curr_conf - prev_conf)
+        return round(min(base_drift + 0.5 * (delta_stab + delta_conf), 1.0), 4)
+    except Exception:
+        return base_drift
+
 def load_last_n(path: str, n: int) -> List[dict]:
     if not os.path.exists(path):
         return []
@@ -151,7 +177,8 @@ def monitor_event(event: MonitoringEvent):
     ed estrae i campi rilevanti per il monitoring. Salva una riga JSONL.
     """
     # Calcola drift se mancante
-    drift_calculated = compute_simple_drift(event)
+    history = load_last_n(LOG_FILE, 10)
+    drift_calculated = compute_drift_dynamic(event, history)
     drift = drift_calculated
     lat = 0
     mse_free = 0.0

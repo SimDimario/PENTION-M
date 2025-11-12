@@ -1,1 +1,10 @@
 {"time": "2025-11-11T20:37:20.280252", "simulation_id": "sim_test_001", "model_version": "v1.0.0", "latency_ms": 120, "drift_score": 0.0972, "mse_free": 0.00023, "stability_index": 4.0, "confidence": 0.92}
+{"time": "2025-11-12T09:55:35.346768", "simulation_id": "sim_test_001", "model_version": "v1.0.0", "latency_ms": 120, "drift_score": 0.0972, "mse_free": 0.00023, "stability_index": 4.0, "confidence": 0.92}
+{"time": "2025-11-12T09:59:32.014729", "simulation_id": "sim_test_001", "model_version": "v1.0.0", "latency_ms": 120, "drift_score": 0.0972, "mse_free": 0.00023, "stability_index": 4.0, "confidence": 0.92}
+{"time": "2025-11-12T10:04:59.382431", "simulation_id": "sim_test_001", "model_version": "v1.0.0", "latency_ms": 120, "drift_score": 0.0972, "mse_free": 0.00023, "stability_index": 4.0, "confidence": 0.92}
+{"time": "2025-11-12T10:10:28.558069", "simulation_id": "sim_test_001", "model_version": "v1.0.0", "latency_ms": 120, "drift_score": 0.0972, "mse_free": 0.00023, "stability_index": 4.0, "confidence": 0.92}
+{"time": "2025-11-12T10:24:12.515851", "simulation_id": "sim_test_001", "model_version": "v1.0.0", "latency_ms": 120, "drift_score": 0.0972, "mse_free": 0.00023, "stability_index": 4.0, "confidence": 0.92}
+{"time": "2025-11-12T10:30:15.642283", "simulation_id": "sim_test_001", "model_version": "v1.0.0", "latency_ms": 120, "drift_score": 0.1372, "mse_free": 0.00023, "stability_index": 4.0, "confidence": 0.92}
+{"time": "2025-11-12T10:50:42.342215", "simulation_id": "sim_test_001", "model_version": "v1.0.0", "latency_ms": 120, "drift_score": 0.1372, "mse_free": 0.00023, "stability_index": 4.0, "confidence": 0.92}
+{"time": "2025-11-12T10:53:56.846849", "simulation_id": "sim_test_001", "model_version": "v1.0.0", "latency_ms": 120, "drift_score": 0.1372, "mse_free": 0.00023, "stability_index": 4.0, "confidence": 0.92}
+{"time": "2025-11-12T13:24:32.583450", "simulation_id": "sim_test_001", "model_version": "PIML_v123311", "latency_ms": 120, "drift_score": 0.1372, "mse_free": 0.00023, "stability_index": 4.0, "confidence": 0.92}
