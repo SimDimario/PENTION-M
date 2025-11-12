@@ -528,8 +528,11 @@
 │   │   ├── bundle_20251112_102412_e3cdd32a.json
 │   │   ├── bundle_20251112_103015_d36c7d45.json
 │   │   ├── bundle_20251112_105042_e4598839.json
-│   │   └── bundle_20251112_105356_25676806.json
+│   │   ├── bundle_20251112_105356_25676806.json
+│   │   ├── bundle_20251112_131904_e00f3310.json
+│   │   └── bundle_20251112_132447_c5d5d583.json
 │   ├── ingestion_log.jsonl
+│   ├── model_registry.json
 │   ├── modelops_retrain_log.jsonl
 │   └── monitoring_log.jsonl
 ├── project_structure.txt
