@@ -156,7 +156,7 @@ def append_log(entry: dict):
 def safe_post(url: str, payload: dict, label: str):
     """Invia una richiesta POST con gestione sicura degli errori"""
     try:
-        r = requests.post(url, json=payload, timeout=60)
+        r = requests.post(url, json=payload, timeout=180)
         try:
             body = r.json()
         except Exception:
@@ -184,6 +184,7 @@ def ingest_data(sim_data: SimulationData):
         "timestamp": datetime.utcnow().isoformat(),
         "simulation_id": sim_data.simulation_id,
         "status": "received",
+        "model_version_used": sim_data.Monitoring.model_version,
         "sensor_data": {
             "temperature": sim_data.SensorAir.temperature_C,
             "humidity": sim_data.SensorAir.humidity_,
@@ -240,17 +241,31 @@ def ingest_data(sim_data: SimulationData):
 
     # === Inoltro ai servizi MLOps (monitoring + forensic) ===
 
-    # === Carica eventuale versione aggiornata del modello dal registry ===
+    # === Carica la versione modello dal registry e forza la versione utilizzata ===
+    effective_model_version = sim_data.Monitoring.model_version  # default dal payload
+
     if os.path.exists(MODEL_REGISTRY_PATH):
         try:
             with open(MODEL_REGISTRY_PATH, "r", encoding="utf-8") as f:
                 registry = json.load(f)
-            new_version = registry.get("current_model_version")
-            if new_version:
-                sim_data.Monitoring.model_version = new_version
-                print(f"[INFO] ✅ Caricata versione modello aggiornata: {new_version}")
+            registry_version = registry.get("current_model_version")
+
+            # Se esiste un modello nel registry → override
+            if registry_version:
+                effective_model_version = registry_version
+                print(f"[INFO] 🔄 Ingestion usa modello dal registry: {effective_model_version}")
+            else:
+                print(f"[INFO] ⚠️ Registry trovato ma senza current_model_version")
+
         except Exception as e:
             print(f"[WARN] Impossibile leggere il registry: {e}")
+
+    else:
+        print("[INFO] ℹ️ Nessun registry presente → uso modello dal payload")
+
+    # Forziamo il model_version usato per monitoring
+    sim_data.Monitoring.model_version = effective_model_version
+
 
     # Costruzione payload compatibile con MonitoringEvent
     monitoring_payload = {

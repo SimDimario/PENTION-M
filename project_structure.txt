@@ -1,8 +1,8 @@
 📁 Project Structure
-├── .dockerignore
 ├── .gitattributes
 ├── .gitignore
 ├── ClassificatoreNPS
+│   ├── .dockerignore
 │   ├── Applying Machine Learning Algorithms to New Psychoactive Substances Screening.ipynb
 │   ├── Dockerfile
 │   ├── NPSClassifier.ipynb
@@ -404,6 +404,7 @@
 │   ├── simulation_gen.py
 │   └── train_model.py
 ├── EmissionSourceLocalization
+│   ├── .dockerignore
 │   ├── Dockerfile
 │   ├── __init__.py
 │   ├── api_source_localization.py
@@ -419,6 +420,7 @@
 │   ├── requirements.txt
 │   └── service_source_localization.py
 ├── EmissionSourceLocalization_PIML
+│   ├── .dockerignore
 │   ├── Dockerfile
 │   ├── __init__.py
 │   ├── api_source_localization_piml.py
@@ -429,6 +431,7 @@
 │   ├── requirements.txt
 │   └── service_source_localization_piml.py
 ├── MLOps
+│   ├── .dockerignore
 │   ├── Dockerfile
 │   ├── SensorSim_M.py
 │   ├── __init__.py
@@ -438,29 +441,18 @@
 │   ├── monitoring_service.py
 │   └── requirements.txt
 ├── PentionSystem
+│   ├── .dockerignore
 │   ├── Dockerfile
 │   ├── application.py
 │   ├── flow.png
 │   ├── plot_functions.py
 │   ├── requirements.txt
 │   └── utils.py
-├── UI_old
+├── PentionSystem_M
 │   ├── .dockerignore
 │   ├── Dockerfile
-│   ├── api_clients
-│   │   ├── classifier_client.py
-│   │   ├── correction_client.py
-│   │   ├── gaussian_client.py
-│   │   └── localization_client.py
-│   ├── app.py
-│   ├── components
-│   │   ├── run_simulation.py
-│   │   ├── sidebar_config.py
-│   │   └── visualization.py
 │   ├── requirements.txt
-│   └── utils
-│       ├── build_config.py
-│       └── map_utils.py
+│   └── ui_pention_m.py
 ├── cls
 ├── docker
 ├── docker-compose.yml
@@ -494,6 +486,7 @@
 │   ├── descrizionecodice.docx
 │   └── spiegazione sintetica.docx
 ├── gaussianPuff
+│   ├── .dockerignore
 │   ├── Dockerfile
 │   ├── Sensor.py
 │   ├── __init__.py
@@ -530,11 +523,23 @@
 │   │   ├── bundle_20251112_105042_e4598839.json
 │   │   ├── bundle_20251112_105356_25676806.json
 │   │   ├── bundle_20251112_131904_e00f3310.json
-│   │   └── bundle_20251112_132447_c5d5d583.json
+│   │   ├── bundle_20251112_132447_c5d5d583.json
+│   │   ├── bundle_20251114_143651_1f31310c.json
+│   │   ├── bundle_20251114_144344_ff279f18.json
+│   │   ├── bundle_20251114_152721_6a18298a.json
+│   │   ├── bundle_20251114_152907_5dbd39a4.json
+│   │   ├── bundle_20251114_153752_62eac8dd.json
+│   │   ├── bundle_20251114_161137_7d0bfec7.json
+│   │   ├── bundle_20251114_163747_32f2058f.json
+│   │   ├── bundle_20251114_174529_1e369933.json
+│   │   ├── bundle_20251115_161656_5c53c033.json
+│   │   ├── bundle_20251115_181737_163a08f5.json
+│   │   └── bundle_20251115_183552_f54e9e0a.json
 │   ├── ingestion_log.jsonl
 │   ├── model_registry.json
 │   ├── modelops_retrain_log.jsonl
 │   └── monitoring_log.jsonl
+├── osm_cache
 ├── project_structure.txt
 ├── struttura.py
 ├── test_MLOps_end2end.py

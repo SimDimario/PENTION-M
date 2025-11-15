@@ -1,0 +1,70 @@
+{
+  "timestamp": "2025-11-15T18:35:52.270875",
+  "bundle_name": "bundle_20251115_183552_f54e9e0a.json",
+  "hash_sha256": "549c7f7dd69fb000d6ba1c56809f9849aa071fa23fb9a117e97b1b08d530b30b",
+  "signature": "sig_7dbf79f8fa2f4c81",
+  "event": {
+    "simulation_id": "SIM_20251115_183425",
+    "timestamp": "2025-11-15T18:34:31.184093Z",
+    "SensorAir": {
+      "temperature_C": 16.8,
+      "humidity_%": 0.68,
+      "wind_speed_mps": 2.1,
+      "wind_dir_deg": 90,
+      "stability_class": "B"
+    },
+    "SensorSubstance": {
+      "compound_name": "Cannabinoid",
+      "molecular_formula": "C9H11NO",
+      "concentration_series_mg_m3": [
+        0.002,
+        0.004,
+        0.0035,
+        0.0021
+      ],
+      "unit": "mg/m3",
+      "noise_level": 0.05
+    },
+    "SensorGPS": {
+      "latitude": 52.3581897,
+      "longitude": 4.8275947,
+      "altitude_m": 2.0
+    },
+    "PIML_Features": {
+      "sigma_y": 0.25,
+      "sigma_z": 0.053,
+      "pe_number": 1.06,
+      "stability_index": 3.69
+    },
+    "Inference": {
+      "predicted_class": "Cannabinoid",
+      "confidence_score": 0.93,
+      "dispersion_map_id": "map_SIM_20251115_183425"
+    },
+    "Monitoring": {
+      "model_version": "XGBoost_v160810",
+      "drift_score": 0.0,
+      "latency_ms": 0,
+      "mse_free": 0.0
+    },
+    "ModelOps": {
+      "model_registry_id": "mdl_pention_m_ui",
+      "training_data_version": "PIML_DS_v1",
+      "retraining_trigger": false
+    },
+    "ForensicExport": {
+      "export_file": "SIM_20251115_183425_bundle.zip",
+      "hash_sha256": "dummy_hash",
+      "signature": "dummy_signature",
+      "compliance_tags": [
+        "GDPR",
+        "LEA_audit_ok"
+      ]
+    },
+    "artifacts": {
+      "model_hash": "207243bbe6d449093bbd2d158a22bb9e212db29f7413385d9b68a597e1dc2d1f",
+      "concentration_map_hash": "no_dataset_dir",
+      "training_data_version": "PIML_DS_v1"
+    }
+  }
+}

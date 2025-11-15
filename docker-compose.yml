@@ -5,6 +5,8 @@ services:
     ports:
       - "8000:8000"
     restart: unless-stopped
+    volumes:
+      - ./ClassificatoreNPS/model:/ClassificatoreNPS/model
 
   correction_dispersion:
     build: ./CorrectionDispersion
@@ -12,6 +14,8 @@ services:
     ports:
       - "8001:8001"
     restart: unless-stopped
+    volumes:
+      - ./CorrectionDispersion/models:/CorrectionDispersion/models
 
   gaussian_puff:
     build: ./gaussianPuff
@@ -26,6 +30,8 @@ services:
     ports:
       - "8003:8003"
     restart: unless-stopped
+    volumes:
+      - ./EmissionSourceLocalization/models:/EmissionSourceLocalization/models
 
   correction_piml:
     build: ./CorrectionDispersion_PIML
@@ -36,7 +42,7 @@ services:
     depends_on:
       - gaussian_puff
     volumes:
-      - ./CorrectionDispersion_PIML:/CorrectionDispersion_PIML
+      - ./CorrectionDispersion_PIML/models:/CorrectionDispersion_PIML/models
 
   source_localization_piml:
     build: ./EmissionSourceLocalization_PIML
@@ -47,7 +53,7 @@ services:
     depends_on:
       - gaussian_puff
     volumes:
-      - ./EmissionSourceLocalization_PIML:/EmissionSourceLocalization_PIML
+      - ./EmissionSourceLocalization_PIML/models:/EmissionSourceLocalization_PIML/models
 
   # -------------------- MLOps Layer 1–5 --------------------
   mlops_ingestion:
@@ -57,10 +63,10 @@ services:
     ports:
       - "8011:8011"
     volumes:
-      - ./MLOps:/MLOps
       - ./gaussianPuff:/gaussianPuff
       - ./logs:/logs
-      - ./CorrectionDispersion_PIML:/CorrectionDispersion_PIML
+      - ./CorrectionDispersion_PIML/models:/CorrectionDispersion_PIML/models
+      - ./EmissionSourceLocalization_PIML/models:/EmissionSourceLocalization_PIML/models
     restart: unless-stopped
     depends_on:
       - correction_piml
@@ -73,10 +79,10 @@ services:
     ports:
       - "8012:8012"
     volumes:
-      - ./MLOps:/MLOps
       - ./logs:/logs
       - ./gaussianPuff:/gaussianPuff
-      - ./CorrectionDispersion_PIML:/CorrectionDispersion_PIML
+      - ./CorrectionDispersion_PIML/models:/CorrectionDispersion_PIML/models
+      - ./EmissionSourceLocalization_PIML/models:/EmissionSourceLocalization_PIML/models
     restart: unless-stopped
 
   mlops_forensic:
@@ -86,10 +92,10 @@ services:
     ports:
       - "8013:8013"
     volumes:
-      - ./MLOps:/MLOps
       - ./logs:/logs
       - ./gaussianPuff:/gaussianPuff
-      - ./CorrectionDispersion_PIML:/CorrectionDispersion_PIML
+      - ./CorrectionDispersion_PIML/models:/CorrectionDispersion_PIML/models
+      - ./EmissionSourceLocalization_PIML/models:/EmissionSourceLocalization_PIML/models
     restart: unless-stopped
     depends_on:
       - mlops_ingestion
@@ -102,15 +108,15 @@ services:
     ports:
       - "8014:8014"
     volumes:
-      - ./MLOps:/MLOps
       - ./logs:/logs
       - ./gaussianPuff:/gaussianPuff
       - ./CorrectionDispersion_PIML:/CorrectionDispersion_PIML
+      - ./EmissionSourceLocalization_PIML/models:/EmissionSourceLocalization_PIML/models
     restart: unless-stopped
     depends_on:
       - mlops_monitoring
 
-  # -------------------- UI / Streamlit --------------------
+  # -------------------- UI --------------------
   pention_system:
     build: ./PentionSystem
     container_name: pention_system
@@ -119,5 +125,19 @@ services:
     restart: unless-stopped
     volumes:
       - ./gaussianPuff:/PentionSystem/gaussianPuff
-      - ./ClassificatoreNPS:/PentionSystem/ClassificatoreNPS
+      - ./ClassificatoreNPS/model:/PentionSystem/ClassificatoreNPS/model
       - ./logs:/logs
+
+  pentionsystem_m:
+    build: ./PentionSystem_M
+    container_name: pentionsystem_m
+    ports:
+      - "8005:8005"
+    restart: unless-stopped
+    volumes:
+      - ./logs:/logs
+      - ./osm_cache:/app/cache
+    depends_on:
+      - mlops_ingestion
+      - mlops_monitoring
+      - mlops_forensic

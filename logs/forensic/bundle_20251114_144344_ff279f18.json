@@ -1,0 +1,70 @@
+{
+  "timestamp": "2025-11-14T14:43:44.193067",
+  "bundle_name": "bundle_20251114_144344_ff279f18.json",
+  "hash_sha256": "5ece61cd4300919e7aff01afc44514fd6da3f75eee66a908a47d72d4953b5acc",
+  "signature": "sig_996f2ccbdfb34e78",
+  "event": {
+    "simulation_id": "SIM_20251114_144237",
+    "timestamp": "2025-11-14T14:42:37.962394Z",
+    "SensorAir": {
+      "temperature_C": 23.3,
+      "humidity_%": 0.78,
+      "wind_speed_mps": 6.1,
+      "wind_dir_deg": 135,
+      "stability_class": "B"
+    },
+    "SensorSubstance": {
+      "compound_name": "Cathinone",
+      "molecular_formula": "C9H11NO",
+      "concentration_series_mg_m3": [
+        0.002,
+        0.004,
+        0.0035,
+        0.0021
+      ],
+      "unit": "mg/m3",
+      "noise_level": 0.05
+    },
+    "SensorGPS": {
+      "latitude": 52.3500286,
+      "longitude": 4.8365356,
+      "altitude_m": 2.0
+    },
+    "PIML_Features": {
+      "sigma_y": 0.276,
+      "sigma_z": 0.101,
+      "pe_number": 0.83,
+      "stability_index": 3.9
+    },
+    "Inference": {
+      "predicted_class": "Cathinone",
+      "confidence_score": 0.93,
+      "dispersion_map_id": "map_SIM_20251114_144237"
+    },
+    "Monitoring": {
+      "model_version": "RF_PIML_v144317",
+      "drift_score": 0.0,
+      "latency_ms": 0,
+      "mse_free": 0.0
+    },
+    "ModelOps": {
+      "model_registry_id": "mdl_pention_m_ui",
+      "training_data_version": "PIML_DS_v1",
+      "retraining_trigger": false
+    },
+    "ForensicExport": {
+      "export_file": "SIM_20251114_144237_bundle.zip",
+      "hash_sha256": "dummy_hash",
+      "signature": "dummy_signature",
+      "compliance_tags": [
+        "GDPR",
+        "LEA_audit_ok"
+      ]
+    },
+    "artifacts": {
+      "model_hash": "761d9b5a94c60334adf5b459911a665f0eeb2bc08a516960f976934753203d0c",
+      "concentration_map_hash": "no_dataset_dir",
+      "training_data_version": "PIML_DS_v1"
+    }
+  }
+}

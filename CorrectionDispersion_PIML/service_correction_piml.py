@@ -4,6 +4,10 @@ from MCxM_PIML import MCxM_PIML
 import os
 import logging
 
+# === GLOBAL MODEL CACHE ===
+GLOBAL_MODEL = None
+GLOBAL_MAP = None
+
 logger = logging.getLogger("CorrectionDispersion")
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
@@ -29,30 +33,127 @@ def calculate_mean_direction(wind_dir_array):
     return mean_cos, mean_sin
 
 def load_model(binary_map, m=500, device=None, pretrained_path=None):
-    model_path = os.path.join(SCRIPT_DIR, "models", "mcxm_piml_model_best.pth")
-    logger.info(f"Loading MCxM_CNN model from {model_path} (device={device})")
+    global GLOBAL_MODEL, GLOBAL_MAP
 
-    loaded_model = MCxM_PIML(binary_map, m=m, n_channel=1, wind_dim=2, n_global_features=2).to(device)
+    if device is None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    try:
-        # ✅ Forza il caricamento completo (compatibile con modelli salvati prima di PyTorch 2.6)
-        state_dict = torch.load(model_path, map_location=device, weights_only=False)
-        loaded_model.load_state_dict(state_dict)
-        loaded_model.eval()
-        logger.info("Model loaded and set to eval mode.")
-    except Exception as e:
-        logger.error(f"Error loading model: {e}")
-        raise e
+    model_dir = os.path.join(SCRIPT_DIR, "models")
+    best_path = os.path.join(model_dir, "mcxm_piml_model_best.pth")
+    final_path = os.path.join(model_dir, "mcxm_piml_model_final.pth")
 
-    return loaded_model
+    # === MODEL CACHING: se il modello è già caricato e la mappa è la stessa, riusa ===
+    if GLOBAL_MODEL is not None and GLOBAL_MAP is not None:
+        if np.array_equal(GLOBAL_MAP, binary_map):
+            logger.info("Using cached PIML model (no reload).")
+            return GLOBAL_MODEL
 
-def correct_dispersion_piml(wind_dir,wind_speed,concentration_map,building_map,global_feature=None,device=None,m=500,pretrained_path=None):
+    logger.info(f"Initializing MCxM_PIML model (device={device})")
+    loaded_model = MCxM_PIML(
+        binary_map,
+        m=m,
+        n_channel=1,
+        wind_dim=2,
+        n_global_features=2
+    ).to(device)
+
+    # === Caso: path esplicito ===
+    if pretrained_path is not None:
+        ckpt_path = pretrained_path
+        logger.info(f"Loading PIML model from custom path: {ckpt_path}")
+        try:
+            state_dict = torch.load(ckpt_path, map_location=device)
+            loaded_model.load_state_dict(state_dict)
+            loaded_model.eval()
+            GLOBAL_MODEL = loaded_model
+            GLOBAL_MAP = binary_map
+            logger.info("Custom model loaded and cached.")
+            return loaded_model
+        except Exception as e:
+            logger.error(f"Error loading custom model from {ckpt_path}: {e}")
+            raise
+
+    # === 1) Provare a caricare il BEST ===
+    if os.path.exists(best_path):
+        logger.info(f"Trying to load BEST model from {best_path}")
+        try:
+            data = torch.load(best_path, map_location=device)
+
+            # Caso A — {"state_dict": ...}
+            if isinstance(data, dict) and "state_dict" in data:
+                state_dict = data["state_dict"]
+
+            # Caso B — state_dict puro
+            elif isinstance(data, dict):
+                state_dict = data
+
+            # Caso C — file salvato male (torch.save(model, ...))
+            else:
+                raise RuntimeError(
+                    "BEST model is not a valid state_dict — re-export required."
+                )
+
+            loaded_model.load_state_dict(state_dict)
+            loaded_model.eval()
+
+            # Salvataggio in cache
+            GLOBAL_MODEL = loaded_model
+            GLOBAL_MAP = binary_map
+
+            logger.info("BEST model loaded, validated and cached.")
+            return loaded_model
+
+        except Exception as e:
+            logger.error(f"Error loading BEST model: {e}")
+
+    # === 2) Fallback sul FINAL ===
+    if os.path.exists(final_path):
+        logger.info(f"Trying to load FINAL model from {final_path}")
+        try:
+            state_dict = torch.load(final_path, map_location=device)
+            loaded_model.load_state_dict(state_dict)
+            loaded_model.eval()
+
+            GLOBAL_MODEL = loaded_model
+            GLOBAL_MAP = binary_map
+
+            logger.info("FINAL model loaded and cached.")
+            return loaded_model
+        except Exception as e:
+            logger.error(f"Error loading FINAL model: {e}")
+
+    # === 3) Nessun modello valido ===
+    err_msg = (
+        "No valid PIML model could be loaded. "
+        f"Tried BEST ({best_path}) and FINAL ({final_path})."
+    )
+    logger.critical(err_msg)
+    raise RuntimeError(err_msg)
+def correct_dispersion_piml(wind_dir, wind_speed, concentration_map, building_map, global_feature=None, device=None, m=500, pretrained_path=None):
     logger.info("Starting dispersion correction...")
 
     # === Device setup ===
     if device is None:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logger.debug(f"Using device: {device}")
+
+    # === Load binary map from disk if missing ===
+    binary_map_path = os.path.join(
+        SCRIPT_DIR,
+        "binary_maps_data",
+        "amsterdam_netherlands_bbox.npy"
+    )
+
+    if building_map is None:
+        logger.warning("[WARN] No building_map provided — loading default binary map")
+        if os.path.exists(binary_map_path):
+            building_map = np.load(binary_map_path)
+            logger.info(f"Loaded binary map from {binary_map_path} with shape {building_map.shape}")
+        else:
+            logger.error(f"[ERROR] Default binary map not found at {binary_map_path}")
+            building_map = np.zeros((m, m), dtype=np.float32)  # fallback
+    else:
+        logger.info(f"Received building_map with shape {building_map.shape}")
 
     logger.info(f"building map: {building_map.shape}")
 

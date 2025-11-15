@@ -1,0 +1,54 @@
+# Notebook
+**/*.ipynb
+
+# Cache Python
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Logs
+logs/
+**/logs/
+
+# Datasets & large data
+dataset/
+datasets/
+data/
+**/dataset*/
+**/data*/
+**/binary_maps_data/
+**/datasetNPS/
+**/example/
+
+# Models (gestiti tramite volume esterno)
+models/
+**/models/
+
+# Large file formats
+**/*.npy
+**/*.npz
+**/*.csv
+**/*.zip
+**/*.msp
+**/*.xlsx
+**/*.pickle
+**/*.pkl
+**/*.pt
+**/*.pth
+**/*.h5
+**/*.keras
+
+# Images & figures
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.pdf
+
+# Misc
+article/
+*.mkv
+*.mp4
+*.m4a
+*.pptx
+*.docx

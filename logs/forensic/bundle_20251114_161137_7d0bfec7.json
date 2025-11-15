@@ -1,0 +1,70 @@
+{
+  "timestamp": "2025-11-14T16:11:37.443021",
+  "bundle_name": "bundle_20251114_161137_7d0bfec7.json",
+  "hash_sha256": "7fb3a606aabea0f5bf97d152cfc99d503a84fd2cfac8fc3fc35d46290890b9e1",
+  "signature": "sig_1bb810310af14fc4",
+  "event": {
+    "simulation_id": "SIM_20251114_160951",
+    "timestamp": "2025-11-14T16:09:51.394343Z",
+    "SensorAir": {
+      "temperature_C": 23.3,
+      "humidity_%": 0.75,
+      "wind_speed_mps": 2.5,
+      "wind_dir_deg": 90,
+      "stability_class": "C"
+    },
+    "SensorSubstance": {
+      "compound_name": "Fentanyl analogue",
+      "molecular_formula": "C9H11NO",
+      "concentration_series_mg_m3": [
+        0.002,
+        0.004,
+        0.0035,
+        0.0021
+      ],
+      "unit": "mg/m3",
+      "noise_level": 0.05
+    },
+    "SensorGPS": {
+      "latitude": 52.3411438,
+      "longitude": 4.9508873,
+      "altitude_m": 2.0
+    },
+    "PIML_Features": {
+      "sigma_y": 0.262,
+      "sigma_z": 0.131,
+      "pe_number": 1.19,
+      "stability_index": 3.28
+    },
+    "Inference": {
+      "predicted_class": "Fentanyl analogue",
+      "confidence_score": 0.93,
+      "dispersion_map_id": "map_SIM_20251114_160951"
+    },
+    "Monitoring": {
+      "model_version": "XGBoost_v160810",
+      "drift_score": 0.0,
+      "latency_ms": 0,
+      "mse_free": 0.0
+    },
+    "ModelOps": {
+      "model_registry_id": "mdl_pention_m_ui",
+      "training_data_version": "PIML_DS_v1",
+      "retraining_trigger": false
+    },
+    "ForensicExport": {
+      "export_file": "SIM_20251114_160951_bundle.zip",
+      "hash_sha256": "dummy_hash",
+      "signature": "dummy_signature",
+      "compliance_tags": [
+        "GDPR",
+        "LEA_audit_ok"
+      ]
+    },
+    "artifacts": {
+      "model_hash": "761d9b5a94c60334adf5b459911a665f0eeb2bc08a516960f976934753203d0c",
+      "concentration_map_hash": "no_dataset_dir",
+      "training_data_version": "PIML_DS_v1"
+    }
+  }
+}

@@ -97,26 +97,67 @@ def read_previous_model_version():
         return None
 
 def retrain_loop():
-    """Loop continuo che monitora il drift e simula retraining."""
+    """Loop continuo che controlla drift, version mismatch e trigger vari."""
     global running
     print(f"[RetrainService] 🔁 Avvio loop retraining (check ogni {CHECK_INTERVAL}s)")
+
+    registry_path = os.path.join(LOG_DIR, "model_registry.json")
 
     while running:
         time.sleep(CHECK_INTERVAL)
 
+        # -------------------------------------------------------
+        # 1️⃣ CARICA EVENTI DI MONITORING
+        # -------------------------------------------------------
         events = load_recent_monitoring(50)
         if len(events) < MIN_EVENTS:
             continue
 
+        # ultimo evento
+        last_event = events[-1]
+        event_model_version = last_event.get("model_version")
+
+        # -------------------------------------------------------
+        # 2️⃣ CARICA MODEL VERSION DAL REGISTRY
+        # -------------------------------------------------------
+        if os.path.exists(registry_path):
+            with open(registry_path, "r", encoding="utf-8") as f:
+                registry = json.load(f)
+            registry_version = registry.get("current_model_version")
+        else:
+            registry_version = None
+
+        # -------------------------------------------------------
+        # 3️⃣ CHECK DRIFT
+        # -------------------------------------------------------
         drift_mean = compute_mean_drift(events)
-        retrain_needed = drift_mean > DRIFT_THRESHOLD
+        drift_trigger = drift_mean > DRIFT_THRESHOLD
+
+        # -------------------------------------------------------
+        # 4️⃣ CHECK VERSION MISMATCH
+        # -------------------------------------------------------
+        mismatch_trigger = (
+            registry_version is not None and
+            event_model_version is not None and
+            event_model_version != registry_version
+        )
+
+        # Flag finale
+        retrain_needed = drift_trigger or mismatch_trigger
 
         entry = {
             "timestamp": datetime.utcnow().isoformat(),
             "drift_mean": round(drift_mean, 4),
+            "registry_version": registry_version,
+            "event_model_version": event_model_version,
+            "mismatch_trigger": mismatch_trigger,
+            "drift_trigger": drift_trigger,
             "retrain_triggered": retrain_needed,
         }
 
+        # -------------------------------------------------------
+        # 5️⃣ SE SERVE → ESEGUI RETRAIN
+        # -------------------------------------------------------
         if retrain_needed:
             try:
                 piml_mod = load_piml_retrain()
@@ -124,23 +165,21 @@ def retrain_loop():
             except Exception as e:
                 print(f"[RetrainService] ⚠️ Retraining reale fallito: {e}")
                 new_version, metrics = simulate_retrain()
+
             entry.update({
                 "new_model_version": new_version,
                 "metrics": metrics,
                 "status": "retrained",
-                "duration_min": metrics.get("duration_min", "N/A"),
-                "previous_model_version": read_previous_model_version(),
             })
 
-            print(f"[RetrainService] ⚙️ Retraining simulato → Nuova versione: {new_version}")
+            print(f"[RetrainService] ⚙️ Retraining → Nuova versione: {new_version}")
 
-            # **Aggiorna il file di registry con la nuova versione**
-            registry_path = os.path.join(LOG_DIR, "model_registry.json")
+            # AGGIORNA REGISTRY
             with open(registry_path, "w", encoding="utf-8") as f:
                 json.dump({
                     "last_update": entry["timestamp"],
                     "current_model_version": new_version,
-                    "previous_model_version": entry.get("previous_model_version"),
+                    "previous_model_version": registry_version,
                     "metrics": metrics
                 }, f, indent=2)
 
