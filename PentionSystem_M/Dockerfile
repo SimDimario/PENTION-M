@@ -25,4 +25,4 @@ COPY . .
 
 EXPOSE 8005
 
-CMD ["uvicorn", "ui_pention_m:app", "--host", "0.0.0.0", "--port", "8005"]
+CMD ["uvicorn", "ui_pention_m:app", "--host", "0.0.0.0", "--port", "8005", "--app-dir", "/PentionSystem_M"]

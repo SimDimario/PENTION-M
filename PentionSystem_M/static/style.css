@@ -111,8 +111,6 @@ button:disabled {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
                "Liberation Mono", "Courier New", monospace;
   font-size: 11px;
-  max-height: 180px;
-  overflow: auto;
   background: #020617;
   padding: 8px;
   border-radius: 8px;
@@ -188,4 +186,202 @@ button:disabled {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(5px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+.small-btn {
+  background: #334155;
+  border: none;
+  padding: 4px 8px;
+  margin-top: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  color: #e2e8f0;
+}
+.small-btn:hover {
+  background: #475569;
+}
+pre {
+  font-size: 11px;
+  background: #0f172a;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #1e293b;
+}
+
+/* --- Full Report Popup --- */
+.popup-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 20px;
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+}
+
+.popup-export:hover {
+  background: #1d4ed8;
+}
+
+/* ====== FORENSIC REPORT POPUP (NEW) ====== */
+
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999999;
+}
+
+.report-window {
+  width: 70%;
+  max-width: 1100px;
+  max-height: 85%;
+  background: #1c2537;
+  border-radius: 16px;
+  padding: 0;
+  border: 1px solid #3c4f6b;
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+  overflow: hidden; /* ANGOLO PERFETTO */
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.25s ease-in-out;
+}
+
+.report-header {
+  display: flex;
+  align-items: center;
+  background: #0f1623;
+  padding: 20px;
+  border-bottom: 1px solid #263043;
+}
+
+.report-logo {
+  height: 55px;
+  margin-right: 15px;
+  opacity: 0.9;
+}
+
+.report-title-block {
+  flex-grow: 1;
+}
+
+.report-title {
+  margin: 0;
+  padding: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.report-subtitle {
+  font-size: 13px;
+  margin-top: 4px;
+  color: #a5b4c9;
+}
+
+.popup-close {
+  background: transparent;
+  border: none;
+  font-size: 26px;
+  color: #fff;
+  cursor: pointer;
+  padding: 0 10px;
+}
+
+.popup-content {
+  padding: 25px 40px;
+  color: #e8edf5;
+  line-height: 1.55;
+  overflow-y: auto;
+  max-height: calc(85vh - 120px);  
+}
+
+.report-section {
+  margin-bottom: 32px;
+}
+
+.report-section h3 {
+  margin-bottom: 10px;
+  border-bottom: 1px solid #394a63;
+  padding-bottom: 4px;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 40px;
+}
+
+.report-item-label {
+  font-weight: 600;
+  color: #bcd0ea;
+}
+
+.report-item-value {
+  color: #ffffff;
+}
+
+.popup-export {
+  margin: 20px auto;
+  display: block;
+  padding: 10px 18px;
+  background: #3d5a80;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.popup-export:hover {
+  background: #51749f;
+}
+
+.report-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 40px 24px 40px;
+}
+
+.popup-export.secondary {
+  background: #4b5563;
+}
+
+.popup-export.secondary:hover {
+  background: #6b7280;
+}
+
+/* Rendere il logo visibile sullo sfondo scuro del popup */
+.report-logo {
+  background: #ffffffcc;   /* bianco semi-trasparente */
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+/* ===== Elegant Dark Scrollbar for popup ===== */
+.popup-content::-webkit-scrollbar {
+  width: 10px;
+}
+
+.popup-content::-webkit-scrollbar-track {
+  background: #0f1623;
+  border-radius: 10px;
+}
+
+.popup-content::-webkit-scrollbar-thumb {
+  background: #3d5a80;
+  border-radius: 10px;
+  border: 2px solid #0f1623;
+}
+
+.popup-content::-webkit-scrollbar-thumb:hover {
+  background: #51749f;
 }

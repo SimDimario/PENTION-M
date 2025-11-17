@@ -90,6 +90,31 @@
   </div>
 </div>
 
+<!-- Popup full report -->
+<div id="report-popup" class="popup-overlay" style="display:none;">
+  <div class="report-window">
+    
+    <div class="report-header">
+      <img src="/static/logo.png" class="report-logo" />
+      <div class="report-title-block">
+        <h2 class="report-title">Forensic Detection Report</h2>
+        <div class="report-subtitle">Amsterdam Mobile Lab – PIML & MLOps Pipeline</div>
+      </div>
+      <button class="popup-close" onclick="closeReportPopup()">×</button>
+    </div>
+
+    <div id="popup-content" class="popup-content"></div>
+
+    <div class="report-actions">
+      <button class="popup-export" onclick="exportPDF()">Download PDF</button>
+      <button class="popup-export secondary" onclick="downloadBundleJson()">Download JSON</button>
+    </div>
+  </div>
+</div>
+
+<!-- jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <!-- Leaflet JS -->
 <script
   src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"

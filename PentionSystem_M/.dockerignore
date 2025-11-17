@@ -39,7 +39,6 @@ models/
 **/*.keras
 
 # Images & figures
-**/*.png
 **/*.jpg
 **/*.jpeg
 **/*.gif

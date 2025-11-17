@@ -298,7 +298,7 @@ async def simulation_loop(force_near=False):
         # SCEGLIAMO POSIZIONE VAN
         # ------------------------------
         if force_near:
-            # scegli un nodo a distanza 600–800 m dalla sorgente
+            # scegli un nodo a distanza 1000–1400 m dalla sorgente
             candidates = []
             for n in nodes:
                 lat, lon = node_latlon(G, n)

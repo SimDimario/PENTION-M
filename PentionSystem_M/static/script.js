@@ -118,6 +118,264 @@ function resetGraphics() {
   //simDistEl.textContent = "–";
 }
 
+function renderBundleSummary(bundle) {
+  if (!bundle || !bundle.event) {
+    return "No bundle data.";
+  }
+
+  const ev = bundle.event;
+
+  return `
+    <div class="metric-row"><div class="metric-label">Timestamp</div><div>${ev.timestamp}</div></div>
+    <div class="metric-row"><div class="metric-label">Substance</div><div>${ev.SensorSubstance.compound_name}</div></div>
+    <div class="metric-row"><div class="metric-label">Confidence</div><div>${ev.Inference.confidence_score}</div></div>
+    <div class="metric-row"><div class="metric-label">Wind</div><div>${ev.SensorAir.wind_speed_mps} m/s @ ${ev.SensorAir.wind_dir_deg}°</div></div>
+    <div class="metric-row"><div class="metric-label">GPS</div><div>${Number(ev.SensorGPS.latitude).toFixed(5)}, ${Number(ev.SensorGPS.longitude).toFixed(5)}</div></div>
+    <div class="metric-row"><div class="metric-label">Hash</div><div>${bundle.hash_sha256.slice(0,12)}...</div></div>
+
+    <button class="small-btn" onclick="openReportPopup()">View full report</button>
+  `;
+}
+
+function renderMonitoringSummary(m) {
+  return `
+    <div class="metric-row"><div class="metric-label">Model</div><div>${m.model_version}</div></div>
+    <div class="metric-row"><div class="metric-label">Drift</div><div>${m.drift_score}</div></div>
+    <div class="metric-row"><div class="metric-label">Latency</div><div>${m.latency_ms} ms</div></div>
+    <div class="metric-row"><div class="metric-label">Stability</div><div>${m.stability_index}</div></div>
+    <div class="metric-row"><div class="metric-label">Confidence</div><div>${m.confidence}</div></div>
+
+    <button class="small-btn" onclick="toggleMonitoringJson()">Show raw JSON</button>
+    <pre id="monitoring-json" style="display:none;">${JSON.stringify(m, null, 2)}</pre>
+  `;
+}
+
+// function toggleBundleJson() {
+//   const el = document.getElementById("bundle-json");
+//   el.style.display = el.style.display === "none" ? "block" : "none";
+// }
+
+function toggleMonitoringJson() {
+  const el = document.getElementById("monitoring-json");
+  el.style.display = el.style.display === "none" ? "block" : "none";
+}
+
+function openReportPopup() {
+  const bundle = window.lastBundle;
+  const monitoring = window.lastMonitoring;
+  if (!bundle || !monitoring) return;
+
+  const ev = bundle.event;
+
+  const content = document.getElementById("popup-content");
+
+  content.innerHTML = `
+    <div class="report-section">
+      <h3>General Info</h3>
+      <div class="report-grid">
+        <div>
+          <div class="report-item-label">Simulation ID</div>
+          <div class="report-item-value">${ev.simulation_id}</div>
+        </div>
+        <div>
+          <div class="report-item-label">Timestamp</div>
+          <div class="report-item-value">${ev.timestamp}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="report-section">
+      <h3>Detected Substance</h3>
+      <div class="report-grid">
+        <div>
+          <div class="report-item-label">Substance</div>
+          <div class="report-item-value">${ev.SensorSubstance.compound_name}</div>
+        </div>
+        <div>
+          <div class="report-item-label">Confidence</div>
+          <div class="report-item-value">${ev.Inference.confidence_score}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="report-section">
+      <h3>Environmental Conditions</h3>
+      <div class="report-grid">
+        <div>
+          <div class="report-item-label">Temperature</div>
+          <div class="report-item-value">${ev.SensorAir.temperature_C} °C</div>
+        </div>
+        <div>
+          <div class="report-item-label">Humidity</div>
+          <div class="report-item-value">${ev.SensorAir["humidity_%"]}</div>
+        </div>
+        <div>
+          <div class="report-item-label">Wind</div>
+          <div class="report-item-value">${ev.SensorAir.wind_speed_mps} m/s @ ${ev.SensorAir.wind_dir_deg}°</div>
+        </div>
+        <div>
+          <div class="report-item-label">Stability Class</div>
+          <div class="report-item-value">${ev.SensorAir.stability_class}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="report-section">
+      <h3>GPS</h3>
+      <div class="report-grid">
+        <div>
+          <div class="report-item-label">Latitude</div>
+          <div class="report-item-value">${ev.SensorGPS.latitude}</div>
+        </div>
+        <div>
+          <div class="report-item-label">Longitude</div>
+          <div class="report-item-value">${ev.SensorGPS.longitude}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="report-section">
+      <h3>Monitoring</h3>
+      <div class="report-grid">
+        <div>
+          <div class="report-item-label">Model version</div>
+          <div class="report-item-value">${monitoring.model_version}</div>
+        </div>
+        <div>
+          <div class="report-item-label">Latency</div>
+          <div class="report-item-value">${monitoring.latency_ms} ms</div>
+        </div>
+        <div>
+          <div class="report-item-label">Drift score</div>
+          <div class="report-item-value">${monitoring.drift_score}</div>
+        </div>
+        <div>
+          <div class="report-item-label">Stability index</div>
+          <div class="report-item-value">${monitoring.stability_index}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("report-popup").style.display = "flex";
+}
+
+
+function closeReportPopup() {
+  document.getElementById("report-popup").style.display = "none";
+}
+
+function downloadBundleJson() {
+  const bundle = window.lastBundle;
+  if (!bundle) return;
+
+  const ev = bundle.event || {};
+  const simId = ev.simulation_id || "simulation";
+
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `forensic_bundle_${simId}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  URL.revokeObjectURL(url);
+}
+
+async function exportPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+
+  const bundle = window.lastBundle;
+  const monitoring = window.lastMonitoring;
+  if (!bundle || !monitoring) return;
+
+  const ev = bundle.event;
+
+  let y = 40;
+
+  // LOGO
+  try {
+      const img = await fetch("/static/logo.png")
+        .then(r => r.blob())
+        .then(b => new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(b);
+        }));
+
+      const imgWidth = 180;     // larghezza logo
+      const imgHeight = 80;     // altezza logo
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // centro orizzontale
+      const x = (pageWidth - imgWidth) / 2;
+
+      doc.addImage(img, "PNG", x, y, imgWidth, imgHeight);
+      y += imgHeight + 30; // spazio sotto il logo
+
+      doc.setFontSize(26);
+      doc.text("Forensic Detection Report", pageWidth / 2, y, { align: "center" });
+      y += 40;
+  } catch (e) {}
+  const addSection = (title) => {
+    // spazio extra prima di ogni sezione
+    y += 16;
+    doc.setFontSize(16);
+    doc.text(title, 40, y);
+    y += 6;
+    doc.setLineWidth(0.5);
+    doc.line(40, y, 550, y);
+    y += 16;
+  };
+
+  const addField = (label, value) => {
+    doc.setFontSize(11);
+    doc.text(`${label}:`, 50, y);
+    doc.text(String(value), 200, y);
+    y += 18;
+  };
+
+  // --- Contenuto report ---
+
+  addSection("General Info");
+  addField("Simulation ID", ev.simulation_id);
+  addField("Timestamp", ev.timestamp);
+
+  addSection("Detected Substance");
+  addField("Name", ev.SensorSubstance.compound_name);
+  addField("Confidence", ev.Inference.confidence_score);
+
+  addSection("Environmental Conditions");
+  addField("Temperature (°C)", ev.SensorAir.temperature_C);
+  addField("Humidity (%)", ev.SensorAir["humidity_%"]);
+  addField("Wind", `${ev.SensorAir.wind_speed_mps} m/s @ ${ev.SensorAir.wind_dir_deg}°`);
+  addField("Stability Class", ev.SensorAir.stability_class);
+
+  addSection("GPS");
+  addField("Latitude", ev.SensorGPS.latitude);
+  addField("Longitude", ev.SensorGPS.longitude);
+
+  addSection("Monitoring");
+  addField("Model Version", monitoring.model_version);
+  addField("Latency (ms)", monitoring.latency_ms);
+  addField("Drift Score", monitoring.drift_score);
+  addField("Stability Index", monitoring.stability_index);
+
+  addSection("Security & Audit");
+  addField("Forensic bundle hash (SHA256)", bundle.hash_sha256);
+  addField("Bundle name", bundle.bundle_name);
+  addField("Bundle signature", bundle.signature);
+
+  doc.save(`forensic_report_${ev.simulation_id}.pdf`);
+}
+
+
 function connectWebSocket() {
   if (ws && ws.readyState === WebSocket.OPEN) {
     return;
@@ -196,12 +454,14 @@ function connectWebSocket() {
       setStatus("idle");
       btnStart.disabled = false;
       btnReset.disabled = false;
+      window.lastBundle = msg.forensic_bundle;
+      window.lastMonitoring = msg.monitoring;
 
       if (msg.simulation_id) {
         simIdEl.textContent = msg.simulation_id;
       }
       if (msg.monitoring) {
-        monitoringLogEl.textContent = JSON.stringify(msg.monitoring, null, 2);
+        monitoringLogEl.innerHTML = renderMonitoringSummary(msg.monitoring);
         showMonitorCard();
 
         if (msg.monitoring.model_version) {
@@ -221,7 +481,7 @@ function connectWebSocket() {
 
       if (msg.forensic_bundle) {
         bundleNameEl.textContent = msg.forensic_bundle.bundle_name || "bundle";
-        bundleLogEl.textContent = JSON.stringify(msg.forensic_bundle, null, 2);
+        bundleLogEl.innerHTML = renderBundleSummary(msg.forensic_bundle);
         showBundleCard();
       }
     }
