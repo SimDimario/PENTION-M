@@ -1,20 +1,20 @@
 {
-  "timestamp": "2025-11-15T16:16:56.509728",
-  "bundle_name": "bundle_20251115_161656_5c53c033.json",
-  "hash_sha256": "f2bc6ea9f31b5fe3e479201ff42bb858592dedac110dc8a3e4c790f21443ac7f",
-  "signature": "sig_a24c8b579f374f16",
+  "timestamp": "2025-11-17T10:44:50.953920",
+  "bundle_name": "bundle_20251117_104450_3e828a52.json",
+  "hash_sha256": "30b91936d74bd6c9bc8ccc75aabacf71f9dea8f129c03327711934ab3822c4c0",
+  "signature": "sig_4b00037ba6c440ee",
   "event": {
-    "simulation_id": "SIM_20251115_161447",
-    "timestamp": "2025-11-15T16:15:01.590442Z",
+    "simulation_id": "SIM_20251117_104344",
+    "timestamp": "2025-11-17T10:43:50.043714Z",
     "SensorAir": {
-      "temperature_C": 17.5,
-      "humidity_%": 0.68,
-      "wind_speed_mps": 5.1,
-      "wind_dir_deg": 90,
-      "stability_class": "NEUTRAL"
+      "temperature_C": 22.7,
+      "humidity_%": 0.63,
+      "wind_speed_mps": 5.5,
+      "wind_dir_deg": 135,
+      "stability_class": "B"
     },
     "SensorSubstance": {
-      "compound_name": "Cathinone",
+      "compound_name": "Cannabinoid",
       "molecular_formula": "C9H11NO",
       "concentration_series_mg_m3": [
         0.002,
@@ -26,23 +26,23 @@
       "noise_level": 0.05
     },
     "SensorGPS": {
-      "latitude": 52.406326,
-      "longitude": 4.9118289,
+      "latitude": 52.3919899,
+      "longitude": 4.8363118,
       "altitude_m": 2.0
     },
     "PIML_Features": {
-      "sigma_y": 0.248,
-      "sigma_z": 0.146,
-      "pe_number": 0.86,
-      "stability_index": 4.72
+      "sigma_y": 0.243,
+      "sigma_z": 0.107,
+      "pe_number": 0.82,
+      "stability_index": 3.96
     },
     "Inference": {
-      "predicted_class": "Cathinone",
+      "predicted_class": "Cannabinoid",
       "confidence_score": 0.93,
-      "dispersion_map_id": "map_SIM_20251115_161447"
+      "dispersion_map_id": "map_SIM_20251117_104344"
     },
     "Monitoring": {
-      "model_version": "XGBoost_v160810",
+      "model_version": "PIML_v1",
       "drift_score": 0.0,
       "latency_ms": 0,
       "mse_free": 0.0
@@ -53,7 +53,7 @@
       "retraining_trigger": false
     },
     "ForensicExport": {
-      "export_file": "SIM_20251115_161447_bundle.zip",
+      "export_file": "SIM_20251117_104344_bundle.zip",
       "hash_sha256": "dummy_hash",
       "signature": "dummy_signature",
       "compliance_tags": [
@@ -62,7 +62,7 @@
       ]
     },
     "artifacts": {
-      "model_hash": "2397cb24f80df825a4d452bc5514eb6299cc5836c17287af6d4e26368f4d5668",
+      "model_hash": "207243bbe6d449093bbd2d158a22bb9e212db29f7413385d9b68a597e1dc2d1f",
       "concentration_map_hash": "no_dataset_dir",
       "training_data_version": "PIML_DS_v1"
     }

@@ -3,10 +3,23 @@ import numpy as np
 from MCxM_PIML import MCxM_PIML
 import os
 import logging
+import json
 
 # === GLOBAL MODEL CACHE ===
 GLOBAL_MODEL = None
 GLOBAL_MAP = None
+
+REGISTRY_PATH = "/logs/model_registry.json"
+
+def get_model_version():
+    if os.path.exists(REGISTRY_PATH):
+        try:
+            with open(REGISTRY_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return data.get("current_model_version", "PIML_v1")
+        except:
+            return "PIML_v1"
+    return "PIML_v1"
 
 logger = logging.getLogger("CorrectionDispersion")
 logger.setLevel(logging.DEBUG)
@@ -202,4 +215,8 @@ def correct_dispersion_piml(wind_dir, wind_speed, concentration_map, building_ma
             logger.error(f"Error during model inference: {e}")
             raise e
 
-    return output
+    return {
+        "corrected_map": output.tolist(),
+        "model_version": get_model_version()
+    }
+

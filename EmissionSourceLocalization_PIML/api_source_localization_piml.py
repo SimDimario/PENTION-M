@@ -5,10 +5,24 @@ import logging
 import os
 import sys
 import numpy as np
+import json
 
 # percorso locale del servizio
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from service_source_localization_piml import predict_source_piml
+
+# === VERSIONING MODELLO ===
+REGISTRY_PATH = "/logs/model_registry.json"
+
+def get_model_version():
+    if os.path.exists(REGISTRY_PATH):
+        try:
+            with open(REGISTRY_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return data.get("current_model_version", "PIML_v1")
+        except:
+            return "PIML_v1"
+    return "PIML_v1"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -41,7 +55,12 @@ def predict_source_piml_endpoint(request: PredictRequest):
 
     try:
         result = predict_source_piml(request.payload_sensors, request.n_sensor_operating)
-        return {"status": 200, **result}
+
+        return {
+            "status": 200,
+            "model_version": get_model_version(),
+            **result
+        }
 
     except Exception as e:
         logger.exception("Error during PIML source localization prediction")

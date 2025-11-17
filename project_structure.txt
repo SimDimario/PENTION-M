@@ -534,12 +534,17 @@
 │   │   ├── bundle_20251114_174529_1e369933.json
 │   │   ├── bundle_20251115_161656_5c53c033.json
 │   │   ├── bundle_20251115_181737_163a08f5.json
-│   │   └── bundle_20251115_183552_f54e9e0a.json
+│   │   ├── bundle_20251115_183552_f54e9e0a.json
+│   │   ├── bundle_20251115_185421_302ec925.json
+│   │   ├── bundle_20251115_185854_4da61089.json
+│   │   ├── bundle_20251115_190744_3c05f528.json
+│   │   └── bundle_20251115_193814_d5f77531.json
 │   ├── ingestion_log.jsonl
 │   ├── model_registry.json
 │   ├── modelops_retrain_log.jsonl
 │   └── monitoring_log.jsonl
 ├── osm_cache
+│   └── amsterdam_drive.graphml
 ├── project_structure.txt
 ├── struttura.py
 ├── test_MLOps_end2end.py

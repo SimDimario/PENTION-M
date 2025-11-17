@@ -159,6 +159,8 @@ def retrain_model():
         "duration_min": duration_min   # ✅ aggiunto qui
     }
 
+    return new_version, metrics
+
 # ============================================================
 # TEST MANUALE (locale nel container)
 # ============================================================

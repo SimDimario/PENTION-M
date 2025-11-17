@@ -242,26 +242,22 @@ def ingest_data(sim_data: SimulationData):
     # === Inoltro ai servizi MLOps (monitoring + forensic) ===
 
     # === Carica la versione modello dal registry e forza la versione utilizzata ===
-    effective_model_version = sim_data.Monitoring.model_version  # default dal payload
+    effective_model_version = "PIML_v1"  # default iniziale se registry assente
 
+    # 🔵 VERSIONING coerente (solo registry)
     if os.path.exists(MODEL_REGISTRY_PATH):
         try:
             with open(MODEL_REGISTRY_PATH, "r", encoding="utf-8") as f:
-                registry = json.load(f)
-            registry_version = registry.get("current_model_version")
-
-            # Se esiste un modello nel registry → override
-            if registry_version:
-                effective_model_version = registry_version
-                print(f"[INFO] 🔄 Ingestion usa modello dal registry: {effective_model_version}")
-            else:
-                print(f"[INFO] ⚠️ Registry trovato ma senza current_model_version")
-
+                reg = json.load(f)
+            v = reg.get("current_model_version")
+            if v:
+                effective_model_version = v
+                print(f"[INFO] 🔄 Ingestion usa model_version reale: {effective_model_version}")
         except Exception as e:
-            print(f"[WARN] Impossibile leggere il registry: {e}")
-
+            print(f"[WARN] Errore lettura registry: {e}")
     else:
-        print("[INFO] ℹ️ Nessun registry presente → uso modello dal payload")
+        print("[INFO] 🛈 Registry assente → default PIML_v1")
+
 
     # Forziamo il model_version usato per monitoring
     sim_data.Monitoring.model_version = effective_model_version

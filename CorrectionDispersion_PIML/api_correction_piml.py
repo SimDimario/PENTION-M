@@ -80,10 +80,18 @@ def predict_endpoint(payload: DispersionInput):
 
     glob_feat = np.array(payload.global_features, dtype=np.float32) if payload.global_features else None
 
-    correction_map = correct_dispersion_piml(payload.wind_dir, payload.wind_speed, conc_map, build_map, glob_feat)
+    correction_result = correct_dispersion_piml(
+        payload.wind_dir,
+        payload.wind_speed,
+        conc_map,
+        build_map,
+        glob_feat
+    )
 
-    return {"status_code": "success",
-            "predictions": correction_map.tolist()}
+    return {
+        "status": "ok",
+        **correction_result   # contiene corrected_map + model_version
+    }
 
 """
 if __name__ == "__main__":

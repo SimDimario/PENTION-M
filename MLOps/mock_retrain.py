@@ -72,16 +72,33 @@ def compute_mean_drift(events):
     return sum(vals) / len(vals)
 
 def simulate_retrain():
-    """Simula un retraining fisico-informato (mock)."""
-    base_model = "XGBoost" if random.random() > 0.5 else "RF_PIML"
-    new_version = f"{base_model}_v{datetime.utcnow().strftime('%H%M%S')}"
+    """
+    Simula un retraining quando il retrain reale fallisce.
+    Versioning coerente: PIML_v1, PIML_v2, ...
+    """
+    registry_path = os.path.join(LOG_DIR, "model_registry.json")
+    current = 0
+
+    # Leggi versione attuale dal registry
+    if os.path.exists(registry_path):
+        try:
+            with open(registry_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                v = data.get("current_model_version", "")
+                if v.startswith("PIML_v"):
+                    current = int(v.replace("PIML_v", ""))
+        except Exception:
+            pass
+
+    # Incrementa versione
+    new_version = f"PIML_v{current + 1}"
+
+    # Metriche fittizie coerenti
     metrics = {
-        "accuracy": round(random.uniform(0.84, 0.91), 3),
-        "far": round(random.uniform(0.02, 0.05), 3),
-        "training_samples": random.randint(2600, 2800),
-        "duration_min": round(random.uniform(4.0, 6.0), 2),
-        "drift_reset": True,
+        "description": "Mock retrain executed due to fallback",
+        "drift_reset": True
     }
+
     return new_version, metrics
 
 def read_previous_model_version():
@@ -162,6 +179,14 @@ def retrain_loop():
             try:
                 piml_mod = load_piml_retrain()
                 new_version, metrics = piml_mod.retrain_model()
+                # Versioning coerente: converte PIML_vHHMMSS in versione incrementale
+                try:
+                    current = 0
+                    if registry_version and registry_version.startswith("PIML_v"):
+                        current = int(registry_version.replace("PIML_v", ""))
+                    new_version = f"PIML_v{current + 1}"
+                except Exception:
+                    new_version = "PIML_v1"
             except Exception as e:
                 print(f"[RetrainService] ⚠️ Retraining reale fallito: {e}")
                 new_version, metrics = simulate_retrain()
