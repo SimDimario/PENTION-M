@@ -10,13 +10,34 @@ const btnReset = document.getElementById("btn-reset");
 const statusPill = document.getElementById("status-pill");
 const statusText = document.getElementById("status-text");
 const simIdEl = document.getElementById("sim-id");
-const simDistEl = document.getElementById("sim-distance");
+//const simDistEl = document.getElementById("sim-distance");
 const modelVersionEl = document.getElementById("model-version");
 const driftScoreEl = document.getElementById("drift-score");
 const latencyEl = document.getElementById("latency-ms");
 const bundleNameEl = document.getElementById("bundle-name");
 const bundleLogEl = document.getElementById("bundle-log");
 const monitoringLogEl = document.getElementById("monitoring-log");
+const processingCard = document.getElementById("processing-card");
+const simCard = document.getElementById("sim-card");
+const bundleCard = document.getElementById("bundle-card");
+const monitorCard = document.getElementById("monitor-card");
+
+function showSimCard() { simCard.style.display = "block"; }
+function hideSimCard() { simCard.style.display = "none"; }
+
+function showBundleCard() { bundleCard.style.display = "block"; }
+function hideBundleCard() { bundleCard.style.display = "none"; }
+
+function showMonitorCard() { monitorCard.style.display = "block"; }
+function hideMonitorCard() { monitorCard.style.display = "none"; }
+
+function showProcessing() {
+  processingCard.style.display = "block";
+}
+
+function hideProcessing() {
+  processingCard.style.display = "none";
+}
 
 document.getElementById("btn-debug").addEventListener("click", async () => {
   showLoading();
@@ -94,7 +115,7 @@ function resetGraphics() {
   }
   pathLatLngs = [];
   simIdEl.textContent = "–";
-  simDistEl.textContent = "–";
+  //simDistEl.textContent = "–";
 }
 
 function connectWebSocket() {
@@ -155,24 +176,33 @@ function connectWebSocket() {
       pathLatLngs.push([lat, lon]);
       vanPath.setLatLngs(pathLatLngs);
 
-      if (msg.distance_m !== undefined) {
-        simDistEl.textContent = `${msg.distance_m.toFixed(1)} m`;
-      }
+      // if (msg.distance_m !== undefined) {
+      //   simDistEl.textContent = `${msg.distance_m.toFixed(1)} m`;
+      // }
 
       if (msg.status === "detected") {
-        setStatus("detected");
+          setStatus("detected");
+          showProcessing();
+          btnStart.disabled = true;
+          btnReset.disabled = true;
       } else if (msg.status === "patrolling") {
-        setStatus("patrolling");
+          setStatus("patrolling");
       }
     }
 
     if (msg.type === "detection_result") {
+      showSimCard();
+      hideProcessing();
       setStatus("idle");
       btnStart.disabled = false;
       btnReset.disabled = false;
 
+      if (msg.simulation_id) {
+        simIdEl.textContent = msg.simulation_id;
+      }
       if (msg.monitoring) {
         monitoringLogEl.textContent = JSON.stringify(msg.monitoring, null, 2);
+        showMonitorCard();
 
         if (msg.monitoring.model_version) {
           modelVersionEl.textContent = msg.monitoring.model_version;
@@ -192,6 +222,7 @@ function connectWebSocket() {
       if (msg.forensic_bundle) {
         bundleNameEl.textContent = msg.forensic_bundle.bundle_name || "bundle";
         bundleLogEl.textContent = JSON.stringify(msg.forensic_bundle, null, 2);
+        showBundleCard();
       }
     }
 
@@ -229,7 +260,11 @@ btnReset.addEventListener("click", async () => {
   btnStart.disabled = false;
   btnReset.disabled = true;
   resetGraphics();
+  hideProcessing();
   hideLoading();
+  hideSimCard();
+  hideBundleCard();
+  hideMonitorCard();
 });
 
 ensureMap();

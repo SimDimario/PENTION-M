@@ -24,7 +24,7 @@ CACHE_DIR = "/app/cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
 
 GRAPH_PATH = os.path.join(CACHE_DIR, "amsterdam_drive.graphml")
-DETECTION_RADIUS_M = 250.0  # raggio operativo per "detection"
+DETECTION_RADIUS_M = 300.0  # raggio operativo per "detection"
 STEP_DELAY_SEC = 0.5        # tempo tra un passo e l'altro
 LOG_DIR = "/logs"
 INGESTION_URL = "http://mlops_ingestion:8011/ingest_data"
@@ -303,7 +303,7 @@ async def simulation_loop(force_near=False):
             for n in nodes:
                 lat, lon = node_latlon(G, n)
                 dist = haversine_m(lat, lon, source_lat, source_lon)
-                if 600 < dist < 800:
+                if 1000 < dist < 1400:
                     candidates.append(n)
 
             if candidates:
@@ -379,6 +379,16 @@ async def simulation_loop(force_near=False):
                 if dist <= DETECTION_RADIUS_M:
                     state.detected = True
                     state.running = False
+
+                    await broadcast({
+                        "type": "van_update",
+                        "lat": lat,
+                        "lon": lon,
+                        "status": "detected",
+                        "distance_m": dist
+                    })
+                    await asyncio.sleep(0.1)
+
                     break
 
                 await asyncio.sleep(STEP_DELAY_SEC)

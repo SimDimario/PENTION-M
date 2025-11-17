@@ -42,45 +42,51 @@
       <button id="btn-debug" class="secondary">Debug: Start near source</button>
     </div>
 
-    <div class="card">
-      <h2>Simulation info</h2>
+    <!-- Processing card - always hidden until detection -->
+    <div id="processing-card" class="card processing-card" style="display:none;">
+      <h2>Processing detection…</h2>
+      <div class="processing-spinner"></div>
+      <div class="small">Analisi PIML / MLOps in corso…</div>
+    </div>
 
+    <!-- Simulation info card -->
+    <div id="sim-card" class="card" style="display:none;">
+      <h2>Simulation info</h2>
       <div class="metric-row">
         <div class="metric-label">Simulation ID</div>
         <div class="metric-value" id="sim-id">–</div>
       </div>
-
-      <div class="metric-row">
+      <!-- <div class="metric-row">
         <div class="metric-label">Distance to source</div>
         <div class="metric-value" id="sim-distance">–</div>
-      </div>
-
+      </div> -->
       <div class="metric-row">
         <div class="metric-label">Model version</div>
         <div class="metric-value" id="model-version">–</div>
       </div>
-
       <div class="metric-row">
         <div class="metric-label">Drift score</div>
         <div class="metric-value" id="drift-score">–</div>
       </div>
-
       <div class="metric-row">
         <div class="metric-label">Latency</div>
         <div class="metric-value" id="latency-ms">–</div>
       </div>
     </div>
 
-    <div class="card">
+    <!-- Forensic bundle card -->
+    <div id="bundle-card" class="card" style="display:none;">
       <h2>Last forensic bundle</h2>
       <div class="small" id="bundle-name">–</div>
       <div class="log-box" id="bundle-log">No bundle yet.</div>
     </div>
 
-    <div class="card">
+    <!-- Monitoring card -->
+    <div id="monitor-card" class="card" style="display:none;">
       <h2>Raw monitoring log (latest)</h2>
       <div class="log-box" id="monitoring-log">No monitoring event yet.</div>
     </div>
+
   </div>
 </div>
 
