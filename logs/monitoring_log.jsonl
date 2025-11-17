@@ -1,1 +1,7 @@
 {"time": "2025-11-17T10:44:26.401691", "simulation_id": "SIM_20251117_104344", "model_version": "PIML_v1", "latency_ms": 0, "drift_score": 0.3844, "mse_free": 0.0, "stability_index": 3.96, "confidence": 0.93}
+{"time": "2025-11-17T11:03:59.746903", "simulation_id": "SIM_20251117_110325", "model_version": "PIML_v1", "latency_ms": 0, "drift_score": 0.4906, "mse_free": 0.0, "stability_index": 4.57, "confidence": 0.93}
+{"time": "2025-11-17T11:09:12.283669", "simulation_id": "SIM_20251117_110839", "model_version": "PIML_v1", "latency_ms": 0, "drift_score": 0.4614, "mse_free": 0.0, "stability_index": 3.91, "confidence": 0.93}
+{"time": "2025-11-17T11:09:53.878415", "simulation_id": "SIM_20251117_110945", "model_version": "PIML_v1", "latency_ms": 0, "drift_score": 0.3858, "mse_free": 0.0, "stability_index": 3.59, "confidence": 0.93}
+{"time": "2025-11-17T11:15:41.330433", "simulation_id": "SIM_20251117_111503", "model_version": "PIML_v1", "latency_ms": 0, "drift_score": 0.4836, "mse_free": 0.0, "stability_index": 4.23, "confidence": 0.93}
+{"time": "2025-11-17T11:29:33.156672", "simulation_id": "SIM_20251117_112846", "model_version": "PIML_v1", "latency_ms": 0, "drift_score": 0.4175, "mse_free": 0.0, "stability_index": 3.23, "confidence": 0.93}
+{"time": "2025-11-17T12:18:14.935505", "simulation_id": "SIM_20251117_121731", "model_version": "PIML_v1", "latency_ms": 0, "drift_score": 0.5225, "mse_free": 0.0, "stability_index": 4.31, "confidence": 0.93}
