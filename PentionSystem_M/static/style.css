@@ -415,3 +415,11 @@ pre {
   50% { text-shadow: 0 0 6px #10b981; }
   100% { text-shadow: 0 0 0 #10b981; }
 }
+
+#pdf-map {
+  visibility: hidden !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  top: -2000px !important;
+  left: -2000px !important;
+}

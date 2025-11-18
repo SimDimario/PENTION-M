@@ -4,6 +4,7 @@ let sourceCircle = null;
 let vanPath = null;
 let pathLatLngs = [];
 let ws = null;
+let vanIcon = null;
 
 const btnStart = document.getElementById("btn-start");
 const btnReset = document.getElementById("btn-reset");
@@ -20,7 +21,13 @@ const simCard = document.getElementById("sim-card");
 const bundleCard = document.getElementById("bundle-card");
 const stabilityEl = document.getElementById("stability-index");
 const confidenceEl = document.getElementById("confidence");
+const canvasRenderer = L.canvas({ padding: 0.5 });
 
+function getJsPDF() {
+  if (window.jspdf && window.jspdf.jsPDF) return window.jspdf.jsPDF;
+  if (window.jsPDF) return window.jsPDF; // fallback nel caso venga esposto così
+  return null;
+}
 
 function showSimCard() { simCard.style.display = "block"; }
 function hideSimCard() { simCard.style.display = "none"; }
@@ -91,6 +98,14 @@ function ensureMap() {
       }
     );
     tileLayer.addTo(map);
+
+    // icona del laboratorio mobile
+    vanIcon = L.icon({
+      iconUrl: "/static/van_icon.png",
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],  // centro
+    });
+
     hideLoading();
   }
 }
@@ -163,103 +178,124 @@ function renderBundleSummary(bundle) {
 function openReportPopup() {
   const bundle = window.lastBundle;
   const monitoring = window.lastMonitoring;
-  if (!bundle || !monitoring) return;
+  if (!bundle) return;
 
-  const ev = bundle.event;
+  const ev = bundle.event || {};
+
+  const air = ev.SensorAir || {};
+  const sub = ev.SensorSubstance || {};
+  const gps = ev.SensorGPS || {};
+  const piml = ev.PIML_Features || {};
+  const inf = ev.Inference || {};
+  const evMonitoring = ev.Monitoring || {};
+  const modelOps = ev.ModelOps || {};
+  const fexport = ev.ForensicExport || {};
+  const artifacts = ev.artifacts || {};
+
+  // monitoring esterno sempre prioritario
+  const mon = monitoring || evMonitoring;
 
   const content = document.getElementById("popup-content");
 
   content.innerHTML = `
     <div class="report-section">
-      <h3>General Info</h3>
+      <h3>Event metadata</h3>
       <div class="report-grid">
-        <div>
-          <div class="report-item-label">Simulation ID</div>
-          <div class="report-item-value">${ev.simulation_id}</div>
-        </div>
-        <div>
-          <div class="report-item-label">Timestamp</div>
-          <div class="report-item-value">${ev.timestamp}</div>
-        </div>
+        <div><div class="report-item-label">Simulation ID</div><div class="report-item-value">${ev.simulation_id}</div></div>
+        <div><div class="report-item-label">Timestamp</div><div class="report-item-value">${ev.timestamp}</div></div>
+        <div><div class="report-item-label">Bundle name</div><div class="report-item-value">${bundle.bundle_name}</div></div>
+        <div><div class="report-item-label">Hash SHA256</div><div class="report-item-value">${bundle.hash_sha256}</div></div>
       </div>
     </div>
 
     <div class="report-section">
-      <h3>Detected Substance</h3>
+      <h3>Environmental conditions</h3>
       <div class="report-grid">
-        <div>
-          <div class="report-item-label">Substance</div>
-          <div class="report-item-value">${ev.SensorSubstance.compound_name}</div>
-        </div>
-        <div>
-          <div class="report-item-label">Confidence</div>
-          <div class="report-item-value">${ev.Inference.confidence_score}</div>
-        </div>
+        <div><div class="report-item-label">Temperature (°C)</div><div class="report-item-value">${air.temperature_C}</div></div>
+        <div><div class="report-item-label">Humidity (%)</div><div class="report-item-value">${air["humidity_%"]}</div></div>
+        <div><div class="report-item-label">Wind</div><div class="report-item-value">${air.wind_speed_mps} m/s @ ${air.wind_dir_deg}°</div></div>
+        <div><div class="report-item-label">Stability class</div><div class="report-item-value">${air.stability_class}</div></div>
       </div>
     </div>
 
     <div class="report-section">
-      <h3>Environmental Conditions</h3>
+      <h3>Detected substance</h3>
       <div class="report-grid">
-        <div>
-          <div class="report-item-label">Temperature</div>
-          <div class="report-item-value">${ev.SensorAir.temperature_C} °C</div>
-        </div>
-        <div>
-          <div class="report-item-label">Humidity</div>
-          <div class="report-item-value">${ev.SensorAir["humidity_%"]}</div>
-        </div>
-        <div>
-          <div class="report-item-label">Wind</div>
-          <div class="report-item-value">${ev.SensorAir.wind_speed_mps} m/s @ ${ev.SensorAir.wind_dir_deg}°</div>
-        </div>
-        <div>
-          <div class="report-item-label">Stability Class</div>
-          <div class="report-item-value">${ev.SensorAir.stability_class}</div>
-        </div>
+        <div><div class="report-item-label">Compound</div><div class="report-item-value">${sub.compound_name}</div></div>
+        <div><div class="report-item-label">Molecular formula</div><div class="report-item-value">${sub.molecular_formula}</div></div>
+        <div><div class="report-item-label">Noise level</div><div class="report-item-value">${sub.noise_level}</div></div>
+        <div><div class="report-item-label">Concentration series</div><div class="report-item-value">${(sub.concentration_series_mg_m3||[]).join(", ")}</div></div>
       </div>
     </div>
 
     <div class="report-section">
-      <h3>GPS</h3>
+      <h3>PIML features</h3>
       <div class="report-grid">
-        <div>
-          <div class="report-item-label">Latitude</div>
-          <div class="report-item-value">${ev.SensorGPS.latitude}</div>
-        </div>
-        <div>
-          <div class="report-item-label">Longitude</div>
-          <div class="report-item-value">${ev.SensorGPS.longitude}</div>
-        </div>
+        <div><div class="report-item-label">Sigma_y</div><div class="report-item-value">${piml.sigma_y}</div></div>
+        <div><div class="report-item-label">Sigma_z</div><div class="report-item-value">${piml.sigma_z}</div></div>
+        <div><div class="report-item-label">Péclet number</div><div class="report-item-value">${piml.pe_number}</div></div>
+        <div><div class="report-item-label">Stability index</div><div class="report-item-value">${piml.stability_index}</div></div>
+      </div>
+    </div>
+
+    <div class="report-section">
+      <h3>Location</h3>
+      <div class="report-grid">
+        <div><div class="report-item-label">Latitude</div><div class="report-item-value">${gps.latitude}</div></div>
+        <div><div class="report-item-label">Longitude</div><div class="report-item-value">${gps.longitude}</div></div>
+        <div><div class="report-item-label">Altitude (m)</div><div class="report-item-value">${gps.altitude_m}</div></div>
+      </div>
+    </div>
+
+    <div class="report-section">
+      <h3>Inference</h3>
+      <div class="report-grid">
+        <div><div class="report-item-label">Predicted class</div><div class="report-item-value">${inf.predicted_class}</div></div>
+        <div><div class="report-item-label">Confidence</div><div class="report-item-value">${inf.confidence_score}</div></div>
+        <div><div class="report-item-label">Dispersion map ID</div><div class="report-item-value">${inf.dispersion_map_id}</div></div>
       </div>
     </div>
 
     <div class="report-section">
       <h3>Monitoring</h3>
       <div class="report-grid">
-        <div>
-          <div class="report-item-label">Model version</div>
-          <div class="report-item-value">${monitoring.model_version}</div>
-        </div>
-        <div>
-          <div class="report-item-label">Latency</div>
-          <div class="report-item-value">${monitoring.latency_ms} ms</div>
-        </div>
-        <div>
-          <div class="report-item-label">Drift score</div>
-          <div class="report-item-value">${monitoring.drift_score}</div>
-        </div>
-        <div>
-          <div class="report-item-label">Stability index</div>
-          <div class="report-item-value">${monitoring.stability_index}</div>
-        </div>
+        <div><div class="report-item-label">Model version</div><div class="report-item-value">${mon.model_version}</div></div>
+        <div><div class="report-item-label">Latency (ms)</div><div class="report-item-value">${mon.latency_ms}</div></div>
+        <div><div class="report-item-label">Drift score</div><div class="report-item-value">${mon.drift_score}</div></div>
+        <div><div class="report-item-label">MSE free</div><div class="report-item-value">${mon.mse_free}</div></div>
+      </div>
+    </div>
+
+    <div class="report-section">
+      <h3>ModelOps</h3>
+      <div class="report-grid">
+        <div><div class="report-item-label">Registry ID</div><div class="report-item-value">${modelOps.model_registry_id}</div></div>
+        <div><div class="report-item-label">Training data version</div><div class="report-item-value">${modelOps.training_data_version}</div></div>
+        <div><div class="report-item-label">Retraining trigger</div><div class="report-item-value">${modelOps.retraining_trigger}</div></div>
+      </div>
+    </div>
+
+    <div class="report-section">
+      <h3>Artifacts</h3>
+      <div class="report-grid">
+        <div><div class="report-item-label">Model hash</div><div class="report-item-value">${artifacts.model_hash}</div></div>
+        <div><div class="report-item-label">Concentration map hash</div><div class="report-item-value">${artifacts.concentration_map_hash}</div></div>
+        <div><div class="report-item-label">Training data version</div><div class="report-item-value">${artifacts.training_data_version}</div></div>
+      </div>
+    </div>
+
+    <div class="report-section">
+      <h3>Security / Audit</h3>
+      <div class="report-grid">
+        <div><div class="report-item-label">Bundle signature</div><div class="report-item-value">${bundle.signature}</div></div>
+        <div><div class="report-item-label">Export signature</div><div class="report-item-value">${fexport.signature}</div></div>
+        <div><div class="report-item-label">Compliance tags</div><div class="report-item-value">${(fexport.compliance_tags||[]).join(", ")}</div></div>
       </div>
     </div>
   `;
 
   document.getElementById("report-popup").style.display = "flex";
 }
-
 
 function closeReportPopup() {
   document.getElementById("report-popup").style.display = "none";
@@ -300,130 +336,239 @@ function formatHash(hash) {
     return grouped.join(" ");
 }
 
-async function exportPDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
-
-  const bundle = window.lastBundle;
-  const monitoring = window.lastMonitoring;
-  if (!bundle || !monitoring) return;
-
-  const ev = bundle.event;
-
-  let y = 40;
-
-  // LOGO
-  try {
-      const img = await fetch("/static/logo.png")
-        .then(r => r.blob())
-        .then(b => new Promise(resolve => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.readAsDataURL(b);
-        }));
-
-      const imgWidth = 180;     // larghezza logo
-      const imgHeight = 80;     // altezza logo
-      const pageWidth = doc.internal.pageSize.getWidth();
-
-      // centro orizzontale
-      const x = (pageWidth - imgWidth) / 2;
-
-      doc.addImage(img, "PNG", x, y, imgWidth, imgHeight);
-      y += imgHeight + 30; // spazio sotto il logo
-
-      doc.setFontSize(26);
-      doc.text("Forensic Detection Report", pageWidth / 2, y, { align: "center" });
-      y += 40;
-  } catch (e) {}
-  const checkPage = (extra = 30) => {
-    const pageHeight = doc.internal.pageSize.getHeight();
-    if (y + extra >= pageHeight - 40) {
-      doc.addPage();
-      y = 40;
+async function renderPdfMap() {
+  return new Promise((resolve, reject) => {
+    if (typeof leafletImage !== "function") {
+      console.error("leafletImage non disponibile");
+      return reject(new Error("leafletImage non disponibile"));
     }
-  };
-  const addSection = (title) => {
-    checkPage(60);
 
-    y += 16;
-    doc.setFontSize(16);
-    doc.text(title, 40, y);
+    const pdfMap = L.map("pdf-map", {
+      zoomControl: false,
+      attributionControl: false,
+      preferCanvas: true // <<< fondamentale
+    });
 
-    y += 6;
-    doc.setLineWidth(0.5);
-    doc.line(40, y, 550, y);
+    const canvasRenderer = L.canvas({ padding: 0.5 });
 
-    y += 16;
-  };
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19
+    }).addTo(pdfMap);
 
-  const addField = (label, value, opts = {}) => {
-    const { isHash = false } = opts;
+    // ---- SORGENTE (Circle su renderer Canvas) ----
+    if (sourceCircle) {
+      const sc = sourceCircle.getLatLng();
+
+      L.circle(sc, {
+        radius: 250,
+        color: "#f97316",
+        fillColor: "#fb923c",
+        fillOpacity: 0.25,
+        weight: 2,
+        renderer: canvasRenderer
+      }).addTo(pdfMap);
+    }
+
+    // ---- PERCORSO VAN (Polyline Canvas) ----
+    if (pathLatLngs.length > 1) {
+      L.polyline(pathLatLngs, {
+        color: "#0ea5e9",
+        weight: 3,
+        renderer: canvasRenderer
+      }).addTo(pdfMap);
+
+      // marker finale del van
+      L.marker(pathLatLngs[pathLatLngs.length - 1], {
+        icon: vanIcon
+      }).addTo(pdfMap);
+    }
+
+    // ---- FIT BOUNDS ----
+    if (pathLatLngs.length > 1) {
+      const bounds = L.latLngBounds(pathLatLngs);
+      if (sourceCircle) bounds.extend(sourceCircle.getLatLng());
+      pdfMap.fitBounds(bounds, { padding: [50, 50] });
+    }
+
+    // ---- ATTENDI IL RENDER COMPLETO ----
+    setTimeout(() => {
+      leafletImage(pdfMap, (err, canvas) => {
+        pdfMap.remove();
+        if (err) return reject(err);
+        resolve(canvas.toDataURL("image/png"));
+      });
+    }, 800);
+  });
+}
+
+async function exportPDF() {
+  try {
+    const JsPDF = getJsPDF();
+    if (!JsPDF) {
+      alert("Errore: libreria jsPDF non caricata.");
+      console.error("window.jspdf o window.jspdf.jsPDF non disponibili");
+      return;
+    }
+
+    const doc = new JsPDF({ unit: "pt", format: "a4" });
+
+    const bundle = window.lastBundle;
+    let monitoring = window.lastMonitoring;
+    if (!bundle) {
+      alert("Nessun forensic bundle disponibile. Esegui prima una simulazione con detection.");
+      return;
+    }
+
+    const ev = bundle.event || {};
+    const air = ev.SensorAir || {};
+    const sub = ev.SensorSubstance || {};
+    const gps = ev.SensorGPS || {};
+    const piml = ev.PIML_Features || {};
+    const inf = ev.Inference || {};
+    const evMonitoring = ev.Monitoring || {};
+    const modelOps = ev.ModelOps || {};
+    const forensicExport = ev.ForensicExport || {};
+    const artifacts = ev.artifacts || {};
+
+    if (!monitoring) monitoring = evMonitoring || {};
+
+    // ------ PAGE 1: MAP ------
+    let mapData = null;
+    try {
+      mapData = await renderPdfMap();
+    } catch (e) {
+      console.error("Errore nel renderPdfMap:", e);
+    }
 
     const pageWidth = doc.internal.pageSize.getWidth();
-    const marginX = 50;
-    const maxWidth = pageWidth - marginX - 40;
+    const pageHeight = doc.internal.pageSize.getHeight();
 
-    checkPage(50);  // controllo prima di scrivere il blocco
+    doc.setFontSize(20);
+    doc.text("Forensic Detection Report – Map Overview", pageWidth / 2, 40, { align: "center" });
 
-    // LABEL
-    doc.setFontSize(11);
-    doc.text(label + ":", marginX, y);
-    y += 14;
-
-    // HASH (piccolo + formattato)
-    if (isHash) {
-      value = formatHash(value);
-      doc.setFontSize(9);
+    if (mapData) {
+      const mapW = pageWidth - 80;
+      const mapH = mapW * 0.66;
+      doc.addImage(mapData, "PNG", 40, 60, mapW, mapH);
     } else {
-      doc.setFontSize(11);
+      doc.setFontSize(12);
+      doc.text("Map snapshot not available.", 40, 80);
     }
 
-    // WRAPPING MULTILINE
-    const lines = doc.splitTextToSize(String(value), maxWidth);
+    // ------ PAGE 2+: REPORT ------
+    doc.addPage();
+    let y = 40;
 
-    for (let line of lines) {
-      checkPage(20);
-      doc.text(line, marginX + 20, y);
-      y += 14;
-    }
+    const checkPage = (extra = 40) => {
+      if (y + extra > pageHeight - 40) {
+        doc.addPage();
+        y = 40;
+      }
+    };
 
-    y += 6;
-  };
+    const section = (title) => {
+      checkPage(60);
+      doc.setFontSize(16);
+      doc.text(title, 40, y);
+      y += 10;
+      doc.setLineWidth(0.5);
+      doc.line(40, y, pageWidth - 40, y);
+      y += 20;
+    };
 
-  // --- Contenuto report ---
+    const field = (name, val) => {
+      checkPage(30);
 
-  addSection("General Info");
-  addField("Simulation ID", ev.simulation_id);
-  addField("Timestamp", ev.timestamp);
+      const value = (val !== undefined && val !== null) ? String(val) : "N/A";
 
-  addSection("Detected Substance");
-  addField("Name", ev.SensorSubstance.compound_name);
-  addField("Confidence", ev.Inference.confidence_score);
+      const labelX = 40;
+      const valueX = 220;   // ← spostato più a destra per leggibilità
+      const maxWidth = pageWidth - valueX - 40;
 
-  addSection("Environmental Conditions");
-  addField("Temperature (°C)", ev.SensorAir.temperature_C);
-  addField("Humidity (%)", ev.SensorAir["humidity_%"]);
-  addField("Wind", `${ev.SensorAir.wind_speed_mps} m/s @ ${ev.SensorAir.wind_dir_deg}°`);
-  addField("Stability Class", ev.SensorAir.stability_class);
+      doc.setFontSize(12);
+      doc.text(name + ":", labelX, y);
 
-  addSection("GPS");
-  addField("Latitude", ev.SensorGPS.latitude);
-  addField("Longitude", ev.SensorGPS.longitude);
+      const wrapped = doc.splitTextToSize(value, maxWidth);
+      doc.text(wrapped, valueX, y);
 
-  addSection("Monitoring");
-  addField("Model Version", monitoring.model_version);
-  addField("Latency (ms)", monitoring.latency_ms);
-  addField("Drift Score", monitoring.drift_score);
-  addField("Stability Index", monitoring.stability_index);
+      y += wrapped.length * 14;
+      y += 6;
+    };
 
-  addSection("Security & Audit");
-  addField("Forensic bundle hash (SHA256)", bundle.hash_sha256, { isHash: true });
-  addField("Bundle name", bundle.bundle_name);
-  addField("Bundle signature", bundle.signature);
 
-  doc.save(`forensic_report_${ev.simulation_id}.pdf`);
+    // Event metadata
+    section("Event metadata");
+    field("Simulation ID", ev.simulation_id);
+    field("Timestamp", ev.timestamp);
+    field("Bundle name", bundle.bundle_name);
+    field("SHA256", bundle.hash_sha256);
+
+    // Environmental
+    section("Environmental conditions");
+    field("Temperature (°C)", air.temperature_C);
+    field("Humidity (%)", air["humidity_%"]);
+    field("Wind", `${air.wind_speed_mps} m/s @ ${air.wind_dir_deg}°`);
+    field("Stability class", air.stability_class);
+
+    // Substance
+    section("Detected substance");
+    field("Compound", sub.compound_name);
+    field("Formula", sub.molecular_formula);
+    field("Noise", sub.noise_level);
+    field("Concentration", (sub.concentration_series_mg_m3 || []).join(", "));
+
+    // PIML
+    section("PIML features");
+    field("Sigma_y", piml.sigma_y);
+    field("Sigma_z", piml.sigma_z);
+    field("Péclet number", piml.pe_number);
+    field("Stability index", piml.stability_index);
+
+    // Location
+    section("Location");
+    field("Latitude", gps.latitude);
+    field("Longitude", gps.longitude);
+    field("Altitude", gps.altitude_m);
+
+    // Inference
+    section("Inference");
+    field("Predicted class", inf.predicted_class);
+    field("Confidence", inf.confidence_score);
+    field("Dispersion map ID", inf.dispersion_map_id);
+
+    // Monitoring
+    section("Monitoring");
+    field("Model version", monitoring.model_version);
+    field("Latency (ms)", monitoring.latency_ms);
+    field("Drift score", monitoring.drift_score);
+    field("MSE free", monitoring.mse_free);
+
+    // ModelOps
+    section("ModelOps");
+    field("Registry ID", modelOps.model_registry_id);
+    field("Training data version", modelOps.training_data_version);
+    field("Retraining trigger", modelOps.retraining_trigger);
+
+    // Artifacts
+    section("Artifacts");
+    field("Model hash", artifacts.model_hash);
+    field("Concentration map hash", artifacts.concentration_map_hash);
+    field("Training version", artifacts.training_data_version);
+
+    // Audit
+    section("Security & Audit");
+    field("Bundle signature", bundle.signature);
+    field("Export signature", forensicExport.signature);
+    field("Compliance tags", (forensicExport.compliance_tags || []).join(", "));
+
+    const simId = ev.simulation_id || "unknown";
+    doc.save(`forensic_report_${simId}.pdf`);
+  } catch (err) {
+    console.error("Errore nella generazione del PDF:", err);
+    alert("Errore durante la generazione del PDF. Controlla la console del browser per i dettagli.");
+  }
 }
+
 
 function colorizeMetric(el, value, thresholds) {
   // pulisci eventuali classi precedenti
@@ -472,11 +617,8 @@ function connectWebSocket() {
         fillOpacity: 0.25,
       }).addTo(map);
 
-      vanMarker = L.circleMarker([vLat, vLon], {
-        radius: 6,
-        color: "#38bdf8",
-        fillColor: "#0ea5e9",
-        fillOpacity: 1.0,
+      vanMarker = L.marker([vLat, vLon], {
+        icon: vanIcon
       }).addTo(map);
 
       pathLatLngs = [[vLat, vLon]];
