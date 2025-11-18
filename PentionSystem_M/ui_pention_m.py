@@ -396,7 +396,16 @@ async def simulation_loop(force_near=False):
             # detection? → esegui pipeline
             if state.detected:
                 result = call_ingestion_pipeline(sim_id, lat, lon)
-                monitoring = get_last_monitoring()
+
+                # 1) Prova a usare il blocco 'monitoring' restituito da api_ingestion
+                monitoring = None
+                if isinstance(result.get("body"), dict):
+                    monitoring = result["body"].get("monitoring")
+
+                # 2) Se per qualunque motivo manca, fallback al log del monitoring service
+                if monitoring is None:
+                    monitoring = get_last_monitoring()
+
                 registry = get_model_registry()
                 bundle = get_last_forensic_bundle()
 
@@ -438,7 +447,15 @@ async def simulation_loop(force_near=False):
                 })
 
                 result = call_ingestion_pipeline(sim_id, van_lat, van_lon)
-                monitoring = get_last_monitoring()
+
+                # prova a usare il monitoring restituito dall'ingestion; se manca, fallback al log
+                monitoring = None
+                if isinstance(result.get("body"), dict):
+                    monitoring = result["body"].get("monitoring")
+
+                if monitoring is None:
+                    monitoring = get_last_monitoring()
+
                 registry = get_model_registry()
                 bundle = get_last_forensic_bundle()
 
@@ -450,6 +467,7 @@ async def simulation_loop(force_near=False):
                     "registry": registry,
                     "forensic_bundle": bundle,
                 })
+
                 break
 
             await broadcast({

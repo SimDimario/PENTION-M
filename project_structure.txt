@@ -530,7 +530,24 @@
 │   │   ├── bundle_20251117_132805_ae568e9f.json
 │   │   ├── bundle_20251117_141112_851d8fab.json
 │   │   ├── bundle_20251117_144603_2b1fb6ad.json
-│   │   └── bundle_20251117_151047_efe19585.json
+│   │   ├── bundle_20251117_151047_efe19585.json
+│   │   ├── bundle_20251117_151616_36a64b09.json
+│   │   ├── bundle_20251117_152715_8ff7de96.json
+│   │   ├── bundle_20251117_153247_171f3de4.json
+│   │   ├── bundle_20251117_153613_ab4beaa3.json
+│   │   ├── bundle_20251117_154650_7d284ab1.json
+│   │   ├── bundle_20251117_161131_d8f1ddb5.json
+│   │   ├── bundle_20251117_170225_3127ac72.json
+│   │   ├── bundle_20251117_171038_227c3df1.json
+│   │   ├── bundle_20251117_174419_ab82e73f.json
+│   │   ├── bundle_20251117_175626_9902116e.json
+│   │   ├── bundle_20251117_180337_3188b144.json
+│   │   ├── bundle_20251118_100408_f90b3473.json
+│   │   ├── bundle_20251118_101356_8a382094.json
+│   │   ├── bundle_20251118_104136_e18c2753.json
+│   │   ├── bundle_20251118_105719_7f801f18.json
+│   │   ├── bundle_20251118_111029_608e9ba3.json
+│   │   └── bundle_20251118_112046_b7d1ec82.json
 │   ├── ingestion_log.jsonl
 │   └── monitoring_log.jsonl
 ├── osm_cache

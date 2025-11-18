@@ -114,6 +114,17 @@ class SimulationData(BaseModel):
 # FUNZIONI DI SUPPORTO
 # ============================================================
 
+def stability_to_index(stab: str) -> float:
+    mapping = {
+        "A": 1.0,
+        "B": 2.0,
+        "C": 3.0,
+        "D": 4.0,
+        "E": 5.0,
+        "F": 6.0
+    }
+    return mapping.get(stab.upper(), 4.0)  # default = neutral
+
 def generate_concentration_map_from_gaussian(sensor_air: dict):
     """
     Esegue una simulazione GaussianPuff e restituisce la mappa di concentrazione 2D.
@@ -123,7 +134,7 @@ def generate_concentration_map_from_gaussian(sensor_air: dict):
         config = ModelConfig(
             days=1,
             RH=0.6,  # umidità relativa media
-            aerosol_type=None,  # o NPS.CATHINONE_ANALOGUES se vuoi specificarlo
+            aerosol_type=None,  # o NPS.CATHINONE_ANALOGUES
             humidify=False,
             stability_profile=StabilityType.CONSTANT,
             stability_value=PasquillGiffordStability.SLIGHTLY_UNSTABLE,
@@ -144,9 +155,7 @@ def generate_concentration_map_from_gaussian(sensor_air: dict):
 
     except Exception as e:
         print(f"[WARN] GaussianPuff simulation failed: {e}")
-        # Restituisci una mappa coerente con il modello PIML (500x500)
         return np.zeros((500, 500)).tolist()
-
 
 def append_log(entry: dict):
     """Salva i log in formato JSON lines"""
@@ -240,11 +249,9 @@ def ingest_data(sim_data: SimulationData):
     )
 
     # === Inoltro ai servizi MLOps (monitoring + forensic) ===
-
     # === Carica la versione modello dal registry e forza la versione utilizzata ===
     effective_model_version = "PIML_v1"  # default iniziale se registry assente
 
-    # 🔵 VERSIONING coerente (solo registry)
     if os.path.exists(MODEL_REGISTRY_PATH):
         try:
             with open(MODEL_REGISTRY_PATH, "r", encoding="utf-8") as f:
@@ -256,20 +263,20 @@ def ingest_data(sim_data: SimulationData):
         except Exception as e:
             print(f"[WARN] Errore lettura registry: {e}")
     else:
-        print("[INFO] 🛈 Registry assente → default PIML_v1")
-
+        print("Registry assente → default PIML_v1")
 
     # Forziamo il model_version usato per monitoring
     sim_data.Monitoring.model_version = effective_model_version
 
+    # --- Calcolo latenza reale e invio ai servizi MLOps ---
 
-    # Costruzione payload compatibile con MonitoringEvent
+    # 1) Costruisco il payload SENZA drift_value e latency (placeholder)
     monitoring_payload = {
         "simulation_id": sim_data.simulation_id,
         "timestamp": sim_data.timestamp,
         "SensorAir": {
             "temperature_C": sim_data.SensorAir.temperature_C,
-            "humidity_%": sim_data.SensorAir.humidity_,  # alias corretto!
+            "humidity_%": sim_data.SensorAir.humidity_,
             "wind_speed_mps": sim_data.SensorAir.wind_speed_mps,
             "wind_dir_deg": sim_data.SensorAir.wind_dir_deg,
             "stability_class": sim_data.SensorAir.stability_class
@@ -279,7 +286,7 @@ def ingest_data(sim_data: SimulationData):
             "sigma_z": sim_data.PIML_Features.sigma_z,
             "pe_number": sim_data.PIML_Features.pe_number,
             "wind_vector": sim_data.PIML_Features.wind_vector,
-            "stability_index": sim_data.PIML_Features.stability_index
+            "stability_index": stability_to_index(sim_data.SensorAir.stability_class)
         },
         "Inference": {
             "dispersion_map_id": sim_data.Inference.dispersion_map_id,
@@ -289,8 +296,8 @@ def ingest_data(sim_data: SimulationData):
         },
         "Monitoring": {
             "model_version": sim_data.Monitoring.model_version,
-            "drift_score": sim_data.Monitoring.drift_score,
-            "latency_ms": sim_data.Monitoring.latency_ms,
+            "drift_score": sim_data.Monitoring.drift_score,     # TEMP
+            "latency_ms": sim_data.Monitoring.latency_ms,       # TEMP
             "mse_free": sim_data.Monitoring.mse_free
         },
         "ModelOps": {
@@ -299,20 +306,43 @@ def ingest_data(sim_data: SimulationData):
             "retraining_trigger": sim_data.ModelOps.retraining_trigger
         }
     }
-    # === Calcolo latenza reale e invio ai servizi MLOps ===
+
+    # 2) Misuro la latenza della POST /monitor_event
     t0 = time.time()
-    resp_monitoring = safe_post("http://mlops_monitoring:8012/monitor_event", monitoring_payload, label="Monitoring")
+    resp_monitoring = safe_post(
+        "http://mlops_monitoring:8012/monitor_event",
+        monitoring_payload,
+        label="Monitoring"
+    )
     t1 = time.time()
+
     latency_ms = round((t1 - t0) * 1000, 2)
 
-    # Aggiorna anche il drift in base alla risposta
-    drift_value = resp_monitoring.get("stored", {}).get("drift_score", sim_data.Monitoring.drift_score)
+    # 3) Recupero drift calcolato dal monitoring service
+    if isinstance(resp_monitoring, dict):
+        drift_value = resp_monitoring.get("stored", {}).get("drift_score")
+    else:
+        drift_value = None
 
-    # Aggiorna il payload con la latenza reale (per log interni e forensic)
+    # fallback se nulla arrivasse
+    if drift_value is None:
+        drift_value = sim_data.Monitoring.drift_score
+
+    print(f"[INFO] Latenza reale misurata: {latency_ms} ms, drift: {drift_value}")
+
+    # 4) Aggiorno il payload interno (per forensic e UI)
     monitoring_payload["Monitoring"]["latency_ms"] = latency_ms
     monitoring_payload["Monitoring"]["drift_score"] = drift_value
 
-    print(f"[INFO] Latenza reale misurata: {latency_ms} ms, drift: {drift_value}")
+    # 5) Oggetto monitoring per la UI
+    monitoring_out = {
+        "simulation_id": sim_data.simulation_id,
+        "model_version": sim_data.Monitoring.model_version,
+        "latency_ms": latency_ms,
+        "drift_score": drift_value,
+        "stability_index": stability_to_index(sim_data.SensorAir.stability_class),
+        "confidence": sim_data.Inference.confidence_score,
+    }
 
     # Costruzione payload compatibile con ForensicEvent
     forensic_payload = {
@@ -341,7 +371,7 @@ def ingest_data(sim_data: SimulationData):
             "sigma_y": sim_data.PIML_Features.sigma_y,
             "sigma_z": sim_data.PIML_Features.sigma_z,
             "pe_number": sim_data.PIML_Features.pe_number,
-            "stability_index": sim_data.PIML_Features.stability_index
+            "stability_index": stability_to_index(sim_data.SensorAir.stability_class)
         },
         "Inference": {
             "predicted_class": sim_data.Inference.predicted_class or "",
@@ -350,8 +380,8 @@ def ingest_data(sim_data: SimulationData):
         },
         "Monitoring": {
             "model_version": sim_data.Monitoring.model_version or "v1.0",
-            "drift_score": sim_data.Monitoring.drift_score or 0.0,
-            "latency_ms": sim_data.Monitoring.latency_ms or 0,
+            "drift_score": drift_value,
+            "latency_ms": latency_ms,
             "mse_free": sim_data.Monitoring.mse_free or 0.0
         },
         "ModelOps": {
@@ -371,6 +401,7 @@ def ingest_data(sim_data: SimulationData):
     return {
         "status": "ok",
         "message": "Simulation data ingested successfully",
+        "monitoring": monitoring_out,   # <-- aggiunto
         "forwarded_to": {
             "correction_dispersion_piml": resp_correction.get("status", "ok"),
             "source_localization_piml": resp_localization.get("status", "ok"),
@@ -385,9 +416,8 @@ if __name__ == "__main__":
     import uvicorn
     from SensorSim_M import SensorSimM
 
-    # Genera un esempio di simulazione e lo invia localmente
     sim = SensorSimM(seed=42)
     payload = sim.generate_simulation()
 
-    print("🧩 Avvio test locale /ingest_data ...")
+    print("Avvio test locale /ingest_data ...")
     uvicorn.run(app, host="0.0.0.0", port=8011)

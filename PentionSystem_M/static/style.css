@@ -103,10 +103,6 @@ button:disabled {
   color: #9ca3af;
 }
 
-.metric-value {
-  font-weight: 500;
-}
-
 .log-box {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
                "Liberation Mono", "Courier New", monospace;
@@ -384,4 +380,38 @@ pre {
 
 .popup-content::-webkit-scrollbar-thumb:hover {
   background: #51749f;
+}
+
+/* === Metric badges & animations === */
+
+.badge-green {
+  color: #10b981;
+  font-weight: 600;
+  animation: pulse-green 2s infinite;
+}
+
+.badge-yellow {
+  color: #facc15;
+  font-weight: 600;
+}
+
+.badge-red {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+/* transizione generale per qualunque metric-value */
+.metric-value {
+  font-weight: 500;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.metric-value.updated {
+  transform: scale(1.07);
+}
+
+@keyframes pulse-green {
+  0% { text-shadow: 0 0 0 #10b981; }
+  50% { text-shadow: 0 0 6px #10b981; }
+  100% { text-shadow: 0 0 0 #10b981; }
 }

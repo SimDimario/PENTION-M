@@ -10,26 +10,23 @@ const btnReset = document.getElementById("btn-reset");
 const statusPill = document.getElementById("status-pill");
 const statusText = document.getElementById("status-text");
 const simIdEl = document.getElementById("sim-id");
-//const simDistEl = document.getElementById("sim-distance");
 const modelVersionEl = document.getElementById("model-version");
 const driftScoreEl = document.getElementById("drift-score");
 const latencyEl = document.getElementById("latency-ms");
 const bundleNameEl = document.getElementById("bundle-name");
 const bundleLogEl = document.getElementById("bundle-log");
-const monitoringLogEl = document.getElementById("monitoring-log");
 const processingCard = document.getElementById("processing-card");
 const simCard = document.getElementById("sim-card");
 const bundleCard = document.getElementById("bundle-card");
-const monitorCard = document.getElementById("monitor-card");
+const stabilityEl = document.getElementById("stability-index");
+const confidenceEl = document.getElementById("confidence");
+
 
 function showSimCard() { simCard.style.display = "block"; }
 function hideSimCard() { simCard.style.display = "none"; }
 
 function showBundleCard() { bundleCard.style.display = "block"; }
 function hideBundleCard() { bundleCard.style.display = "none"; }
-
-function showMonitorCard() { monitorCard.style.display = "block"; }
-function hideMonitorCard() { monitorCard.style.display = "none"; }
 
 function showProcessing() {
   processingCard.style.display = "block";
@@ -93,9 +90,7 @@ function ensureMap() {
         attribution: "&copy; OpenStreetMap contributors",
       }
     );
-
     tileLayer.addTo(map);
-
     hideLoading();
   }
 }
@@ -116,49 +111,54 @@ function resetGraphics() {
   pathLatLngs = [];
   simIdEl.textContent = "–";
   //simDistEl.textContent = "–";
+  modelVersionEl.textContent = "–";
+  driftScoreEl.textContent = "–";
+  latencyEl.textContent = "–";
+  stabilityEl.textContent = "–";
+  confidenceEl.textContent = "–";
 }
 
+
 function renderBundleSummary(bundle) {
-  if (!bundle || !bundle.event) {
-    return "No bundle data.";
-  }
+  if (!bundle || !bundle.event) return "No bundle data.";
 
   const ev = bundle.event;
 
   return `
-    <div class="metric-row"><div class="metric-label">Timestamp</div><div>${ev.timestamp}</div></div>
-    <div class="metric-row"><div class="metric-label">Substance</div><div>${ev.SensorSubstance.compound_name}</div></div>
-    <div class="metric-row"><div class="metric-label">Confidence</div><div>${ev.Inference.confidence_score}</div></div>
-    <div class="metric-row"><div class="metric-label">Wind</div><div>${ev.SensorAir.wind_speed_mps} m/s @ ${ev.SensorAir.wind_dir_deg}°</div></div>
-    <div class="metric-row"><div class="metric-label">GPS</div><div>${Number(ev.SensorGPS.latitude).toFixed(5)}, ${Number(ev.SensorGPS.longitude).toFixed(5)}</div></div>
-    <div class="metric-row"><div class="metric-label">Hash</div><div>${bundle.hash_sha256.slice(0,12)}...</div></div>
+    <div class="metric-row">
+      <div class="metric-label">Timestamp</div>
+      <div class="metric-value">${ev.timestamp}</div>
+    </div>
+
+    <div class="metric-row">
+      <div class="metric-label">Substance</div>
+      <div class="metric-value">${ev.SensorSubstance.compound_name}</div>
+    </div>
+
+    <div class="metric-row">
+      <div class="metric-label">Confidence</div>
+      <div class="metric-value">${ev.Inference.confidence_score}</div>
+    </div>
+
+    <div class="metric-row">
+      <div class="metric-label">Wind</div>
+      <div class="metric-value">${ev.SensorAir.wind_speed_mps} m/s @ ${ev.SensorAir.wind_dir_deg}°</div>
+    </div>
+
+    <div class="metric-row">
+      <div class="metric-label">GPS</div>
+      <div class="metric-value">${Number(ev.SensorGPS.latitude).toFixed(5)}, ${Number(ev.SensorGPS.longitude).toFixed(5)}</div>
+    </div>
+
+    <div class="metric-row">
+      <div class="metric-label">Hash</div>
+      <div class="metric-value">${bundle.hash_sha256.slice(0,12)}...</div>
+    </div>
 
     <button class="small-btn" onclick="openReportPopup()">View full report</button>
   `;
 }
 
-function renderMonitoringSummary(m) {
-  return `
-    <div class="metric-row"><div class="metric-label">Model</div><div>${m.model_version}</div></div>
-    <div class="metric-row"><div class="metric-label">Drift</div><div>${m.drift_score}</div></div>
-    <div class="metric-row"><div class="metric-label">Latency</div><div>${m.latency_ms} ms</div></div>
-    <div class="metric-row"><div class="metric-label">Stability</div><div>${m.stability_index}</div></div>
-    <div class="metric-row"><div class="metric-label">Confidence</div><div>${m.confidence}</div></div>
-
-    <button class="small-btn" onclick="toggleMonitoringJson()">Show raw JSON</button>
-    <pre id="monitoring-json" style="display:none;">${JSON.stringify(m, null, 2)}</pre>
-  `;
-}
-
-// function toggleBundleJson() {
-//   const el = document.getElementById("bundle-json");
-//   el.style.display = el.style.display === "none" ? "block" : "none";
-// }
-
-function toggleMonitoringJson() {
-  const el = document.getElementById("monitoring-json");
-  el.style.display = el.style.display === "none" ? "block" : "none";
-}
 
 function openReportPopup() {
   const bundle = window.lastBundle;
@@ -287,6 +287,19 @@ function downloadBundleJson() {
   URL.revokeObjectURL(url);
 }
 
+function formatHash(hash) {
+    if (!hash || typeof hash !== "string") return String(hash);
+
+    // Rimuove eventuali spazi o prefissi strani
+    const clean = hash.replace(/\s+/g, "");
+
+    // Divide in gruppi da 4 caratteri
+    const grouped = clean.match(/.{1,4}/g) || [];
+
+    // Ritorna stringa a gruppi separati da spazio
+    return grouped.join(" ");
+}
+
 async function exportPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -323,22 +336,59 @@ async function exportPDF() {
       doc.text("Forensic Detection Report", pageWidth / 2, y, { align: "center" });
       y += 40;
   } catch (e) {}
+  const checkPage = (extra = 30) => {
+    const pageHeight = doc.internal.pageSize.getHeight();
+    if (y + extra >= pageHeight - 40) {
+      doc.addPage();
+      y = 40;
+    }
+  };
   const addSection = (title) => {
-    // spazio extra prima di ogni sezione
+    checkPage(60);
+
     y += 16;
     doc.setFontSize(16);
     doc.text(title, 40, y);
+
     y += 6;
     doc.setLineWidth(0.5);
     doc.line(40, y, 550, y);
+
     y += 16;
   };
 
-  const addField = (label, value) => {
+  const addField = (label, value, opts = {}) => {
+    const { isHash = false } = opts;
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const marginX = 50;
+    const maxWidth = pageWidth - marginX - 40;
+
+    checkPage(50);  // controllo prima di scrivere il blocco
+
+    // LABEL
     doc.setFontSize(11);
-    doc.text(`${label}:`, 50, y);
-    doc.text(String(value), 200, y);
-    y += 18;
+    doc.text(label + ":", marginX, y);
+    y += 14;
+
+    // HASH (piccolo + formattato)
+    if (isHash) {
+      value = formatHash(value);
+      doc.setFontSize(9);
+    } else {
+      doc.setFontSize(11);
+    }
+
+    // WRAPPING MULTILINE
+    const lines = doc.splitTextToSize(String(value), maxWidth);
+
+    for (let line of lines) {
+      checkPage(20);
+      doc.text(line, marginX + 20, y);
+      y += 14;
+    }
+
+    y += 6;
   };
 
   // --- Contenuto report ---
@@ -368,13 +418,29 @@ async function exportPDF() {
   addField("Stability Index", monitoring.stability_index);
 
   addSection("Security & Audit");
-  addField("Forensic bundle hash (SHA256)", bundle.hash_sha256);
+  addField("Forensic bundle hash (SHA256)", bundle.hash_sha256, { isHash: true });
   addField("Bundle name", bundle.bundle_name);
   addField("Bundle signature", bundle.signature);
 
   doc.save(`forensic_report_${ev.simulation_id}.pdf`);
 }
 
+function colorizeMetric(el, value, thresholds) {
+  // pulisci eventuali classi precedenti
+  el.classList.remove("badge-green", "badge-yellow", "badge-red", "updated");
+
+  if (value >= thresholds.red) {
+    el.classList.add("badge-red");
+  } else if (value >= thresholds.yellow) {
+    el.classList.add("badge-yellow");
+  } else {
+    el.classList.add("badge-green");
+  }
+
+  // piccolo effetto "dash"
+  el.classList.add("updated");
+  setTimeout(() => el.classList.remove("updated"), 300);
+}
 
 function connectWebSocket() {
   if (ws && ws.readyState === WebSocket.OPEN) {
@@ -460,18 +526,48 @@ function connectWebSocket() {
       if (msg.simulation_id) {
         simIdEl.textContent = msg.simulation_id;
       }
-      if (msg.monitoring) {
-        monitoringLogEl.innerHTML = renderMonitoringSummary(msg.monitoring);
-        showMonitorCard();
 
+      if (msg.monitoring) {
         if (msg.monitoring.model_version) {
           modelVersionEl.textContent = msg.monitoring.model_version;
         }
-        if (msg.monitoring.latency_ms !== undefined) {
-          latencyEl.textContent = msg.monitoring.latency_ms + " ms";
-        }
+
         if (msg.monitoring.drift_score !== undefined) {
-          driftScoreEl.textContent = msg.monitoring.drift_score;
+          const drift = msg.monitoring.drift_score;
+          driftScoreEl.textContent = drift.toFixed ? drift.toFixed(3) : drift;
+          // soglie esempio: >0.3 giallo, >0.6 rosso
+          colorizeMetric(driftScoreEl, drift, { yellow: 0.3, red: 0.6 });
+        }
+
+        if (msg.monitoring.latency_ms !== undefined) {
+          const latVal = msg.monitoring.latency_ms;
+          latencyEl.textContent = latVal + " ms";
+          colorizeMetric(latencyEl, latVal, { yellow: 80, red: 200 });
+        }
+
+        if (msg.monitoring.stability_index !== undefined) {
+          const stab = msg.monitoring.stability_index;
+          stabilityEl.textContent = stab.toFixed ? stab.toFixed(2) : stab;
+          // opzionale: niente threshold, solo animazione leggera
+          stabilityEl.classList.add("updated");
+          setTimeout(() => stabilityEl.classList.remove("updated"), 300);
+        }
+
+        if (msg.monitoring.confidence !== undefined) {
+          const c = msg.monitoring.confidence;
+          confidenceEl.textContent = c.toFixed ? c.toFixed(2) : c;
+
+          confidenceEl.classList.remove("badge-green", "badge-yellow", "badge-red", "updated");
+          // qui high = good → logica invertita rispetto a drift/latency
+          if (c >= 0.9) {
+            confidenceEl.classList.add("badge-green");
+          } else if (c >= 0.7) {
+            confidenceEl.classList.add("badge-yellow");
+          } else {
+            confidenceEl.classList.add("badge-red");
+          }
+          confidenceEl.classList.add("updated");
+          setTimeout(() => confidenceEl.classList.remove("updated"), 300);
         }
       }
 
@@ -485,6 +581,7 @@ function connectWebSocket() {
         showBundleCard();
       }
     }
+
 
     if (msg.type === "sim_end") {
       setStatus("idle");
@@ -524,7 +621,6 @@ btnReset.addEventListener("click", async () => {
   hideLoading();
   hideSimCard();
   hideBundleCard();
-  hideMonitorCard();
 });
 
 ensureMap();
