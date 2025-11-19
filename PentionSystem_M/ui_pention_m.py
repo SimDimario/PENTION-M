@@ -25,7 +25,7 @@ os.makedirs(CACHE_DIR, exist_ok=True)
 
 GRAPH_PATH = os.path.join(CACHE_DIR, "amsterdam_drive.graphml")
 DETECTION_RADIUS_M = 300.0  # raggio operativo per "detection"
-STEP_DELAY_SEC = 0.5        # tempo tra un passo e l'altro
+STEP_DELAY_SEC = 0.18        # tempo tra un passo e l'altro
 LOG_DIR = "/logs"
 INGESTION_URL = "http://mlops_ingestion:8011/ingest_data"
 
@@ -298,12 +298,12 @@ async def simulation_loop(force_near=False):
         # SCEGLIAMO POSIZIONE VAN
         # ------------------------------
         if force_near:
-            # scegli un nodo a distanza 1000–1400 m dalla sorgente
+            # scegli un nodo a distanza 1800–2000 m dalla sorgente
             candidates = []
             for n in nodes:
                 lat, lon = node_latlon(G, n)
                 dist = haversine_m(lat, lon, source_lat, source_lon)
-                if 1000 < dist < 1400:
+                if 1800 < dist < 2000:
                     candidates.append(n)
 
             if candidates:
@@ -376,7 +376,8 @@ async def simulation_loop(force_near=False):
                     "distance_m": dist
                 })
 
-                if dist <= DETECTION_RADIUS_M:
+                INNER_RADIUS = DETECTION_RADIUS_M - 50
+                if dist <= INNER_RADIUS:
                     state.detected = True
                     state.running = False
 
@@ -434,7 +435,10 @@ async def simulation_loop(force_near=False):
 
             dist = haversine_m(van_lat, van_lon, source_lat, source_lon)
 
-            if dist <= DETECTION_RADIUS_M:
+            # isteresi per evitare detection “istantanea” prima che entri visivamente
+            INNER_RADIUS = DETECTION_RADIUS_M - 50
+
+            if dist <= INNER_RADIUS:
                 state.detected = True
                 state.running = False
 
@@ -448,14 +452,7 @@ async def simulation_loop(force_near=False):
 
                 result = call_ingestion_pipeline(sim_id, van_lat, van_lon)
 
-                # prova a usare il monitoring restituito dall'ingestion; se manca, fallback al log
-                monitoring = None
-                if isinstance(result.get("body"), dict):
-                    monitoring = result["body"].get("monitoring")
-
-                if monitoring is None:
-                    monitoring = get_last_monitoring()
-
+                monitoring = result.get("body", {}).get("monitoring") or get_last_monitoring()
                 registry = get_model_registry()
                 bundle = get_last_forensic_bundle()
 
@@ -469,6 +466,7 @@ async def simulation_loop(force_near=False):
                 })
 
                 break
+
 
             await broadcast({
                 "type": "van_update",
