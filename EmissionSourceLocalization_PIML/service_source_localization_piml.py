@@ -74,4 +74,11 @@ def predict_source_piml(sensors: list, n_sensor_operating: int):
     conf = float(np.exp(-np.var(y_pred)))  # semplice proxy di confidenza
 
     logger.info(f"[PIML] Predicted source: x={x:.3f}, y={y:.3f}, conf={conf:.3f}")
-    return {"x": x, "y": y, "confidence": conf, "model_version": MODEL_VERSION}
+    return {
+        "x": x,
+        "y": y,
+        "confidence": conf,
+        "model_version": MODEL_VERSION,
+        "predicted_source_xy": [x, y]
+    }
+

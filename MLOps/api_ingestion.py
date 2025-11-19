@@ -183,12 +183,19 @@ def safe_post(url: str, payload: dict, label: str):
 @app.post("/ingest_data")
 def ingest_data(sim_data: SimulationData):
     """
-    Riceve i dati simulati o reali e li inoltra ai moduli MLOps/PIML.
+    Riceve i dati simulati o reali e li inoltra ai moduli PIML/MLOps.
+    Qui avviene la vera catena fisica + ML:
+
+    UI → (SensorAir, SensorGPS, dati di base)
+       → GaussianPuff (mappa di concentrazione)
+       → CorrectionDispersion_PIML (mappa corretta + versioning)
+       → SensorSim_M (rete sensori)
+       → EmissionSourceLocalization_PIML (stima sorgente)
+       → Monitoring (drift + latency reali)
+       → Forensic (bundle firmato con artifact hash)
     """
 
-    data_dict = json.loads(sim_data.json(by_alias=True))
-
-    # Log dell’evento
+    # ============= 0. LOG INIZIALE =============
     append_log({
         "timestamp": datetime.utcnow().isoformat(),
         "simulation_id": sim_data.simulation_id,
@@ -201,22 +208,21 @@ def ingest_data(sim_data: SimulationData):
         }
     })
 
-    import numpy as np  # necessario per la generazione dei sensori
-
-    # Inoltro ai moduli PIML (endpoint attuali)
-    # === Esecuzione GaussianPuff e generazione mappa fisica ===
+    # ============= 1. GAUSSIAN PUFF: MAPPA DI CONCENTRAZIONE =============
+    # Usa il vento simulato come input fisico principale.
     conc_map_real = generate_concentration_map_from_gaussian({
         "wind_speed_mps": sim_data.SensorAir.wind_speed_mps
+        # in futuro possiamo passare anche stability_class ecc.
     })
 
-    # Carica mappa edifici reale se disponibile
+    # ============= 2. CORRECTION DISPERSION PIML =============
+    # Carichiamo la binary map reale (edifici Amsterdam) se disponibile
     try:
         from CorrectionDispersion_PIML.api_correction_piml import DEFAULT_BUILDING_MAP
         building_map_real = DEFAULT_BUILDING_MAP.tolist()
     except Exception:
         building_map_real = []
 
-    # === Invio reale al servizio CorrectionDispersion_PIML ===
     resp_correction = safe_post(
         "http://correction_dispersion_piml:8008/correct_dispersion",
         {
@@ -229,28 +235,108 @@ def ingest_data(sim_data: SimulationData):
                 sim_data.PIML_Features.sigma_z,
                 sim_data.PIML_Features.pe_number,
                 sim_data.PIML_Features.stability_index
-            ]
+            ],
         },
-        label="CorrectionDispersion_PIML"
+        label="CorrectionDispersion_PIML",
     )
 
-    # === Generazione sensori fisici campionati dalla mappa ===
-    conc_map_np = np.array(conc_map_real)
-    building_map_np = np.array(building_map_real) if len(building_map_real) > 0 else np.zeros_like(conc_map_np)
-    payload_sensors = generate_sensor_network_from_map(conc_map_np, building_map_np, n_sensors=5, fault_rate=0.1, seed=42)
+    # Se il servizio PIML restituisce una mappa corretta, usiamo quella;
+    # altrimenti ricadiamo sulla mappa GaussianPuff.
+    corrected_map = None
+    if isinstance(resp_correction, dict):
+        corrected_map = resp_correction.get("corrected_map") or resp_correction.get("corrected_concentration_map")
+
+    if corrected_map is None:
+        corrected_map = conc_map_real
+
+    conc_map_np = np.array(corrected_map, dtype=np.float32)
+    building_map_np = (
+        np.array(building_map_real, dtype=np.float32)
+        if len(building_map_real) > 0
+        else np.zeros_like(conc_map_np)
+    )
+
+    # ============= 3. SENSOR NETWORK + SOURCE LOCALIZATION PIML =============
+    # Generiamo sensori virtuali campionando dalla mappa 2D corretta.
+    payload_sensors = generate_sensor_network_from_map(
+        conc_map_np,
+        building_map_np,
+        n_sensors=5,
+        fault_rate=0.1,
+        seed=42,
+    )
 
     resp_localization = safe_post(
         "http://loc_emission_source_piml:8010/predict_source_piml",
         {
             "payload_sensors": payload_sensors,
-            "n_sensor_operating": len(payload_sensors)
+            "n_sensor_operating": len(payload_sensors),
         },
-        label="EmissionSourceLocalization_PIML"
+        label="EmissionSourceLocalization_PIML",
     )
 
-    # === Inoltro ai servizi MLOps (monitoring + forensic) ===
-    # === Carica la versione modello dal registry e forza la versione utilizzata ===
-    effective_model_version = "PIML_v1"  # default iniziale se registry assente
+    # Estraggo, se presente, una stima della sorgente da resp_localization
+    def extract_source_xy(resp: dict):
+        if not isinstance(resp, dict):
+            return None
+        for key in ["predicted_source_xy", "predicted_source", "source_xy", "source"]:
+            coords = resp.get(key)
+            if isinstance(coords, (list, tuple)) and len(coords) >= 2:
+                try:
+                    return [float(coords[0]), float(coords[1])]
+                except Exception:
+                    pass
+        return None
+
+    predicted_source_xy = extract_source_xy(resp_localization)
+
+    # ============= 4. CLASSIFICATORE NPS (DNN) =============
+    # Generiamo uno spettro finto basato sulla sostanza dichiarata
+    def synthetic_spectrum(compound_name: str, noise_level=0.05):
+        np.random.seed(42)
+        base = np.random.rand(600) * noise_level
+
+        peaks = {
+            "Cathinone": [58, 91, 105, 120],
+            "Cannabinoid": [231, 314, 328],
+            "Fentanyl analogue": [245, 336, 372],
+            "Phenethylamine": [30, 121, 150],
+            "Piperazine": [56, 84, 140],
+            "Tryptamine": [44, 65, 130],
+        }
+
+        for p in peaks.get(compound_name, [100, 200, 300]):
+            if 1 <= p < 600:
+                base[p] += 1.0
+
+        # normalizzazione finale
+        base = base / (np.max(base) + 1e-8)
+        return base.tolist()
+
+    predicted_class = sim_data.SensorSubstance.compound_name
+    confidence_clf = 0.90  # default
+
+    try:
+        fake_spectrum = synthetic_spectrum(
+            sim_data.SensorSubstance.compound_name,
+            noise_level=sim_data.SensorSubstance.noise_level
+        )
+
+        resp_nps = safe_post(
+            "http://clas_nps:8000/predict_dnn",
+            {"spectra": [fake_spectrum]},
+            label="ClassificatoreNPS (DNN)",
+        )
+
+        if isinstance(resp_nps, dict) and "predictions" in resp_nps:
+            predicted_class = resp_nps["predictions"][0]
+            confidence_clf = 0.90
+
+    except Exception as e:
+        print(f"[WARN] NPS classifier error: {e}")
+
+    # ============= 5. MODEL REGISTRY E VERSIONING =============
+    effective_model_version = "PIML_v1"  # default se registry assente
 
     if os.path.exists(MODEL_REGISTRY_PATH):
         try:
@@ -265,12 +351,10 @@ def ingest_data(sim_data: SimulationData):
     else:
         print("Registry assente → default PIML_v1")
 
-    # Forziamo il model_version usato per monitoring
+    # Forziamo la model_version usata per il monitoring
     sim_data.Monitoring.model_version = effective_model_version
 
-    # --- Calcolo latenza reale e invio ai servizi MLOps ---
-
-    # 1) Costruisco il payload SENZA drift_value e latency (placeholder)
+    # ============= 6. MONITORING: DRIFT + LATENZA REALE =============
     monitoring_payload = {
         "simulation_id": sim_data.simulation_id,
         "timestamp": sim_data.timestamp,
@@ -279,72 +363,74 @@ def ingest_data(sim_data: SimulationData):
             "humidity_%": sim_data.SensorAir.humidity_,
             "wind_speed_mps": sim_data.SensorAir.wind_speed_mps,
             "wind_dir_deg": sim_data.SensorAir.wind_dir_deg,
-            "stability_class": sim_data.SensorAir.stability_class
+            "stability_class": sim_data.SensorAir.stability_class,
         },
         "PIML_Features": {
             "sigma_y": sim_data.PIML_Features.sigma_y,
             "sigma_z": sim_data.PIML_Features.sigma_z,
             "pe_number": sim_data.PIML_Features.pe_number,
             "wind_vector": sim_data.PIML_Features.wind_vector,
-            "stability_index": stability_to_index(sim_data.SensorAir.stability_class)
+            # qui usiamo uno stability_index coerente con la classe Pasquill
+            "stability_index": stability_to_index(sim_data.SensorAir.stability_class),
         },
         "Inference": {
             "dispersion_map_id": sim_data.Inference.dispersion_map_id,
-            "predicted_source_location": sim_data.Inference.predicted_source_location,
-            "predicted_class": sim_data.Inference.predicted_class,
-            "confidence_score": sim_data.Inference.confidence_score
+            "predicted_source_location": (
+                predicted_source_xy
+                if predicted_source_xy is not None
+                else sim_data.Inference.predicted_source_location
+            ),
+            "predicted_class": predicted_class,
+            "confidence_score": confidence_clf,
         },
         "Monitoring": {
             "model_version": sim_data.Monitoring.model_version,
-            "drift_score": sim_data.Monitoring.drift_score,     # TEMP
-            "latency_ms": sim_data.Monitoring.latency_ms,       # TEMP
-            "mse_free": sim_data.Monitoring.mse_free
+            "drift_score": sim_data.Monitoring.drift_score,  # placeholder, verrà aggiornato
+            "latency_ms": sim_data.Monitoring.latency_ms,    # placeholder, verrà aggiornato
+            "mse_free": sim_data.Monitoring.mse_free,
         },
         "ModelOps": {
             "model_registry_id": sim_data.ModelOps.model_registry_id,
             "training_data_version": sim_data.ModelOps.training_data_version,
-            "retraining_trigger": sim_data.ModelOps.retraining_trigger
-        }
+            "retraining_trigger": sim_data.ModelOps.retraining_trigger,
+        },
     }
 
-    # 2) Misuro la latenza della POST /monitor_event
+    # Misuriamo la latenza della POST /monitor_event
     t0 = time.time()
     resp_monitoring = safe_post(
         "http://mlops_monitoring:8012/monitor_event",
         monitoring_payload,
-        label="Monitoring"
+        label="Monitoring",
     )
     t1 = time.time()
-
     latency_ms = round((t1 - t0) * 1000, 2)
 
-    # 3) Recupero drift calcolato dal monitoring service
+    # Recuperiamo il drift calcolato dal monitoring service
     if isinstance(resp_monitoring, dict):
-        drift_value = resp_monitoring.get("stored", {}).get("drift_score")
+        drift_value = (
+            resp_monitoring.get("stored", {}).get("drift_score")
+            or sim_data.Monitoring.drift_score
+        )
     else:
-        drift_value = None
-
-    # fallback se nulla arrivasse
-    if drift_value is None:
         drift_value = sim_data.Monitoring.drift_score
 
     print(f"[INFO] Latenza reale misurata: {latency_ms} ms, drift: {drift_value}")
 
-    # 4) Aggiorno il payload interno (per forensic e UI)
+    # aggiorniamo il payload interno (per forensic e UI)
     monitoring_payload["Monitoring"]["latency_ms"] = latency_ms
     monitoring_payload["Monitoring"]["drift_score"] = drift_value
 
-    # 5) Oggetto monitoring per la UI
     monitoring_out = {
         "simulation_id": sim_data.simulation_id,
         "model_version": sim_data.Monitoring.model_version,
         "latency_ms": latency_ms,
         "drift_score": drift_value,
         "stability_index": stability_to_index(sim_data.SensorAir.stability_class),
-        "confidence": sim_data.Inference.confidence_score,
+        "confidence": confidence_clf,
     }
 
-    # Costruzione payload compatibile con ForensicEvent
+    # ============= 7. FORENSIC: COSTRUZIONE EVENTO COMPLETO =============
     forensic_payload = {
         "simulation_id": sim_data.simulation_id,
         "timestamp": sim_data.timestamp,
@@ -353,59 +439,79 @@ def ingest_data(sim_data: SimulationData):
             "humidity_%": sim_data.SensorAir.humidity_,
             "wind_speed_mps": sim_data.SensorAir.wind_speed_mps,
             "wind_dir_deg": sim_data.SensorAir.wind_dir_deg,
-            "stability_class": sim_data.SensorAir.stability_class
+            "stability_class": sim_data.SensorAir.stability_class,
         },
         "SensorSubstance": {
-            "compound_name": sim_data.SensorSubstance.compound_name,
+            "compound_name": predicted_class,  # → classificatore NPS (quando attivo)
             "molecular_formula": sim_data.SensorSubstance.molecular_formula,
             "concentration_series_mg_m3": sim_data.SensorSubstance.concentration_series_mg_m3,
             "unit": sim_data.SensorSubstance.unit,
-            "noise_level": sim_data.SensorSubstance.noise_level
+            "noise_level": sim_data.SensorSubstance.noise_level,
         },
         "SensorGPS": {
             "latitude": sim_data.SensorGPS.latitude,
             "longitude": sim_data.SensorGPS.longitude,
-            "altitude_m": sim_data.SensorGPS.altitude_m
+            "altitude_m": sim_data.SensorGPS.altitude_m,
         },
         "PIML_Features": {
             "sigma_y": sim_data.PIML_Features.sigma_y,
             "sigma_z": sim_data.PIML_Features.sigma_z,
             "pe_number": sim_data.PIML_Features.pe_number,
-            "stability_index": stability_to_index(sim_data.SensorAir.stability_class)
+            "stability_index": stability_to_index(sim_data.SensorAir.stability_class),
         },
         "Inference": {
-            "predicted_class": sim_data.Inference.predicted_class or "",
-            "confidence_score": sim_data.Inference.confidence_score or 0.0,
-            "dispersion_map_id": sim_data.Inference.dispersion_map_id or ""
+            "predicted_class": predicted_class or "",
+            "confidence_score": confidence_clf or 0.0,
+            "dispersion_map_id": sim_data.Inference.dispersion_map_id or "",
+            "predicted_source_location": (
+                predicted_source_xy
+                if predicted_source_xy is not None
+                else sim_data.Inference.predicted_source_location
+            ),
         },
         "Monitoring": {
             "model_version": sim_data.Monitoring.model_version or "v1.0",
             "drift_score": drift_value,
             "latency_ms": latency_ms,
-            "mse_free": sim_data.Monitoring.mse_free or 0.0
+            "mse_free": sim_data.Monitoring.mse_free or 0.0,
         },
         "ModelOps": {
             "model_registry_id": sim_data.ModelOps.model_registry_id or "",
             "training_data_version": sim_data.ModelOps.training_data_version or "",
-            "retraining_trigger": bool(sim_data.ModelOps.retraining_trigger)
+            "retraining_trigger": bool(sim_data.ModelOps.retraining_trigger),
         },
         "ForensicExport": {
             "export_file": sim_data.ForensicExport.export_file or "",
             "hash_sha256": sim_data.ForensicExport.hash_sha256 or "",
             "signature": sim_data.ForensicExport.signature or "",
-            "compliance_tags": sim_data.ForensicExport.compliance_tags or []
-        }
+            "compliance_tags": sim_data.ForensicExport.compliance_tags or [],
+        },
+        # metadati grezzi dei servizi PIML → utili per audit/analisi offline
+        "PIML_Runtime": {
+            "correction_dispersion_piml": resp_correction,
+            "source_localization_piml": resp_localization,
+        },
     }
-    safe_post("http://mlops_forensic:8013/log_forensic", forensic_payload, label="Forensic")
 
+    safe_post(
+        "http://mlops_forensic:8013/log_forensic",
+        forensic_payload,
+        label="Forensic",
+    )
+
+    # Risposta verso la UI
     return {
         "status": "ok",
         "message": "Simulation data ingested successfully",
-        "monitoring": monitoring_out,   # <-- aggiunto
+        "monitoring": monitoring_out,
         "forwarded_to": {
-            "correction_dispersion_piml": resp_correction.get("status", "ok"),
-            "source_localization_piml": resp_localization.get("status", "ok"),
-        }
+            "correction_dispersion_piml": resp_correction.get("status", "ok")
+            if isinstance(resp_correction, dict)
+            else "unknown",
+            "source_localization_piml": resp_localization.get("status", "ok")
+            if isinstance(resp_localization, dict)
+            else "unknown",
+        },
     }
 
 # ============================================================
