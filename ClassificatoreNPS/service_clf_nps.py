@@ -90,14 +90,19 @@ def pipe_clf_dnn(spectra: np.ndarray):
         spectra_scaled = scaler_dnn.transform(spectra)
         logger.debug("Scaler applicato")
         predictions_raw = dnn_clf.predict(spectra_scaled, verbose=0)
+        probs = predictions_raw[0]
+        probs = probs / (np.sum(probs) + 1e-8)
+        confidence = float(np.max(probs))
         predictions = [legends.get(int(np.argmax(p)), f"Classe {int(np.argmax(p))}") for p in predictions_raw]
         logger.info("Predizione DNN completata")
     except Exception as e:
         logger.exception("Errore durante la predizione DNN")
         raise RuntimeError(f"Error during DNN prediction: {str(e)}")
 
-    return np.array(predictions)
-
+    return {
+        "predictions": predictions,
+        "confidence": confidence
+    }
 
 def pipe_clf_brf(spectra: np.ndarray):
     if spectra is None or len(spectra) == 0:

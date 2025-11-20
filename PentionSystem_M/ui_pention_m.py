@@ -168,100 +168,70 @@ def get_last_forensic_bundle():
     except Exception:
         return None
 
-def build_simulation_payload(sim_id: str, lat: float, lon: float):
+def build_simulation_payload(sim_id: str, lat: float, lon: float, source_lat: float, source_lon: float):
     """
-    Costruisce un payload compatibile con SimulationData di api_ingestion.py
-    (sample_simulation_data.json come riferimento).
+    NUOVA VERSIONE — La UI ora invia solo dati grezzi.
+    Tutto ciò che riguarda PIML, Inference, Monitoring, ModelOps
+    verrà calcolato in ingestion.
     """
+
     now_iso = datetime.utcnow().isoformat() + "Z"
 
-    # parametri "sensati ma fittizi" – il punto è attivare la pipeline reale
     temperature = round(random.uniform(15.0, 25.0), 1)
     humidity = round(random.uniform(0.4, 0.8), 2)
     wind_speed = round(random.uniform(2.0, 7.0), 1)
     wind_dir_deg = random.choice([90, 135, 180, 225, 270])
-    stability_class = random.choice(["B", "C", "D", "NEUTRAL"])
+    stability_class = random.choice(["B", "C", "D"])
 
-    compound_name = random.choice(["Cathinone", "Cannabinoid", "Fentanyl analogue"])
-    conc_series = [round(x, 4) for x in [0.002, 0.004, 0.0035, 0.0021]]
+    # La sostanza è l’unico dato usato per generare lo spettro NPS
+    compound_name = random.choice([
+        "Cathinone analogues",
+        "Cannabinoid analogues",
+        "Fentanyl analogues"
+    ])
 
-    sigma_y = round(random.uniform(0.1, 0.3), 3)
-    sigma_z = round(random.uniform(0.05, 0.2), 3)
-    pe_number = round(random.uniform(0.8, 1.5), 2)
-    stability_idx = round(random.uniform(3.0, 5.0), 2)
-
-    dispersion_map_id = f"map_{sim_id}"
+    noise_level = 0.05
 
     payload = {
         "simulation_id": sim_id,
         "timestamp": now_iso,
+
+        # Sensore ambientale
         "SensorAir": {
             "temperature_C": temperature,
-            "humidity_%": humidity,  # alias corretto per humidity_
+            "humidity_%": humidity,
             "wind_speed_mps": wind_speed,
             "wind_dir_deg": wind_dir_deg,
             "stability_class": stability_class,
         },
+
+        # Sensore sostanza (solo info minime)
         "SensorSubstance": {
             "compound_name": compound_name,
-            "molecular_formula": "C9H11NO",
-            "concentration_series_mg_m3": conc_series,
+            "molecular_formula": "",
+            "concentration_series_mg_m3": [],  # ora TOCCA A INGESTION generarli
             "unit": "mg/m3",
-            "noise_level": 0.05,
+            "noise_level": noise_level,
         },
+
+        # GPS del van
         "SensorGPS": {
             "latitude": lat,
             "longitude": lon,
             "altitude_m": 2.0,
         },
-        "PIML_Features": {
-            "sigma_y": sigma_y,
-            "sigma_z": sigma_z,
-            "pe_number": pe_number,
-            "wind_vector": [wind_speed, wind_dir_deg],
-            "stability_index": stability_idx,
-        },
-        "Inference": {
-            "dispersion_map_id": dispersion_map_id,
-            "predicted_source_location": [0.0, 0.0],
-            "predicted_class": compound_name,
-            "confidence_score": 0.93,
-        },
-        "Monitoring": {
-            "model_version": "PIML_v1.0",
-            "drift_score": 0.0,
-            "latency_ms": 0,
-            "mse_free": 0.0,
-        },
-        "ModelOps": {
-            "model_registry_id": "mdl_pention_m_ui",
-            "training_data_version": "PIML_DS_v1",
-            "retraining_trigger": False,
-        },
-        "UI_Output": {
-            "dashboard_tabs": [
-                "Simulation",
-                "Dispersion",
-                "Source",
-                "NPS",
-                "MLOps Monitoring",
-            ],
-            "visualization_files": ["dispersion_map.html", "wind_rose.png"],
-        },
-        "ForensicExport": {
-            "export_file": f"{sim_id}_bundle.zip",
-            "hash_sha256": "dummy_hash",
-            "signature": "dummy_signature",
-            "compliance_tags": ["GDPR", "LEA_audit_ok"],
-        },
+
+        # NEW: inviamo anche la posizione della sorgente (scelta dalla UI)
+        "SourceGPS": {
+            "latitude": source_lat,
+            "longitude": source_lon
+        }
     }
+
     return payload
 
-def call_ingestion_pipeline(sim_id: str, lat: float, lon: float):
-    """
-    Chiamata sincrona a /ingest_data. Il van si ferma finché non finisce.
-    """
-    payload = build_simulation_payload(sim_id, lat, lon)
+def call_ingestion_pipeline(sim_id: str, lat: float, lon: float, source_lat: float, source_lon: float):
+    payload = build_simulation_payload(sim_id, lat, lon, source_lat, source_lon)
     try:
         resp = requests.post(INGESTION_URL, json=payload, timeout=180)
         try:
@@ -396,7 +366,7 @@ async def simulation_loop(force_near=False):
 
             # detection? → esegui pipeline
             if state.detected:
-                result = call_ingestion_pipeline(sim_id, lat, lon)
+                result = call_ingestion_pipeline(sim_id, lat, lon, source_lat, source_lon)
 
                 # 1) Prova a usare il blocco 'monitoring' restituito da api_ingestion
                 monitoring = None
@@ -450,7 +420,7 @@ async def simulation_loop(force_near=False):
                     "distance_m": dist,
                 })
 
-                result = call_ingestion_pipeline(sim_id, van_lat, van_lon)
+                result = call_ingestion_pipeline(sim_id, van_lat, van_lon, source_lat, source_lon)
 
                 monitoring = result.get("body", {}).get("monitoring") or get_last_monitoring()
                 registry = get_model_registry()

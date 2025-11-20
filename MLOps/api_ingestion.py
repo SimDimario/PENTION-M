@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, validator
 from typing import Optional, List
 from datetime import datetime
+from typing import Optional
 import requests
 import json
 import os
@@ -55,6 +56,10 @@ class SensorGPS(BaseModel):
     longitude: float
     altitude_m: float
 
+class SourceGPS(BaseModel):
+    latitude: float
+    longitude: float
+
 class PIMLFeatures(BaseModel):
     sigma_y: float
     sigma_z: float
@@ -95,12 +100,15 @@ class SimulationData(BaseModel):
     SensorAir: SensorAir
     SensorSubstance: SensorSubstance
     SensorGPS: SensorGPS
-    PIML_Features: PIMLFeatures
-    Inference: Inference
-    Monitoring: Monitoring
-    ModelOps: ModelOps
-    UI_Output: UIOutput
-    ForensicExport: ForensicExport
+    SourceGPS: SourceGPS
+
+    # valori calcolati da ingestion → NON obbligatori in ingresso
+    PIML_Features: Optional[PIMLFeatures] = None
+    Inference: Optional[Inference] = None
+    Monitoring: Optional[Monitoring] = None
+    ModelOps: Optional[ModelOps] = None
+    UI_Output: Optional[UIOutput] = None
+    ForensicExport: Optional[ForensicExport] = None
 
     @validator("timestamp")
     def validate_timestamp(cls, v):
@@ -125,9 +133,11 @@ def stability_to_index(stab: str) -> float:
     }
     return mapping.get(stab.upper(), 4.0)  # default = neutral
 
-def generate_concentration_map_from_gaussian(sensor_air: dict):
+def generate_concentration_map_from_gaussian(sensor_air: dict, src_x: int, src_y: int):
     """
-    Esegue una simulazione GaussianPuff e restituisce la mappa di concentrazione 2D.
+    Esegue una simulazione GaussianPuff e restituisce:
+    - conc_map_2d: mappa media nel tempo (H x W, normalizzata 0–1)
+    - conc_time_series: media spaziale nel tempo (len = n_step temporali)
     """
     try:
         # Configurazione base del modello
@@ -142,20 +152,25 @@ def generate_concentration_map_from_gaussian(sensor_air: dict):
             wind_speed=sensor_air["wind_speed_mps"],
             output=OutputType.PLAN_VIEW,
             dispersion_model=DispersionModelType.PLUME,
-            stacks=[(0, 0, 10.0, 20.0)],
+            stacks=[(src_x, src_y, 10.0, 20.0)],
             grid_size=500
         )
 
         C1, (x_grid, y_grid, z_grid), *_ = run_dispersion_model(config)
-        # Prendiamo la media temporale come mappa 2D (ground-level)
-        conc_map = np.mean(C1, axis=2)
-        # Normalizziamo tra 0–1 per stabilità numerica
-        conc_map = conc_map / np.max(conc_map + 1e-8)
-        return conc_map.tolist()
+        # C1 shape: (H, W, T)
+
+        # mappa media nel tempo (H x W)
+        conc_map_2d = np.mean(C1, axis=2)
+        conc_map_2d = conc_map_2d / np.max(conc_map_2d + 1e-8)
+
+        # serie temporale (media su spazio, funzione del tempo)
+        conc_time_series = np.mean(C1, axis=(0, 1))
+
+        return conc_map_2d.tolist(), conc_time_series.tolist()
 
     except Exception as e:
         print(f"[WARN] GaussianPuff simulation failed: {e}")
-        return np.zeros((500, 500)).tolist()
+        return np.zeros((500, 500)).tolist(), [0.0]
 
 def append_log(entry: dict):
     """Salva i log in formato JSON lines"""
@@ -200,7 +215,7 @@ def ingest_data(sim_data: SimulationData):
         "timestamp": datetime.utcnow().isoformat(),
         "simulation_id": sim_data.simulation_id,
         "status": "received",
-        "model_version_used": sim_data.Monitoring.model_version,
+        "model_version_used": (sim_data.Monitoring.model_version if sim_data.Monitoring else "unknown"),
         "sensor_data": {
             "temperature": sim_data.SensorAir.temperature_C,
             "humidity": sim_data.SensorAir.humidity_,
@@ -209,11 +224,60 @@ def ingest_data(sim_data: SimulationData):
     })
 
     # ============= 1. GAUSSIAN PUFF: MAPPA DI CONCENTRAZIONE =============
+
+    # Convertiamo la posizione reale (lat/lon) in coordinate locali per GaussianPuff (0..499)
+    def latlon_to_grid(lat, lon, lat0=52.35, lat1=52.39, lon0=4.88, lon1=4.92, grid=500):
+        gx = int((lon - lon0) / (lon1 - lon0) * (grid - 1))
+        gy = int((lat - lat0) / (lat1 - lat0) * (grid - 1))
+        gx = max(0, min(grid-1, gx))
+        gy = max(0, min(grid-1, gy))
+        return gx, gy
+
+    src_x, src_y = latlon_to_grid(
+        sim_data.SourceGPS.latitude,
+        sim_data.SourceGPS.longitude
+    )
+
     # Usa il vento simulato come input fisico principale.
-    conc_map_real = generate_concentration_map_from_gaussian({
-        "wind_speed_mps": sim_data.SensorAir.wind_speed_mps
-        # in futuro possiamo passare anche stability_class ecc.
-    })
+    conc_map_real, conc_time_series = generate_concentration_map_from_gaussian(
+        {
+            "wind_speed_mps": sim_data.SensorAir.wind_speed_mps
+            # in futuro possiamo passare anche stability_class ecc.
+        },
+        src_x,
+        src_y
+    )
+
+    from gaussianPuff.sigmaCalculation import calc_sigmas
+
+    distances = np.sqrt((np.arange(500)[:,None] - src_y)**2 + 
+                        (np.arange(500)[None,:] - src_x)**2) * 10  # scala metri
+
+    stab_class = sim_data.SensorAir.stability_class.upper()
+    pg_map = { "A":1, "B":2, "C":3, "D":4, "E":5, "F":6 }
+    pg_category = pg_map.get(stab_class, 4)
+
+    sigma_y_map, sigma_z_map = calc_sigmas(pg_category, distances)
+
+    sigma_y = float(np.mean(sigma_y_map))
+    sigma_z = float(np.mean(sigma_z_map))
+
+    # Péclet number semplificato
+    pe_number = sim_data.SensorAir.wind_speed_mps / (sigma_y + 1e-6)
+
+    stability_index = stability_to_index(sim_data.SensorAir.stability_class)
+
+    # Se la UI non ha mandato PIML_Features → li generiamo noi
+    sim_data.PIML_Features = PIMLFeatures(
+        sigma_y=sigma_y,
+        sigma_z=sigma_z,
+        pe_number=pe_number,
+        wind_vector=[
+            np.cos(np.radians(sim_data.SensorAir.wind_dir_deg)),
+            np.sin(np.radians(sim_data.SensorAir.wind_dir_deg)),
+        ],
+        stability_index=stability_index
+    )
 
     # ============= 2. CORRECTION DISPERSION PIML =============
     # Carichiamo la binary map reale (edifici Amsterdam) se disponibile
@@ -231,10 +295,10 @@ def ingest_data(sim_data: SimulationData):
             "concentration_map": conc_map_real,
             "building_map": building_map_real,
             "global_features": [
-                sim_data.PIML_Features.sigma_y,
-                sim_data.PIML_Features.sigma_z,
-                sim_data.PIML_Features.pe_number,
-                sim_data.PIML_Features.stability_index
+                sigma_y,
+                sigma_z,
+                pe_number,
+                stability_index
             ],
         },
         label="CorrectionDispersion_PIML",
@@ -256,6 +320,9 @@ def ingest_data(sim_data: SimulationData):
         else np.zeros_like(conc_map_np)
     )
 
+    # === MSE tra mappa GaussianPuff e mappa corretta PIML ===
+    mse_free = float(np.mean((np.array(conc_map_real, dtype=np.float32) - conc_map_np) ** 2))
+
     # ============= 3. SENSOR NETWORK + SOURCE LOCALIZATION PIML =============
     # Generiamo sensori virtuali campionando dalla mappa 2D corretta.
     payload_sensors = generate_sensor_network_from_map(
@@ -263,8 +330,24 @@ def ingest_data(sim_data: SimulationData):
         building_map_np,
         n_sensors=5,
         fault_rate=0.1,
-        seed=42,
+        seed=42
     )
+
+    # Sensore mobile (van) → deve avere una riga per ogni time-step
+    for t_idx, conc_val in enumerate(conc_time_series):
+        payload_sensors.append({
+            "sensor_id": 999,
+            "sensor_is_fault": False,
+            "time": float(t_idx),
+            "conc": float(conc_val),
+            "wind_dir_x": np.cos(np.radians(sim_data.SensorAir.wind_dir_deg)),
+            "wind_dir_y": np.sin(np.radians(sim_data.SensorAir.wind_dir_deg)),
+            "wind_speed": sim_data.SensorAir.wind_speed_mps,
+            "wind_type": 1,
+            "gps_x": src_x,
+            "gps_y": src_y,
+            "stability_value": stability_index,
+        })
 
     resp_localization = safe_post(
         "http://loc_emission_source_piml:8010/predict_source_piml",
@@ -290,6 +373,27 @@ def ingest_data(sim_data: SimulationData):
 
     predicted_source_xy = extract_source_xy(resp_localization)
 
+    # 1) Preinizializzazione
+    predicted_class = sim_data.SensorSubstance.compound_name
+    confidence_clf = 0.0
+
+    # 2) Se Inference non esiste → crealo
+    if sim_data.Inference is None:
+        sim_data.Inference = Inference(
+            dispersion_map_id=f"map_{sim_data.simulation_id}",
+            predicted_source_location=(
+                predicted_source_xy if predicted_source_xy is not None else [0.0, 0.0]
+            ),
+            predicted_class=predicted_class,
+            confidence_score=confidence_clf
+        )
+
+    # 3) Ora puoi aggiornare la sorgente stimata
+    if predicted_source_xy is not None:
+        sim_data.Inference.predicted_source_location = predicted_source_xy
+
+
+
     # ============= 4. CLASSIFICATORE NPS (DNN) =============
     # Generiamo uno spettro finto basato sulla sostanza dichiarata
     def synthetic_spectrum(compound_name: str, noise_level=0.05):
@@ -313,9 +417,6 @@ def ingest_data(sim_data: SimulationData):
         base = base / (np.max(base) + 1e-8)
         return base.tolist()
 
-    predicted_class = sim_data.SensorSubstance.compound_name
-    confidence_clf = 0.90  # default
-
     try:
         fake_spectrum = synthetic_spectrum(
             sim_data.SensorSubstance.compound_name,
@@ -328,12 +429,16 @@ def ingest_data(sim_data: SimulationData):
             label="ClassificatoreNPS (DNN)",
         )
 
-        if isinstance(resp_nps, dict) and "predictions" in resp_nps:
-            predicted_class = resp_nps["predictions"][0]
-            confidence_clf = 0.90
+        if isinstance(resp_nps, dict):
+            predicted_class = resp_nps.get("predictions", [predicted_class])[0]
+            confidence_clf = resp_nps.get("confidence", 0.85)
+
+        sim_data.Inference.predicted_class = predicted_class
+        sim_data.Inference.confidence_score = confidence_clf
 
     except Exception as e:
         print(f"[WARN] NPS classifier error: {e}")
+
 
     # ============= 5. MODEL REGISTRY E VERSIONING =============
     effective_model_version = "PIML_v1"  # default se registry assente
@@ -351,8 +456,24 @@ def ingest_data(sim_data: SimulationData):
     else:
         print("Registry assente → default PIML_v1")
 
-    # Forziamo la model_version usata per il monitoring
-    sim_data.Monitoring.model_version = effective_model_version
+    # Se il blocco Monitoring non esiste (UI non lo manda), inizializzalo
+    if sim_data.Monitoring is None:
+        sim_data.Monitoring = Monitoring(
+            model_version=effective_model_version,
+            drift_score=0.0,
+            latency_ms=0,
+            mse_free=0.0
+        )
+    else:
+        sim_data.Monitoring.model_version = effective_model_version
+
+    # Se ModelOps non è presente → creiamo defaults
+    if sim_data.ModelOps is None:
+        sim_data.ModelOps = ModelOps(
+            model_registry_id="mdl_pention_m",
+            training_data_version="PIML_DS_v1",
+            retraining_trigger=False
+        )
 
     # ============= 6. MONITORING: DRIFT + LATENZA REALE =============
     monitoring_payload = {
@@ -385,9 +506,9 @@ def ingest_data(sim_data: SimulationData):
         },
         "Monitoring": {
             "model_version": sim_data.Monitoring.model_version,
-            "drift_score": sim_data.Monitoring.drift_score,  # placeholder, verrà aggiornato
-            "latency_ms": sim_data.Monitoring.latency_ms,    # placeholder, verrà aggiornato
-            "mse_free": sim_data.Monitoring.mse_free,
+            "drift_score": (sim_data.Monitoring.drift_score if sim_data.Monitoring else 0.0),
+            "latency_ms": (sim_data.Monitoring.latency_ms if sim_data.Monitoring else 0),
+            "mse_free": mse_free,
         },
         "ModelOps": {
             "model_registry_id": sim_data.ModelOps.model_registry_id,
@@ -431,6 +552,16 @@ def ingest_data(sim_data: SimulationData):
     }
 
     # ============= 7. FORENSIC: COSTRUZIONE EVENTO COMPLETO =============
+
+    # Se ForensicExport non è presente → creiamo placeholder
+    if sim_data.ForensicExport is None:
+        sim_data.ForensicExport = ForensicExport(
+            export_file=f"{sim_data.simulation_id}_bundle.zip",
+            hash_sha256="",
+            signature="",
+            compliance_tags=[]
+        )
+
     forensic_payload = {
         "simulation_id": sim_data.simulation_id,
         "timestamp": sim_data.timestamp,
@@ -442,9 +573,9 @@ def ingest_data(sim_data: SimulationData):
             "stability_class": sim_data.SensorAir.stability_class,
         },
         "SensorSubstance": {
-            "compound_name": predicted_class,  # → classificatore NPS (quando attivo)
+            "compound_name": predicted_class,
             "molecular_formula": sim_data.SensorSubstance.molecular_formula,
-            "concentration_series_mg_m3": sim_data.SensorSubstance.concentration_series_mg_m3,
+            "concentration_series_mg_m3": conc_time_series,
             "unit": sim_data.SensorSubstance.unit,
             "noise_level": sim_data.SensorSubstance.noise_level,
         },
@@ -473,7 +604,7 @@ def ingest_data(sim_data: SimulationData):
             "model_version": sim_data.Monitoring.model_version or "v1.0",
             "drift_score": drift_value,
             "latency_ms": latency_ms,
-            "mse_free": sim_data.Monitoring.mse_free or 0.0,
+            "mse_free": mse_free,
         },
         "ModelOps": {
             "model_registry_id": sim_data.ModelOps.model_registry_id or "",

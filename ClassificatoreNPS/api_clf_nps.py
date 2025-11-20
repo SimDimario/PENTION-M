@@ -37,13 +37,14 @@ def predict_dnn(input_data: Spectra):
         logger.info(f"Shape input numpy: {mass_spectrum.shape}")
 
         logger.info("Invoco service_clf_nps.pipe_clf_dnn()")
-        predictions = service_clf_nps.pipe_clf_dnn(mass_spectrum)
+        result = service_clf_nps.pipe_clf_dnn(mass_spectrum)
         logger.info("Classificazione DNN completata")
 
-        logger.info(f"predictions: {predictions}")
-
         return JSONResponse(
-            content={"predictions": predictions.tolist()},
+            content={
+                "predictions": result["predictions"],
+                "confidence": result["confidence"]
+            },
             status_code=200
         )
     except Exception as e:
@@ -52,7 +53,6 @@ def predict_dnn(input_data: Spectra):
             content={"error": str(e)},
             status_code=500
         )
-
 
 @app.post("/predict_brf")
 def predict_brf(input_data: Spectra):
