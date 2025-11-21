@@ -7,6 +7,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./ClassificatoreNPS/model:/ClassificatoreNPS/model
+      - ./ClassificatoreNPS/datasetNPS:/ClassificatoreNPS/datasetNPS
 
   correction_dispersion:
     build: ./CorrectionDispersion
@@ -67,6 +68,7 @@ services:
       - ./logs:/logs
       - ./CorrectionDispersion_PIML/models:/CorrectionDispersion_PIML/models
       - ./EmissionSourceLocalization_PIML/models:/EmissionSourceLocalization_PIML/models
+      - ./ClassificatoreNPS/datasetNPS:/ClassificatoreNPS/datasetNPS
     restart: unless-stopped
     depends_on:
       - correction_piml
@@ -137,6 +139,7 @@ services:
     volumes:
       - ./logs:/logs
       - ./osm_cache:/app/cache
+      - ./ClassificatoreNPS/datasetNPS:/app/datasetNPS
     depends_on:
       - mlops_ingestion
       - mlops_monitoring

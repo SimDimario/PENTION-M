@@ -14,10 +14,7 @@ logs/
 dataset/
 datasets/
 data/
-**/dataset*/
-**/data*/
 **/binary_maps_data/
-**/datasetNPS/
 **/example/
 
 # Models (gestiti tramite volume esterno)
@@ -27,7 +24,6 @@ models/
 # Large file formats
 **/*.npy
 **/*.npz
-**/*.csv
 **/*.zip
 **/*.msp
 **/*.xlsx

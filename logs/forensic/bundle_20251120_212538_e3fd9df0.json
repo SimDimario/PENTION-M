@@ -1,0 +1,95 @@
+{
+  "timestamp": "2025-11-20T21:25:38.084725",
+  "bundle_name": "bundle_20251120_212538_e3fd9df0.json",
+  "hash_sha256": "34dbd98559a09d9fc947eeaa36b7365d4407acc079af1e2dd222f3145a2deecb",
+  "signature": "sig_fafc404699114d42",
+  "event": {
+    "simulation_id": "SIM_20251120_212304",
+    "timestamp": "2025-11-20T21:23:12.021023Z",
+    "SensorAir": {
+      "temperature_C": 22.8,
+      "humidity_%": 0.51,
+      "wind_speed_mps": 3.0,
+      "wind_dir_deg": 180,
+      "stability_class": "C"
+    },
+    "SensorSubstance": {
+      "compound_name": "Fentanyl analogues",
+      "molecular_formula": "",
+      "concentration_series_mg_m3": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "unit": "intensity",
+      "noise_level": 0.05
+    },
+    "SensorGPS": {
+      "latitude": 52.3855524,
+      "longitude": 4.9072589,
+      "altitude_m": 2.0
+    },
+    "PIML_Features": {
+      "sigma_y": 235.9980173980077,
+      "sigma_z": 141.2508899811262,
+      "pe_number": 0.01271197114435316,
+      "stability_index": 3.0
+    },
+    "Inference": {
+      "predicted_class": "Fentanyl analogues",
+      "confidence_score": 1.0,
+      "dispersion_map_id": "a13d669e43715786e5a6161ab4c0ead248330fd98b7e4d68696b02f2b56a2174",
+      "predicted_source_location": [
+        86.075892968143,
+        114.68156138999885
+      ]
+    },
+    "Monitoring": {
+      "model_version": "PIML_v1",
+      "drift_score": 0.6771,
+      "latency_ms": 69.78,
+      "mse_free": 175.87252807617188
+    },
+    "ModelOps": {
+      "model_registry_id": "mdl_pention_m",
+      "training_data_version": "PIML_DS_v1",
+      "retraining_trigger": false
+    },
+    "ForensicExport": {
+      "export_file": "SIM_20251120_212304_bundle.zip",
+      "hash_sha256": "",
+      "signature": "",
+      "compliance_tags": [
+        "DRIFT_OK",
+        "LATENCY_OK",
+        "GDPR_SIMULATION_ONLY"
+      ]
+    },
+    "artifacts": {
+      "model_hash": "70dd513e889298e5f084379429143b26b01abeb6756a4b7a2fba25c7f58dad81",
+      "concentration_map_hash": "no_dataset_dir",
+      "training_data_version": "PIML_DS_v1"
+    }
+  }
+}

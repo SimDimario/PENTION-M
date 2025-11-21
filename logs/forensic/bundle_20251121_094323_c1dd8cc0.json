@@ -1,0 +1,95 @@
+{
+  "timestamp": "2025-11-21T09:43:23.002777",
+  "bundle_name": "bundle_20251121_094323_c1dd8cc0.json",
+  "hash_sha256": "ea43504e2591dce984f94a1925577b0c3af127011b60e049d05cf7491187e5c7",
+  "signature": "sig_ddfd56c6627b4390",
+  "event": {
+    "simulation_id": "SIM_20251121_094214",
+    "timestamp": "2025-11-21T09:42:20.662052Z",
+    "SensorAir": {
+      "temperature_C": 16.2,
+      "humidity_%": 0.73,
+      "wind_speed_mps": 7.0,
+      "wind_dir_deg": 270,
+      "stability_class": "C"
+    },
+    "SensorSubstance": {
+      "compound_name": "Fentanyl analogues",
+      "molecular_formula": "",
+      "concentration_series_mg_m3": [
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51,
+        4.179651792255591e-51
+      ],
+      "unit": "intensity",
+      "noise_level": 0.05
+    },
+    "SensorGPS": {
+      "latitude": 52.3594691,
+      "longitude": 4.9230646,
+      "altitude_m": 2.0
+    },
+    "PIML_Features": {
+      "sigma_y": 291.4671192645318,
+      "sigma_z": 174.9453048884269,
+      "pe_number": 0.024016431059691708,
+      "stability_index": 3.0
+    },
+    "Inference": {
+      "predicted_class": "Fentanyl analogues",
+      "confidence_score": 1.0,
+      "dispersion_map_id": "4d131fce37f1722364848d1a53a2ecf9f227739949b1e814e5ec01e646b9845e",
+      "predicted_source_location": [
+        86.075892968143,
+        114.68156138999885
+      ]
+    },
+    "Monitoring": {
+      "model_version": "PIML_v1",
+      "drift_score": 0.8838,
+      "latency_ms": 19.79,
+      "mse_free": 158.23545837402344
+    },
+    "ModelOps": {
+      "model_registry_id": "mdl_pention_m",
+      "training_data_version": "PIML_DS_v1",
+      "retraining_trigger": true
+    },
+    "ForensicExport": {
+      "export_file": "SIM_20251121_094214_bundle.zip",
+      "hash_sha256": "",
+      "signature": "",
+      "compliance_tags": [
+        "DRIFT_HIGH",
+        "LATENCY_OK",
+        "GDPR_SIMULATION_ONLY"
+      ]
+    },
+    "artifacts": {
+      "model_hash": "70dd513e889298e5f084379429143b26b01abeb6756a4b7a2fba25c7f58dad81",
+      "concentration_map_hash": "no_dataset_dir",
+      "training_data_version": "PIML_DS_v1"
+    }
+  }
+}

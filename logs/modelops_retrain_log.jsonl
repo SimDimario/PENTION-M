@@ -1,0 +1,1 @@
+{"timestamp": "2025-11-20T15:20:23.863353", "manual_trigger": true, "new_model_version": "PIML_v2", "metrics": {"description": "Mock retrain executed due to fallback", "drift_reset": true}, "status": "manual_retrained"}

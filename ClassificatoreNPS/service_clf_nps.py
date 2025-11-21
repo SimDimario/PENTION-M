@@ -2,7 +2,9 @@ import numpy as np
 import joblib
 import os
 import logging
+from scipy.special import softmax
 from tensorflow.keras.models import load_model  # type: ignore
+from xgboost import XGBClassifier
 
 # Configurazione logger
 logging.basicConfig(
@@ -16,6 +18,9 @@ dnn_path = os.path.join(base_dir, 'model', 'dnn_spectra_version.keras')
 brf_path = os.path.join(base_dir, 'model', 'balanced_random_forest_brf.pkl')
 scaler_path = os.path.join(base_dir, 'model', 'scale_dnn.pkl')
 
+xgb_model_path = os.path.join(base_dir, "model", "xgb_nps_model.json")
+xgb_scaler_path = os.path.join(base_dir, "model", "xgb_scaler.pkl")
+
 logger.info("Caricamento modelli...")
 dnn_clf = load_model(dnn_path)
 logger.info("DNN caricata")
@@ -23,6 +28,14 @@ brf_clf = joblib.load(brf_path)
 logger.info("BRF caricato")
 scaler_dnn = joblib.load(scaler_path)
 logger.info("Scaler DNN caricato")
+
+# XGB (modello principale)
+xgb_clf = XGBClassifier()
+xgb_clf.load_model(xgb_model_path)
+logger.info("XGB caricato")
+
+xgb_scaler = joblib.load(xgb_scaler_path)
+logger.info("Scaler XGB caricato")
 
 mz_range = np.arange(1, 601)
 
@@ -78,8 +91,10 @@ def _compute_features(spectrum):
         mass_mean, mass_std, mass_density, ppmd, mean_ppmd
     ]
 
-
-def pipe_clf_dnn(spectra: np.ndarray):
+def pipe_clf_dnn(spectra: np.ndarray, T: float = 2.5):
+    """
+    DNN + Temperature Scaling per confidenze realistiche.
+    """
     if spectra is None or len(spectra) == 0:
         raise ValueError("Input spectra is empty or None")
     if spectra.ndim != 2:
@@ -88,21 +103,37 @@ def pipe_clf_dnn(spectra: np.ndarray):
     try:
         logger.info("Inizio predizione DNN")
         spectra_scaled = scaler_dnn.transform(spectra)
-        logger.debug("Scaler applicato")
-        predictions_raw = dnn_clf.predict(spectra_scaled, verbose=0)
-        probs = predictions_raw[0]
-        probs = probs / (np.sum(probs) + 1e-8)
-        confidence = float(np.max(probs))
-        predictions = [legends.get(int(np.argmax(p)), f"Classe {int(np.argmax(p))}") for p in predictions_raw]
-        logger.info("Predizione DNN completata")
+
+        # Otteniamo le logits PRIMA della softmax
+        # (le DNN Keras con activation='softmax' NON espongono le logits)
+        # Quindi ricaviamo logits = log(prob) * T (inverse softmax approximation)
+        probs_raw = dnn_clf.predict(spectra_scaled, verbose=0)[0]
+
+        # Evita log(0)
+        probs_raw = np.clip(probs_raw, 1e-9, 1.0)
+
+        # ricostruzione logits approssimati
+        logits = np.log(probs_raw)
+
+        # apply temperature scaling
+        scaled_logits = logits / T
+        scaled_probs = softmax(scaled_logits)
+
+        pred_idx = int(np.argmax(scaled_probs))
+        confidence = float(np.max(scaled_probs))
+
+        predictions = [legends.get(pred_idx, f"Classe {pred_idx}")]
+        logger.info("Predizione DNN completata (Temperature Scaling)")
+
+        return {
+            "predictions": predictions,
+            "confidence": confidence
+        }
+
     except Exception as e:
         logger.exception("Errore durante la predizione DNN")
         raise RuntimeError(f"Error during DNN prediction: {str(e)}")
 
-    return {
-        "predictions": predictions,
-        "confidence": confidence
-    }
 
 def pipe_clf_brf(spectra: np.ndarray):
     if spectra is None or len(spectra) == 0:
@@ -126,3 +157,36 @@ def pipe_clf_brf(spectra: np.ndarray):
         raise RuntimeError(f"Error during BRF prediction: {str(e)}")
 
     return np.array(predictions)
+
+def pipe_clf_xgb(spectra: np.ndarray):
+    if spectra is None or len(spectra) == 0:
+        raise ValueError("Input spectra is empty or None")
+    if spectra.ndim != 2:
+        raise ValueError(f"Expected 2D array (n_samples, 600), got {spectra.shape}")
+
+    try:
+        # scaling
+        spectra_scaled = xgb_scaler.transform(spectra)
+
+        # probabilità grezze
+        raw_probs = xgb_clf.predict_proba(spectra_scaled)[0]
+
+        # ---- COARSE TEMPERATURE SCALING ----
+        T = 1.8      # valore che abbassa confidenze unrealistiche
+        logits = np.log(np.clip(raw_probs, 1e-12, 1))
+        logits_scaled = logits / T
+        probs = softmax(logits_scaled)
+
+        pred_idx = int(np.argmax(probs))
+        confidence = float(np.max(probs))
+        prediction = legends.get(pred_idx, f"Class {pred_idx}")
+
+        return {
+            "predictions": [prediction],
+            "confidence": confidence,
+            "model": "XGB_v2"
+        }
+
+    except Exception as e:
+        raise RuntimeError(f"Error during XGB prediction: {str(e)}")
+

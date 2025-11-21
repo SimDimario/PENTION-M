@@ -1,0 +1,95 @@
+{
+  "timestamp": "2025-11-20T21:07:50.583528",
+  "bundle_name": "bundle_20251120_210750_28f8abe8.json",
+  "hash_sha256": "6aefffceea9121d6e3975b3f58de4e4bb4a517c5b7c07366b2b5d0cf740126ac",
+  "signature": "sig_8e64ae649f5b4184",
+  "event": {
+    "simulation_id": "SIM_20251120_210536",
+    "timestamp": "2025-11-20T21:05:40.679700Z",
+    "SensorAir": {
+      "temperature_C": 17.5,
+      "humidity_%": 0.42,
+      "wind_speed_mps": 4.7,
+      "wind_dir_deg": 135,
+      "stability_class": "C"
+    },
+    "SensorSubstance": {
+      "compound_name": "Piperazine analogues",
+      "molecular_formula": "",
+      "concentration_series_mg_m3": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "unit": "mg/m3",
+      "noise_level": 0.05
+    },
+    "SensorGPS": {
+      "latitude": 52.3960075,
+      "longitude": 4.9419746,
+      "altitude_m": 2.0
+    },
+    "PIML_Features": {
+      "sigma_y": 344.0467272999523,
+      "sigma_z": 206.99452415969196,
+      "pe_number": 0.013660935022472795,
+      "stability_index": 3.0
+    },
+    "Inference": {
+      "predicted_class": "Piperazine analogues",
+      "confidence_score": 1.0,
+      "dispersion_map_id": "93a598dfbee085e411a811f6e17bc4184307a9ea8cdaf755b8eaeef3450061fc",
+      "predicted_source_location": [
+        86.07589296814304,
+        114.68156138999886
+      ]
+    },
+    "Monitoring": {
+      "model_version": "PIML_v1",
+      "drift_score": 0.9704,
+      "latency_ms": 39.29,
+      "mse_free": 146.3020477294922
+    },
+    "ModelOps": {
+      "model_registry_id": "mdl_pention_m",
+      "training_data_version": "PIML_DS_v1",
+      "retraining_trigger": true
+    },
+    "ForensicExport": {
+      "export_file": "SIM_20251120_210536_bundle.zip",
+      "hash_sha256": "",
+      "signature": "",
+      "compliance_tags": [
+        "DRIFT_HIGH",
+        "LATENCY_OK",
+        "GDPR_SIMULATION_ONLY"
+      ]
+    },
+    "artifacts": {
+      "model_hash": "70dd513e889298e5f084379429143b26b01abeb6756a4b7a2fba25c7f58dad81",
+      "concentration_map_hash": "no_dataset_dir",
+      "training_data_version": "PIML_DS_v1"
+    }
+  }
+}

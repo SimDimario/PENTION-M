@@ -21,11 +21,12 @@ const simCard = document.getElementById("sim-card");
 const bundleCard = document.getElementById("bundle-card");
 const stabilityEl = document.getElementById("stability-index");
 const confidenceEl = document.getElementById("confidence");
+const btnDebug = document.getElementById("btn-debug");
 const canvasRenderer = L.canvas({ padding: 0.5 });
 
 function getJsPDF() {
   if (window.jspdf && window.jspdf.jsPDF) return window.jspdf.jsPDF;
-  if (window.jsPDF) return window.jsPDF; // fallback nel caso venga esposto così
+  if (window.jsPDF) return window.jsPDF;
   return null;
 }
 
@@ -45,22 +46,32 @@ function hideProcessing() {
 
 document.getElementById("btn-debug").addEventListener("click", async () => {
   showLoading();
+
+  resetGraphics();
+  hideSimCard();
+  hideBundleCard();
+  hideProcessing();
+  window.lastBundle = null;
+  window.lastMonitoring = null;
+
+
   btnStart.disabled = true;
   btnReset.disabled = true;
+  btnDebug.disabled = true;
 
   try {
-    const resp = await fetch("/api/start_simulation_near", { method: "POST" });
-    if (!resp.ok) {
+      const resp = await fetch("/api/start_simulation_near", { method: "POST" });
+      if (!resp.ok) {
+          hideLoading();
+          btnStart.disabled = false;
+          btnReset.disabled = false;
+          alert("Error starting debug simulation: " + resp.status);
+      }
+  } catch (e) {
       hideLoading();
       btnStart.disabled = false;
       btnReset.disabled = false;
-      alert("Error starting debug simulation: " + resp.status);
-    }
-  } catch (e) {
-    hideLoading();
-    btnStart.disabled = false;
-    btnReset.disabled = false;
-    alert("Error starting debug simulation: " + e);
+      alert("Error starting debug simulation: " + e);
   }
 });
 
@@ -103,7 +114,7 @@ function ensureMap() {
     vanIcon = L.icon({
       iconUrl: "/static/van_icon.png",
       iconSize: [32, 32],
-      iconAnchor: [16, 16],  // centro
+      iconAnchor: [16, 16],
     });
 
     hideLoading();
@@ -111,6 +122,9 @@ function ensureMap() {
 }
 
 function resetGraphics() {
+  window.lastBundle = null;
+  window.lastMonitoring = null;
+
   if (vanMarker) {
     map.removeLayer(vanMarker);
     vanMarker = null;
@@ -133,26 +147,31 @@ function resetGraphics() {
   confidenceEl.textContent = "–";
 }
 
-
 function renderBundleSummary(bundle) {
   if (!bundle || !bundle.event) return "No bundle data.";
 
   const ev = bundle.event;
+  const inf = ev.Inference || {};
+  const sub = ev.SensorSubstance || {};
+
+  const predicted = inf.predicted_class || "UNKNOWN";
+  const trueName = sub.compound_name || "UNKNOWN";
+  const confidence = inf.confidence_score || "N/A";
 
   return `
     <div class="metric-row">
-      <div class="metric-label">Timestamp</div>
-      <div class="metric-value">${ev.timestamp}</div>
+      <div class="metric-label">True substance (sim)</div>
+      <div class="metric-value">${trueName}</div>
     </div>
 
     <div class="metric-row">
-      <div class="metric-label">Substance</div>
-      <div class="metric-value">${ev.SensorSubstance.compound_name}</div>
+      <div class="metric-label">Model prediction</div>
+      <div class="metric-value">${predicted}</div>
     </div>
 
     <div class="metric-row">
       <div class="metric-label">Confidence</div>
-      <div class="metric-value">${ev.Inference.confidence_score}</div>
+      <div class="metric-value">${confidence}</div>
     </div>
 
     <div class="metric-row">
@@ -167,13 +186,12 @@ function renderBundleSummary(bundle) {
 
     <div class="metric-row">
       <div class="metric-label">Hash</div>
-      <div class="metric-value">${bundle.hash_sha256.slice(0,12)}...</div>
+      <div class="metric-value">${bundle.hash_sha256.slice(0, 12)}...</div>
     </div>
 
     <button class="small-btn" onclick="openReportPopup()">View full report</button>
   `;
 }
-
 
 function openReportPopup() {
   const bundle = window.lastBundle;
@@ -599,12 +617,18 @@ function connectWebSocket() {
     const msg = JSON.parse(event.data);
 
     if (msg.type === "init") {
-      simIdEl.textContent = msg.simulation_id || "–";
-      setStatus("patrolling");
-      btnStart.disabled = true;
-      btnReset.disabled = false;
 
       resetGraphics();
+      window.lastBundle = null;
+      window.lastMonitoring = null;
+
+      simIdEl.textContent = msg.simulation_id || "–";
+      setStatus("patrolling");
+
+      btnStart.disabled = true;
+      btnDebug.disabled = true;
+      btnReset.disabled = false;
+
       const sLat = msg.source.lat;
       const sLon = msg.source.lon;
       const vLat = msg.van.lat;
@@ -633,6 +657,10 @@ function connectWebSocket() {
     }
 
     if (msg.type === "van_update") {
+      btnStart.disabled = true;
+      btnDebug.disabled = true;
+      btnReset.disabled = false;
+
       if (!map || !vanMarker) return;
 
       const lat = msg.lat;
@@ -661,7 +689,9 @@ function connectWebSocket() {
       hideProcessing();
       setStatus("idle");
       btnStart.disabled = false;
+      btnDebug.disabled = false;   // ora puoi ricominciare
       btnReset.disabled = false;
+
       window.lastBundle = msg.forensic_bundle;
       window.lastMonitoring = msg.monitoring;
 
@@ -728,7 +758,9 @@ function connectWebSocket() {
     if (msg.type === "sim_end") {
       setStatus("idle");
       btnStart.disabled = false;
+      btnDebug.disabled = false;
       btnReset.disabled = false;
+
     }
 
     if (msg.type === "error") {
@@ -749,7 +781,19 @@ function connectWebSocket() {
 
 btnStart.addEventListener("click", async () => {
   showLoading();
-  connectWebSocket();
+  
+  // RESET COMPLETO PRIMA DI RIPARTIRE
+  resetGraphics();
+  hideSimCard();
+  hideBundleCard();
+  hideProcessing();
+  window.lastBundle = null;
+  window.lastMonitoring = null;
+
+  btnStart.disabled = true;
+  btnDebug.disabled = true;
+  btnReset.disabled = true;
+
   await fetch("/api/start_simulation", { method: "POST" });
 });
 
@@ -763,8 +807,11 @@ btnReset.addEventListener("click", async () => {
   hideLoading();
   hideSimCard();
   hideBundleCard();
+  window.lastBundle = null;
+  window.lastMonitoring = null;
+
 });
 
 ensureMap();
-connectWebSocket();
 hideLoading();
+connectWebSocket();

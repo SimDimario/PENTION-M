@@ -8,6 +8,7 @@ import json
 import os
 import sys
 import time
+import hashlib
 MODEL_REGISTRY_PATH = "/logs/model_registry.json"
 
 import numpy as np
@@ -156,8 +157,7 @@ def generate_concentration_map_from_gaussian(sensor_air: dict, src_x: int, src_y
             grid_size=500
         )
 
-        C1, (x_grid, y_grid, z_grid), *_ = run_dispersion_model(config)
-        # C1 shape: (H, W, T)
+        C1, (x_grid, y_grid, z_grid), times, stability_array, wind_dir_series, *_ = run_dispersion_model(config)
 
         # mappa media nel tempo (H x W)
         conc_map_2d = np.mean(C1, axis=2)
@@ -166,11 +166,11 @@ def generate_concentration_map_from_gaussian(sensor_air: dict, src_x: int, src_y
         # serie temporale (media su spazio, funzione del tempo)
         conc_time_series = np.mean(C1, axis=(0, 1))
 
-        return conc_map_2d.tolist(), conc_time_series.tolist()
+        return conc_map_2d.tolist(), conc_time_series.tolist(), C1
 
     except Exception as e:
         print(f"[WARN] GaussianPuff simulation failed: {e}")
-        return np.zeros((500, 500)).tolist(), [0.0]
+        return np.zeros((500, 500)).tolist(), [0.0], np.zeros((500,500,1))
 
 def append_log(entry: dict):
     """Salva i log in formato JSON lines"""
@@ -239,7 +239,7 @@ def ingest_data(sim_data: SimulationData):
     )
 
     # Usa il vento simulato come input fisico principale.
-    conc_map_real, conc_time_series = generate_concentration_map_from_gaussian(
+    conc_map_real, conc_time_series, C1 = generate_concentration_map_from_gaussian(
         {
             "wind_speed_mps": sim_data.SensorAir.wind_speed_mps
             # in futuro possiamo passare anche stability_class ecc.
@@ -320,8 +320,9 @@ def ingest_data(sim_data: SimulationData):
         else np.zeros_like(conc_map_np)
     )
 
-    # === MSE tra mappa GaussianPuff e mappa corretta PIML ===
-    mse_free = float(np.mean((np.array(conc_map_real, dtype=np.float32) - conc_map_np) ** 2))
+    # === RMSE tra mappa GaussianPuff e mappa corretta PIML ===
+    diff_sq = (np.array(conc_map_real, dtype=np.float32) - conc_map_np) ** 2
+    mse_free = float(np.sqrt(np.mean(diff_sq)))
 
     # ============= 3. SENSOR NETWORK + SOURCE LOCALIZATION PIML =============
     # Generiamo sensori virtuali campionando dalla mappa 2D corretta.
@@ -333,21 +334,37 @@ def ingest_data(sim_data: SimulationData):
         seed=42
     )
 
-    # Sensore mobile (van) → deve avere una riga per ogni time-step
-    for t_idx, conc_val in enumerate(conc_time_series):
-        payload_sensors.append({
-            "sensor_id": 999,
-            "sensor_is_fault": False,
-            "time": float(t_idx),
-            "conc": float(conc_val),
-            "wind_dir_x": np.cos(np.radians(sim_data.SensorAir.wind_dir_deg)),
-            "wind_dir_y": np.sin(np.radians(sim_data.SensorAir.wind_dir_deg)),
-            "wind_speed": sim_data.SensorAir.wind_speed_mps,
-            "wind_type": 1,
-            "gps_x": src_x,
-            "gps_y": src_y,
-            "stability_value": stability_index,
-        })
+    # ==========================================
+    #  REAL SENSOR TIME-SERIES  C[x,y,t]
+    # ==========================================
+    for s in payload_sensors:
+        x = int(s["gps_x"])
+        y = int(s["gps_y"])
+        # estrai la serie temporale completa
+        series_sensor = C1[y, x, :].tolist()
+        s["concentration_series"] = series_sensor
+
+    # ==========================================
+    # VAN SENSOR (ID=999)
+    # ==========================================
+
+    van_series = C1[src_y, src_x, :].tolist()
+
+    payload_sensors.append({
+        "sensor_id": 999,
+        "time": 0.0,
+        "sensor_is_fault": False,
+        # valore medio serve SOLO al PIML
+        "conc": float(np.mean(van_series)),
+        "concentration_series": van_series,
+        "wind_dir_x": np.cos(np.radians(sim_data.SensorAir.wind_dir_deg)),
+        "wind_dir_y": np.sin(np.radians(sim_data.SensorAir.wind_dir_deg)),
+        "wind_speed": sim_data.SensorAir.wind_speed_mps,
+        "wind_type": 1,
+        "gps_x": src_x,
+        "gps_y": src_y,
+        "stability_value": stability_index,
+    })
 
     resp_localization = safe_post(
         "http://loc_emission_source_piml:8010/predict_source_piml",
@@ -378,9 +395,13 @@ def ingest_data(sim_data: SimulationData):
     confidence_clf = 0.0
 
     # 2) Se Inference non esiste → crealo
+    dispersion_map_id = hashlib.sha256(
+        np.array(conc_map_real, dtype=np.float32).tobytes()
+    ).hexdigest()
+
     if sim_data.Inference is None:
         sim_data.Inference = Inference(
-            dispersion_map_id=f"map_{sim_data.simulation_id}",
+            dispersion_map_id=dispersion_map_id,
             predicted_source_location=(
                 predicted_source_xy if predicted_source_xy is not None else [0.0, 0.0]
             ),
@@ -392,52 +413,39 @@ def ingest_data(sim_data: SimulationData):
     if predicted_source_xy is not None:
         sim_data.Inference.predicted_source_location = predicted_source_xy
 
-
-
-    # ============= 4. CLASSIFICATORE NPS (DNN) =============
-    # Generiamo uno spettro finto basato sulla sostanza dichiarata
-    def synthetic_spectrum(compound_name: str, noise_level=0.05):
-        np.random.seed(42)
-        base = np.random.rand(600) * noise_level
-
-        peaks = {
-            "Cathinone": [58, 91, 105, 120],
-            "Cannabinoid": [231, 314, 328],
-            "Fentanyl analogue": [245, 336, 372],
-            "Phenethylamine": [30, 121, 150],
-            "Piperazine": [56, 84, 140],
-            "Tryptamine": [44, 65, 130],
-        }
-
-        for p in peaks.get(compound_name, [100, 200, 300]):
-            if 1 <= p < 600:
-                base[p] += 1.0
-
-        # normalizzazione finale
-        base = base / (np.max(base) + 1e-8)
-        return base.tolist()
+    # ============= 4. CLASSIFICATORE NPS — USA LO SPETTRO DELLA UI =============
 
     try:
-        fake_spectrum = synthetic_spectrum(
-            sim_data.SensorSubstance.compound_name,
-            noise_level=sim_data.SensorSubstance.noise_level
-        )
+        # Usa lo spettro realistico mandato dalla UI
+        spectrum_noisy = np.array(sim_data.SensorSubstance.concentration_series_mg_m3)
 
+        # Salva copia intatta per forensic e output
+        spectrum_ui_original = spectrum_noisy.copy()
+
+        # Se lo spettro non è lungo 600 elementi → fallback soft
+        if spectrum_noisy.shape[0] != 600:
+            print("[WARN] UI spectrum size != 600. Padding/cropping applied.")
+            if spectrum_noisy.shape[0] > 600:
+                spectrum_noisy = spectrum_noisy[:600]
+            else:
+                spectrum_noisy = np.pad(spectrum_noisy, (0, 600 - len(spectrum_noisy)))
+
+        # INVIO AL VERO CLASSIFICATORE
         resp_nps = safe_post(
-            "http://clas_nps:8000/predict_dnn",
-            {"spectra": [fake_spectrum]},
-            label="ClassificatoreNPS (DNN)",
+            "http://clas_nps:8000/predict_xgb",
+            {"spectra": [spectrum_noisy.tolist()]},
+            label="ClassificatoreNPS (XGB)"
         )
 
         if isinstance(resp_nps, dict):
-            predicted_class = resp_nps.get("predictions", [predicted_class])[0]
-            confidence_clf = resp_nps.get("confidence", 0.85)
+            predicted_class = resp_nps.get("predictions", [sim_data.SensorSubstance.compound_name])[0]
+            confidence_clf = float(resp_nps.get("confidence", 0.0))
 
         sim_data.Inference.predicted_class = predicted_class
         sim_data.Inference.confidence_score = confidence_clf
 
     except Exception as e:
-        print(f"[WARN] NPS classifier error: {e}")
+        print(f"[WARN] NPS classification failed: {e}")
 
 
     # ============= 5. MODEL REGISTRY E VERSIONING =============
@@ -542,6 +550,16 @@ def ingest_data(sim_data: SimulationData):
     monitoring_payload["Monitoring"]["latency_ms"] = latency_ms
     monitoring_payload["Monitoring"]["drift_score"] = drift_value
 
+    # Aggiorna anche il blocco Monitoring interno a sim_data
+    sim_data.Monitoring.latency_ms = latency_ms
+    sim_data.Monitoring.drift_score = drift_value
+    sim_data.Monitoring.mse_free = mse_free
+
+    # === MODEL OPS: trigger di retraining basato su drift ===
+    # soglia arbitraria ma chiara per la tesi (es. 0.7)
+    retrain = drift_value is not None and drift_value > 0.7
+    sim_data.ModelOps.retraining_trigger = bool(retrain)
+
     monitoring_out = {
         "simulation_id": sim_data.simulation_id,
         "model_version": sim_data.Monitoring.model_version,
@@ -553,13 +571,27 @@ def ingest_data(sim_data: SimulationData):
 
     # ============= 7. FORENSIC: COSTRUZIONE EVENTO COMPLETO =============
 
-    # Se ForensicExport non è presente → creiamo placeholder
+    # Se ForensicExport non è presente → creiamo export con compliance "reale"
     if sim_data.ForensicExport is None:
+        compliance_tags = []
+
+        if drift_value is not None and drift_value > 0.7:
+            compliance_tags.append("DRIFT_HIGH")
+        else:
+            compliance_tags.append("DRIFT_OK")
+
+        if latency_ms > 500:
+            compliance_tags.append("LATENCY_HIGH")
+        else:
+            compliance_tags.append("LATENCY_OK")
+
+        compliance_tags.append("GDPR_SIMULATION_ONLY")
+
         sim_data.ForensicExport = ForensicExport(
             export_file=f"{sim_data.simulation_id}_bundle.zip",
             hash_sha256="",
             signature="",
-            compliance_tags=[]
+            compliance_tags=compliance_tags
         )
 
     forensic_payload = {
@@ -575,7 +607,7 @@ def ingest_data(sim_data: SimulationData):
         "SensorSubstance": {
             "compound_name": predicted_class,
             "molecular_formula": sim_data.SensorSubstance.molecular_formula,
-            "concentration_series_mg_m3": conc_time_series,
+            "concentration_series_mg_m3": spectrum_ui_original.tolist(),
             "unit": sim_data.SensorSubstance.unit,
             "noise_level": sim_data.SensorSubstance.noise_level,
         },

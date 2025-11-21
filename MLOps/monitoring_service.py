@@ -4,6 +4,7 @@ from typing import List, Optional, Any, Dict
 from datetime import datetime
 import json
 import os
+import numpy as np
 import math
 import statistics
 
@@ -131,21 +132,63 @@ def compute_latency_trend(events: list[dict]) -> float:
     return round(min(max((mean_recent - mean_all) / max(mean_all, 1.0), 0.0), 1.0), 3)
 
 def compute_drift_dynamic(event: MonitoringEvent, history: list[dict]) -> float:
-    """Combina drift semplice con variazioni nel tempo di stabilità/confidenza."""
-    base_drift = compute_simple_drift(event)
-    if not history:
-        return base_drift
-    try:
-        last = history[-1]
-        prev_stab = float(last.get("stability_index", 4.0) or 4.0)
-        prev_conf = float(last.get("confidence", 1.0) or 1.0)
-        curr_stab = float(getattr(event.PIML_Features, "stability_index", 4.0))
-        curr_conf = float(getattr(event.Inference, "confidence_score", 1.0))
-        delta_stab = abs(curr_stab - prev_stab) / 6.0
-        delta_conf = abs(curr_conf - prev_conf)
-        return round(min(base_drift + 0.5 * (delta_stab + delta_conf), 1.0), 4)
-    except Exception:
-        return base_drift
+    """
+    Drift PIML basato su Mahalanobis multivariato.
+    """
+    x = build_feature_vector(event)
+
+    baseline = load_baseline()
+    mean = baseline["mean"]
+    cov = baseline["cov"]
+    count = baseline["count"]
+
+    # Se baseline non esiste → inizializza
+    MIN_BASELINE_COUNT = 5
+    if mean is None or cov is None or count < MIN_BASELINE_COUNT:
+
+        # aggiorna baseline
+        if count == 0:
+            mean = x
+            cov = np.eye(len(x)).tolist()
+            count = 1
+        else:
+            mean = np.array(mean)
+            cov = np.array(cov)
+            count += 1
+            lr = 1.0 / count
+            delta = x - mean
+            mean = mean + lr * delta
+            cov = cov + lr * (np.outer(delta, delta) - cov)
+
+        # convert numpy arrays or lists into serializable lists
+        if isinstance(mean, np.ndarray):
+            mean_list = mean.tolist()
+        else:
+            mean_list = list(mean)
+
+        if isinstance(cov, np.ndarray):
+            cov_list = cov.tolist()
+        else:
+            cov_list = list(map(list, cov))
+
+        save_baseline({
+            "mean": mean_list,
+            "cov": cov_list,
+            "count": count
+        })
+
+        return 0.0  # finché non abbiamo baseline stabile
+
+    # baseline stabile → calcolo Mahalanobis
+    mean = np.array(mean)
+    cov = np.array(cov)
+
+    d = mahalanobis(x, mean, cov)
+
+    # normalizzazione 0–1 tramite funzione sigmoide morbida
+    drift = float(1 - math.exp(-d))
+
+    return round(min(max(drift, 0.0), 1.0), 4)
 
 def load_last_n(path: str, n: int) -> List[dict]:
     if not os.path.exists(path):
@@ -161,6 +204,53 @@ def load_last_n(path: str, n: int) -> List[dict]:
             except json.JSONDecodeError:
                 continue
     return out[-n:] if n > 0 else out
+
+BASELINE_PATH = "/logs/drift_baseline.json"
+
+def load_baseline():
+    if not os.path.exists(BASELINE_PATH):
+        return {"mean": None, "cov": None, "count": 0}
+    try:
+        with open(BASELINE_PATH, "r") as f:
+            return json.load(f)
+    except:
+        return {"mean": None, "cov": None, "count": 0}
+
+def save_baseline(bline):
+    with open(BASELINE_PATH, "w") as f:
+        json.dump(bline, f)
+
+def build_feature_vector(event: MonitoringEvent):
+    """
+    Feature vector fisico per il drift:
+    Supporta sia BaseModel che dict.
+    """
+    def get(obj, key):
+        if isinstance(obj, dict):
+            return obj.get(key, 0.0)
+        return getattr(obj, key, 0.0)
+
+    pf = event.PIML_Features or {}
+    inf = event.Inference or {}
+
+    f = [
+        float(get(pf, "sigma_y")),
+        float(get(pf, "sigma_z")),
+        float(get(pf, "pe_number")),
+        float(get(pf, "stability_index")),
+        float(get(inf, "confidence_score")),
+    ]
+
+    return np.array(f, dtype=np.float32)
+
+def mahalanobis(x, mean, cov):
+    try:
+        inv = np.linalg.inv(cov)
+        d = np.sqrt((x - mean).T @ inv @ (x - mean))
+        return float(d)
+    except:
+        return 0.0
+
 
 # ---------------------------
 # Endpoints
@@ -178,8 +268,7 @@ def monitor_event(event: MonitoringEvent):
     """
     # Calcola drift se mancante
     history = load_last_n(LOG_FILE, 10)
-    drift_calculated = compute_drift_dynamic(event, history)
-    drift = drift_calculated
+    drift = compute_drift_dynamic(event, history)
     lat = 0
     mse_free = 0.0
     model_version = "unknown"

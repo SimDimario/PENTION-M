@@ -6,6 +6,9 @@ import random
 from datetime import datetime
 from glob import glob
 from math import radians, sin, cos, sqrt, atan2
+import pandas as pd
+import numpy as np
+
 
 import requests
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -31,6 +34,18 @@ INGESTION_URL = "http://mlops_ingestion:8011/ingest_data"
 
 app = FastAPI(title="PENTION-M UI (Van Simulation)")
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# ==========================================================
+# CARICAMENTO DATASET NPS (solo una volta)
+# ==========================================================
+DATASET_PATH = "/app/datasetNPS/PENTION_EI_Complete.csv"
+
+try:
+    NPS_DF = pd.read_csv(DATASET_PATH)
+    print("[UI] NPS dataset loaded for spectrum generation.", flush=True)
+except Exception as e:
+    print(f"[UI] ERROR loading NPS dataset: {e}", flush=True)
+    NPS_DF = None
 
 # ----------------------------------------------------
 # STATO GLOBALE SEMPLICE
@@ -167,6 +182,47 @@ def get_last_forensic_bundle():
             return json.load(f)
     except Exception:
         return None
+    
+def generate_noisy_spectrum(noise_level: float):
+    if NPS_DF is None:
+        return [0.0] * 600, "UNKNOWN"
+
+    row = NPS_DF.sample(n=1).iloc[0]
+    compound_name = row["Name"]
+
+    s = row.iloc[1:601].values.astype(float).copy()
+
+    # (1) jitter ±1 m/z
+    shift = np.random.randint(-1, 2)
+    if shift != 0:
+        s = np.roll(s, shift)
+
+    # (2) baseline drift
+    drift = np.linspace(
+        np.random.uniform(-0.4, 0.4),
+        np.random.uniform(-0.4, 0.4),
+        len(s)
+    )
+    s = s + drift
+
+    # (3) multiplicative noise proporzionale
+    s = s * (1 + np.random.normal(0, 0.03, len(s)))
+
+    # (4) peak dropout (2%)
+    dropout = np.random.rand(len(s)) < 0.02
+    s[dropout] = 0
+
+    # (4.5) evita valori negativi prima della potenza
+    s = np.clip(s, 0, None)
+
+    # (5) non-linear scaling
+    s = s ** np.random.uniform(0.92, 1.05)
+
+    # (6) clipping stile EI
+    s = np.clip(s, 0, 100)
+
+
+    return s.tolist(), compound_name
 
 def build_simulation_payload(sim_id: str, lat: float, lon: float, source_lat: float, source_lon: float):
     """
@@ -184,13 +240,12 @@ def build_simulation_payload(sim_id: str, lat: float, lon: float, source_lat: fl
     stability_class = random.choice(["B", "C", "D"])
 
     # La sostanza è l’unico dato usato per generare lo spettro NPS
-    compound_name = random.choice([
-        "Cathinone analogues",
-        "Cannabinoid analogues",
-        "Fentanyl analogues"
-    ])
+    compound_name = "UNKNOWN"  # la sostanza sarà determinata dal modello
 
-    noise_level = 0.05
+    noise_level = 0.08
+
+    # Generiamo uno spettro rumoroso direttamente nella UI
+    spectrum_noisy, true_compound = generate_noisy_spectrum(noise_level)
 
     payload = {
         "simulation_id": sim_id,
@@ -205,14 +260,14 @@ def build_simulation_payload(sim_id: str, lat: float, lon: float, source_lat: fl
             "stability_class": stability_class,
         },
 
-        # Sensore sostanza (solo info minime)
         "SensorSubstance": {
-            "compound_name": compound_name,
+            "compound_name": true_compound,           # la UI ora manda un nome REALE
             "molecular_formula": "",
-            "concentration_series_mg_m3": [],  # ora TOCCA A INGESTION generarli
-            "unit": "mg/m3",
+            "concentration_series_mg_m3": spectrum_noisy,
+            "unit": "intensity",
             "noise_level": noise_level,
         },
+
 
         # GPS del van
         "SensorGPS": {
