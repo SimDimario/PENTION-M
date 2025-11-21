@@ -40,6 +40,7 @@ class DispersionInput(BaseModel):
     concentration_map: list
     building_map: list
     global_features: list | None = None
+    concentration_tensor_3d: Optional[list] = None
 
 @app.post("/generate_binary_map")
 def generate_map(bbox: BBox):
@@ -72,6 +73,7 @@ def generate_map(bbox: BBox):
 def predict_endpoint(payload: DispersionInput):
 
     conc_map = np.array(payload.concentration_map, dtype=np.float32)
+
     build_map = (
         np.array(payload.building_map, dtype=np.float32)
         if len(payload.building_map) > 0
@@ -80,13 +82,28 @@ def predict_endpoint(payload: DispersionInput):
 
     glob_feat = np.array(payload.global_features, dtype=np.float32) if payload.global_features else None
 
+    C_tensor = None
+    if payload.concentration_tensor_3d is not None:
+        try:
+            C_tensor = np.array(payload.concentration_tensor_3d, dtype=np.float32)
+            if C_tensor.ndim != 3:
+                print(f"[WARN] concentration_tensor_3d shape inattesa: {C_tensor.shape}")
+                C_tensor = None
+            else:
+                print(f"[INFO] Tensor 3D ricevuto dal ingestion: shape={C_tensor.shape}")
+        except Exception as e:
+            print(f"[WARN] Errore nel parsing del tensor 3D: {e}")
+            C_tensor = None
+
     correction_result = correct_dispersion_piml(
         payload.wind_dir,
         payload.wind_speed,
         conc_map,
         build_map,
-        glob_feat
+        glob_feat,
+        C_tensor
     )
+
 
     return {
         "status": "ok",

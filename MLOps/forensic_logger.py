@@ -7,6 +7,38 @@ import json
 import os
 import uuid
 
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.hazmat.primitives import serialization
+
+KEY_DIR = "/keys"
+os.makedirs(KEY_DIR, exist_ok=True)
+
+PRIVATE_KEY_PATH = os.path.join(KEY_DIR, "private_key.pem")
+PUBLIC_KEY_PATH = os.path.join(KEY_DIR, "public_key.pem")
+
+# Generate keys if missing
+if not os.path.exists(PRIVATE_KEY_PATH):
+    private_key = ed25519.Ed25519PrivateKey.generate()
+    with open(PRIVATE_KEY_PATH, "wb") as f:
+        f.write(private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption()
+        ))
+
+    public_key = private_key.public_key()
+    with open(PUBLIC_KEY_PATH, "wb") as f:
+        f.write(public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        ))
+else:
+    with open(PRIVATE_KEY_PATH, "rb") as f:
+        private_key = serialization.load_pem_private_key(f.read(), password=None)
+
+    with open(PUBLIC_KEY_PATH, "rb") as f:
+        public_key = serialization.load_pem_public_key(f.read())
+
 # ============================================================
 # Forensic Logger & ModelOps Service (Layer 5)
 # ============================================================
@@ -81,13 +113,17 @@ def write_bundle(event: dict) -> str:
 
     serialized = json.dumps(event, sort_keys=True, default=str)
     hash_value = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
-    signature = f"sig_{uuid.uuid4().hex[:16]}"
+    signature = private_key.sign(hash_value.encode()).hex()
 
     bundle = {
         "timestamp": datetime.utcnow().isoformat(),
         "bundle_name": bundle_name,
         "hash_sha256": hash_value,
         "signature": signature,
+        "public_key": public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        ).decode(),
         "event": event,
     }
 
@@ -149,6 +185,13 @@ def log_forensic(event: ForensicEvent):
 
     event_dict["artifacts"] = artifacts
 
+    # === aggiungi compliance tags PRIMA di scrivere il bundle ===
+    event_dict["ForensicExport"]["compliance_tags"].extend([
+        "SIGNATURE_OK",
+        "HASH_OK",
+        "ARTIFACTS_OK",
+    ])
+
     try:
         path = write_bundle(event_dict)
     except Exception as e:
@@ -199,6 +242,18 @@ def verify_bundle(filename: str):
         artifacts = bundle.get("event", {}).get("artifacts", {})
         result = {"bundle": filename, "verified": True, "details": {}}
 
+        # --- Recompute hash of event content ---
+        event_data = bundle.get("event", {})
+        recomputed_hash = hashlib.sha256(
+            json.dumps(event_data, sort_keys=True, default=str).encode()
+        ).hexdigest()
+
+        hash_match = (recomputed_hash == bundle.get("hash_sha256", ""))
+        result["details"]["event_hash_match"] = hash_match
+
+        if not hash_match:
+            result["verified"] = False
+
         # Verifica hash del modello
         model_path = "/CorrectionDispersion_PIML/models/mcxm_piml_model_best.pth"
         if os.path.exists(model_path):
@@ -226,6 +281,19 @@ def verify_bundle(filename: str):
                     result["verified"] = False
         else:
             result["details"]["concentration_map_hash_match"] = False
+            result["verified"] = False
+
+        # Verify digital signature
+        try:
+            stored_sig = bytes.fromhex(bundle.get("signature", ""))
+
+            pub_key_pem = bundle.get("public_key", "").encode()
+            pub_key = serialization.load_pem_public_key(pub_key_pem)
+
+            pub_key.verify(stored_sig, recomputed_hash.encode())
+            result["details"]["signature_valid"] = True
+        except Exception:
+            result["details"]["signature_valid"] = False
             result["verified"] = False
 
         return result

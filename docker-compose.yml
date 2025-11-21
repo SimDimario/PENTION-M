@@ -67,6 +67,7 @@ services:
       - ./gaussianPuff:/gaussianPuff
       - ./logs:/logs
       - ./CorrectionDispersion_PIML/models:/CorrectionDispersion_PIML/models
+      - ./CorrectionDispersion_PIML/dataset/real_dispersion:/CorrectionDispersion_PIML/dataset/real_dispersion
       - ./EmissionSourceLocalization_PIML/models:/EmissionSourceLocalization_PIML/models
       - ./ClassificatoreNPS/datasetNPS:/ClassificatoreNPS/datasetNPS
     restart: unless-stopped
@@ -84,6 +85,7 @@ services:
       - ./logs:/logs
       - ./gaussianPuff:/gaussianPuff
       - ./CorrectionDispersion_PIML/models:/CorrectionDispersion_PIML/models
+      - ./CorrectionDispersion_PIML/dataset/real_dispersion:/CorrectionDispersion_PIML/dataset/real_dispersion
       - ./EmissionSourceLocalization_PIML/models:/EmissionSourceLocalization_PIML/models
     restart: unless-stopped
 
@@ -97,6 +99,7 @@ services:
       - ./logs:/logs
       - ./gaussianPuff:/gaussianPuff
       - ./CorrectionDispersion_PIML/models:/CorrectionDispersion_PIML/models
+      - ./CorrectionDispersion_PIML/dataset/real_dispersion:/CorrectionDispersion_PIML/dataset/real_dispersion
       - ./EmissionSourceLocalization_PIML/models:/EmissionSourceLocalization_PIML/models
     restart: unless-stopped
     depends_on:

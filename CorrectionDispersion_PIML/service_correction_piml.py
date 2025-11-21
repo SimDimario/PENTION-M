@@ -142,7 +142,7 @@ def load_model(binary_map, m=500, device=None, pretrained_path=None):
     )
     logger.critical(err_msg)
     raise RuntimeError(err_msg)
-def correct_dispersion_piml(wind_dir, wind_speed, concentration_map, building_map, global_feature=None, device=None, m=500, pretrained_path=None):
+def correct_dispersion_piml(wind_dir, wind_speed, concentration_map, building_map, global_feature=None,C_tensor=None, device=None, m=500, pretrained_path=None):
     logger.info("Starting dispersion correction...")
 
     # === Device setup ===

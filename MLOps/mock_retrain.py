@@ -205,6 +205,7 @@ def retrain_loop():
                     "last_update": entry["timestamp"],
                     "current_model_version": new_version,
                     "previous_model_version": registry_version,
+                    "training_data_version": f"PIML_DS_v{int(new_version.replace('PIML_v',''))}",
                     "metrics": metrics
                 }, f, indent=2)
 

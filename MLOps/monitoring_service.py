@@ -174,7 +174,8 @@ def compute_drift_dynamic(event: MonitoringEvent, history: list[dict]) -> float:
         save_baseline({
             "mean": mean_list,
             "cov": cov_list,
-            "count": count
+            "count": count,
+            "distances": []
         })
 
         return 0.0  # finché non abbiamo baseline stabile
@@ -183,12 +184,31 @@ def compute_drift_dynamic(event: MonitoringEvent, history: list[dict]) -> float:
     mean = np.array(mean)
     cov = np.array(cov)
 
+    # regularizzazione per evitare matrici singolari
+    cov = cov + np.eye(len(x)) * 1e-3
+
     d = mahalanobis(x, mean, cov)
 
-    # normalizzazione 0–1 tramite funzione sigmoide morbida
-    drift = float(1 - math.exp(-d))
+    # aggiorna rolling buffer
+    distances = baseline.get("distances", [])
+    distances.append(float(d))
+    baseline["distances"] = distances
 
-    return round(min(max(drift, 0.0), 1.0), 4)
+    # calcolo quantile 95%
+    if len(distances) < 20:
+        # fallback: usiamo la funzione esponenziale
+        drift = float(1 - math.exp(-d))
+    else:
+        q95 = float(np.quantile(distances, 0.95))
+        if q95 <= 1e-6:
+            drift = float(1 - math.exp(-d))  # fallback safe
+        else:
+            drift = min(d / q95, 1.0)
+
+    # salva baseline aggiornata
+    save_baseline(baseline)
+
+    return round(drift, 4)
 
 def load_last_n(path: str, n: int) -> List[dict]:
     if not os.path.exists(path):
@@ -209,14 +229,20 @@ BASELINE_PATH = "/logs/drift_baseline.json"
 
 def load_baseline():
     if not os.path.exists(BASELINE_PATH):
-        return {"mean": None, "cov": None, "count": 0}
+        return {"mean": None, "cov": None, "count": 0, "distances": []}
     try:
-        with open(BASELINE_PATH, "r") as f:
-            return json.load(f)
+        data = json.load(open(BASELINE_PATH))
+        # retrocompatibilità con vecchia versione
+        if "distances" not in data:
+            data["distances"] = []
+        return data
     except:
-        return {"mean": None, "cov": None, "count": 0}
+        return {"mean": None, "cov": None, "count": 0, "distances": []}
 
 def save_baseline(bline):
+    # limita le distanze agli ultimi 300
+    if "distances" in bline and len(bline["distances"]) > 300:
+        bline["distances"] = bline["distances"][-300:]
     with open(BASELINE_PATH, "w") as f:
         json.dump(bline, f)
 

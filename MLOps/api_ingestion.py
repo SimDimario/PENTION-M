@@ -287,20 +287,30 @@ def ingest_data(sim_data: SimulationData):
     except Exception:
         building_map_real = []
 
+    # payload base per PIML
+    correction_payload = {
+        "wind_speed": sim_data.SensorAir.wind_speed_mps,
+        "wind_dir": [sim_data.SensorAir.wind_dir_deg],
+        "concentration_map": conc_map_real,
+        "building_map": building_map_real,
+        "global_features": [
+            sigma_y,
+            sigma_z,
+            pe_number,
+            stability_index
+        ],
+    }
+
+    # === TODO3: passiamo anche il TENSORE 3D completo C1 (x, y, t) ===
+    # Questo rende il modulo PIML davvero "physics-informed", perché vede la dinamica temporale.
+    try:
+        correction_payload["concentration_tensor_3d"] = C1.tolist()
+    except Exception as e:
+        print(f"[WARN] Impossibile serializzare C1 in JSON: {e}")
+
     resp_correction = safe_post(
         "http://correction_dispersion_piml:8008/correct_dispersion",
-        {
-            "wind_speed": sim_data.SensorAir.wind_speed_mps,
-            "wind_dir": [sim_data.SensorAir.wind_dir_deg],
-            "concentration_map": conc_map_real,
-            "building_map": building_map_real,
-            "global_features": [
-                sigma_y,
-                sigma_z,
-                pe_number,
-                stability_index
-            ],
-        },
+        correction_payload,
         label="CorrectionDispersion_PIML",
     )
 
@@ -414,13 +424,9 @@ def ingest_data(sim_data: SimulationData):
         sim_data.Inference.predicted_source_location = predicted_source_xy
 
     # ============= 4. CLASSIFICATORE NPS — USA LO SPETTRO DELLA UI =============
-
+    spectrum_ui_original = np.array(sim_data.SensorSubstance.concentration_series_mg_m3)
     try:
-        # Usa lo spettro realistico mandato dalla UI
-        spectrum_noisy = np.array(sim_data.SensorSubstance.concentration_series_mg_m3)
-
-        # Salva copia intatta per forensic e output
-        spectrum_ui_original = spectrum_noisy.copy()
+        spectrum_noisy = spectrum_ui_original.copy()
 
         # Se lo spettro non è lungo 600 elementi → fallback soft
         if spectrum_noisy.shape[0] != 600:
@@ -455,6 +461,12 @@ def ingest_data(sim_data: SimulationData):
         try:
             with open(MODEL_REGISTRY_PATH, "r", encoding="utf-8") as f:
                 reg = json.load(f)
+
+            # forza reload del modello ogni richiesta (PENTION-M è realtime)
+            import importlib
+            if "service_correction_piml" in sys.modules:
+                importlib.reload(sys.modules["service_correction_piml"])
+
             v = reg.get("current_model_version")
             if v:
                 effective_model_version = v
@@ -463,6 +475,7 @@ def ingest_data(sim_data: SimulationData):
             print(f"[WARN] Errore lettura registry: {e}")
     else:
         print("Registry assente → default PIML_v1")
+        reg = {"training_data_version": "PIML_DS_v1", "metrics": {}}
 
     # Se il blocco Monitoring non esiste (UI non lo manda), inizializzalo
     if sim_data.Monitoring is None:
@@ -477,11 +490,16 @@ def ingest_data(sim_data: SimulationData):
 
     # Se ModelOps non è presente → creiamo defaults
     if sim_data.ModelOps is None:
+        td_version = reg.get("training_data_version", "PIML_DS_v1")
         sim_data.ModelOps = ModelOps(
             model_registry_id="mdl_pention_m",
-            training_data_version="PIML_DS_v1",
+            training_data_version=td_version,
             retraining_trigger=False
         )
+    else:
+        # aggiorna sempre in base al registry
+        td_version = reg.get("training_data_version", "PIML_DS_v1")
+        sim_data.ModelOps.training_data_version = td_version
 
     # ============= 6. MONITORING: DRIFT + LATENZA REALE =============
     monitoring_payload = {
@@ -544,6 +562,11 @@ def ingest_data(sim_data: SimulationData):
     else:
         drift_value = sim_data.Monitoring.drift_score
 
+    # reset drift se il retrain lo richiede
+    reset_drift = reg.get("metrics", {}).get("drift_reset", False)
+    if reset_drift:
+        drift_value = 0.0
+
     print(f"[INFO] Latenza reale misurata: {latency_ms} ms, drift: {drift_value}")
 
     # aggiorniamo il payload interno (per forensic e UI)
@@ -605,10 +628,10 @@ def ingest_data(sim_data: SimulationData):
             "stability_class": sim_data.SensorAir.stability_class,
         },
         "SensorSubstance": {
-            "compound_name": predicted_class,
+            "compound_name": sim_data.SensorSubstance.compound_name,
             "molecular_formula": sim_data.SensorSubstance.molecular_formula,
-            "concentration_series_mg_m3": spectrum_ui_original.tolist(),
-            "unit": sim_data.SensorSubstance.unit,
+            "spectrum_ei_1_600": spectrum_ui_original.tolist(),
+            "unit": "EI_intensity",
             "noise_level": sim_data.SensorSubstance.noise_level,
         },
         "SensorGPS": {
@@ -649,6 +672,7 @@ def ingest_data(sim_data: SimulationData):
             "signature": sim_data.ForensicExport.signature or "",
             "compliance_tags": sim_data.ForensicExport.compliance_tags or [],
         },
+        "SensorNetworkTimeSeries": payload_sensors,
         # metadati grezzi dei servizi PIML → utili per audit/analisi offline
         "PIML_Runtime": {
             "correction_dispersion_piml": resp_correction,

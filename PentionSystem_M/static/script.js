@@ -242,7 +242,7 @@ function openReportPopup() {
         <div><div class="report-item-label">Compound</div><div class="report-item-value">${sub.compound_name}</div></div>
         <div><div class="report-item-label">Molecular formula</div><div class="report-item-value">${sub.molecular_formula}</div></div>
         <div><div class="report-item-label">Noise level</div><div class="report-item-value">${sub.noise_level}</div></div>
-        <div><div class="report-item-label">Concentration series</div><div class="report-item-value">${(sub.concentration_series_mg_m3||[]).join(", ")}</div></div>
+        <div><div class="report-item-label">EI Mass Spectrum (600 bins)</div><div class="report-item-value">${(sub.spectrum_ei_1_600||[]).join(", ")}</div></div>
       </div>
     </div>
 
@@ -533,7 +533,7 @@ async function exportPDF() {
     field("Compound", sub.compound_name);
     field("Formula", sub.molecular_formula);
     field("Noise", sub.noise_level);
-    field("Concentration", (sub.concentration_series_mg_m3 || []).join(", "));
+    field("EI Mass Spectrum (600 bins)", (sub.spectrum_ei_1_600 || []).join(", "));
 
     // PIML
     section("PIML features");
