@@ -250,6 +250,10 @@ def build_feature_vector(event: MonitoringEvent):
     """
     Feature vector fisico per il drift:
     Supporta sia BaseModel che dict.
+    Include:
+    - sigma_y, sigma_z, Pe, stability_index
+    - confidence_score
+    - wind_speed_mps, wind_dir_deg (normalizzato 0–1)
     """
     def get(obj, key):
         if isinstance(obj, dict):
@@ -258,13 +262,25 @@ def build_feature_vector(event: MonitoringEvent):
 
     pf = event.PIML_Features or {}
     inf = event.Inference or {}
+    sa = event.SensorAir or {}
+
+    sigma_y = safe_float(get(pf, "sigma_y"), 0.0)
+    sigma_z = safe_float(get(pf, "sigma_z"), 0.0)
+    pe = safe_float(get(pf, "pe_number"), 0.0)
+    stab_idx = safe_float(get(pf, "stability_index"), 4.0)
+    conf = safe_float(get(inf, "confidence_score"), 1.0)
+
+    wind_speed = safe_float(get(sa, "wind_speed_mps"), 0.0)
+    wind_dir = safe_float(get(sa, "wind_dir_deg"), 0.0) / 360.0  # normalizzato
 
     f = [
-        float(get(pf, "sigma_y")),
-        float(get(pf, "sigma_z")),
-        float(get(pf, "pe_number")),
-        float(get(pf, "stability_index")),
-        float(get(inf, "confidence_score")),
+        sigma_y,
+        sigma_z,
+        pe,
+        stab_idx,
+        conf,
+        wind_speed,
+        wind_dir,
     ]
 
     return np.array(f, dtype=np.float32)

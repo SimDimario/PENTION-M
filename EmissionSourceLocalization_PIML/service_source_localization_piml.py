@@ -61,6 +61,9 @@ def predict_source_piml(sensors: list, n_sensor_operating: int):
             "gps_x": first.get("gps_x", 0.0),
             "gps_y": first.get("gps_y", 0.0),
             "stability_value": first.get("stability_value", 0.0),
+            "sigma_y": first.get("sigma_y", 0.0),
+            "sigma_z": first.get("sigma_z", 0.0),
+            "pe_number": first.get("pe_number", 0.0),
             "n_sens_valid": n_sensor_operating,
         })
         agg_features.append(feat)

@@ -103,6 +103,7 @@ class ModelConfig:
     x_slice: int = 26
     y_slice: int = 1
     grid_size: int= 500
+    wind_dir_deg: float = 225.0
     dispersion_model: DispersionModelType = DispersionModelType.PLUME
     config_puff: Optional[ConfigPuff] = None
 

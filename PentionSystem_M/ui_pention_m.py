@@ -226,32 +226,34 @@ def generate_noisy_spectrum(noise_level: float):
 
 def build_simulation_payload(sim_id: str, lat: float, lon: float, source_lat: float, source_lon: float):
     """
-    NUOVA VERSIONE — La UI ora invia solo dati grezzi.
-    Tutto ciò che riguarda PIML, Inference, Monitoring, ModelOps
-    verrà calcolato in ingestion.
+    NUOVA VERSIONE — La UI invia solo dati grezzi.
+    Meteo fisico da GaussianPuff /get_meteo.
     """
-
     now_iso = datetime.utcnow().isoformat() + "Z"
 
-    temperature = round(random.uniform(15.0, 25.0), 1)
-    humidity = round(random.uniform(0.4, 0.8), 2)
-    wind_speed = round(random.uniform(2.0, 7.0), 1)
-    wind_dir_deg = random.choice([90, 135, 180, 225, 270])
-    stability_class = random.choice(["B", "C", "D"])
+    # === Meteo fisico da GaussianPuff ===
+    try:
+        resp_met = requests.get("http://gaussian_dispersion_model:8002/get_meteo", timeout=10).json()
+        temperature = resp_met.get("temperature", 20.0)
+        humidity = resp_met.get("humidity", 0.5)
+        wind_speed = resp_met.get("wind_speed", 4.0)
+        wind_dir_deg = resp_met.get("wind_dir_deg", 180)
+        stability_class = resp_met.get("stability_class", "C")
+    except Exception:
+        temperature = 20.0
+        humidity = 0.5
+        wind_speed = 4.0
+        wind_dir_deg = 180
+        stability_class = "C"
 
-    # La sostanza è l’unico dato usato per generare lo spettro NPS
-    compound_name = "UNKNOWN"  # la sostanza sarà determinata dal modello
-
+    # === Spettro EI simulato ===
     noise_level = 0.08
-
-    # Generiamo uno spettro rumoroso direttamente nella UI
     spectrum_noisy, true_compound = generate_noisy_spectrum(noise_level)
 
     payload = {
         "simulation_id": sim_id,
         "timestamp": now_iso,
 
-        # Sensore ambientale
         "SensorAir": {
             "temperature_C": temperature,
             "humidity_%": humidity,
@@ -261,22 +263,18 @@ def build_simulation_payload(sim_id: str, lat: float, lon: float, source_lat: fl
         },
 
         "SensorSubstance": {
-            "compound_name": true_compound,           # la UI ora manda un nome REALE
-            "molecular_formula": "",
+            "compound_name": true_compound,
             "concentration_series_mg_m3": spectrum_noisy,
             "unit": "intensity",
             "noise_level": noise_level,
         },
 
-
-        # GPS del van
         "SensorGPS": {
             "latitude": lat,
             "longitude": lon,
             "altitude_m": 2.0,
         },
 
-        # NEW: inviamo anche la posizione della sorgente (scelta dalla UI)
         "SourceGPS": {
             "latitude": source_lat,
             "longitude": source_lon

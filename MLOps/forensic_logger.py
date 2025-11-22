@@ -56,8 +56,6 @@ os.makedirs(FORENSIC_DIR, exist_ok=True)
 
 class ForensicExport(BaseModel):
     export_file: str
-    hash_sha256: str
-    signature: str
     compliance_tags: List[str]
 
 class ModelOps(BaseModel):
@@ -106,14 +104,23 @@ class ForensicEvent(BaseModel):
 # FUNZIONI UTILI
 # ============================================================
 
-def write_bundle(event: dict) -> str:
+def write_bundle(event: dict):
     ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     bundle_name = f"bundle_{ts}_{uuid.uuid4().hex[:8]}.json"
     path = os.path.join(FORENSIC_DIR, bundle_name)
 
-    serialized = json.dumps(event, sort_keys=True, default=str)
+    # Costruiamo una versione "canonica" dell'evento per l'hash
+    # in cui hash_sha256 e signature dentro ForensicExport sono vuoti
+    canonical_event = json.loads(json.dumps(event, sort_keys=True, default=str))
+
+    serialized = json.dumps(canonical_event, sort_keys=True, default=str)
     hash_value = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
     signature = private_key.sign(hash_value.encode()).hex()
+
+    # Popoliamo solo le compliance_tag nel blocco ForensicExport dell'evento,
+    # l'hash e la firma rimangono proprietà del bundle root.
+    fe = event.setdefault("ForensicExport", {})
+    fe.setdefault("compliance_tags", [])
 
     bundle = {
         "timestamp": datetime.utcnow().isoformat(),
@@ -130,7 +137,7 @@ def write_bundle(event: dict) -> str:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(bundle, f, indent=2, default=str)
 
-    return path
+    return path, hash_value, signature
 
 def list_bundles(n: int = 20) -> List[str]:
     files = sorted(os.listdir(FORENSIC_DIR), reverse=True)
@@ -193,14 +200,15 @@ def log_forensic(event: ForensicEvent):
     ])
 
     try:
-        path = write_bundle(event_dict)
+        path, bundle_hash, bundle_sig = write_bundle(event_dict)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
     return {
         "status": "ok",
         "bundle_saved": os.path.basename(path),
-        "hash_sha256": hashlib.sha256(json.dumps(event_dict, sort_keys=True).encode()).hexdigest(),
+        "hash_sha256": bundle_hash,
+        "signature": bundle_sig,
         "path": path,
     }
 
@@ -242,10 +250,13 @@ def verify_bundle(filename: str):
         artifacts = bundle.get("event", {}).get("artifacts", {})
         result = {"bundle": filename, "verified": True, "details": {}}
 
-        # --- Recompute hash of event content ---
+        # --- Recompute hash of event content (versione canonica) ---
         event_data = bundle.get("event", {})
+
+        canonical_event = json.loads(json.dumps(event_data, sort_keys=True, default=str))
+
         recomputed_hash = hashlib.sha256(
-            json.dumps(event_data, sort_keys=True, default=str).encode()
+            json.dumps(canonical_event, sort_keys=True, default=str).encode()
         ).hexdigest()
 
         hash_match = (recomputed_hash == bundle.get("hash_sha256", ""))

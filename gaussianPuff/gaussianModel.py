@@ -85,20 +85,21 @@ def run_dispersion_model(config: ModelConfig, bounds: Optional[Tuple] = None):
         [y_grid,z_grid]=np.meshgrid(y,z); # y and z defined at all positions on the grid
         x_grid=x[config.x_slice]*np.ones(np.shape(y));    # x is defined to be x at x_slice       
    
-    # Wind speed and direction setup
-    wind_speed = config.wind_speed * np.ones_like(times) #m/s
-    if config.wind_type == WindType.CONSTANT: #stable directions
-        wind_dir = np.zeros_like(times)
-        wind_label = "Constant wind"
-    elif config.wind_type == WindType.FLUCTUATING: # variable directions
-        wind_dir = 360. * np.random.rand(len(times))
-        wind_label = "Fluctuating wind"
-    elif config.wind_type == WindType.PREVAILING: #
-        wind_dir = -np.sqrt(2.) * erfcinv(2. * np.random.rand(len(times))) * 40.
-        wind_dir = np.mod(wind_dir, 360)
-        wind_label = "Prevailing wind"
+    # ==========================================================
+    # FIX: USE EXTERNAL (REAL) WIND FROM CONFIG FOR PENTION-M
+    # ==========================================================
+    # Wind speed fixed (realistic)
+    wind_speed = config.wind_speed * np.ones_like(times)
+
+    # Wind direction fixed (realistic)
+    # UI uses 0–360°, so apply directly
+    if hasattr(config, "wind_dir_deg"):
+        wind_dir = np.full_like(times, config.wind_dir_deg)
     else:
-        raise ValueError("Unsupported wind type")
+        # fallback: default 225°
+        wind_dir = np.full_like(times, 225.0)
+
+    wind_label = f"Fixed {float(wind_dir[0]):.1f}°"
         
     if config.dispersion_model == DispersionModelType.PLUME:
         for t in range(len(times)):

@@ -43,6 +43,40 @@ class Payload(BaseModel):
 
 app = FastAPI()
 
+# ==========================================================
+# NEW ENDPOINT: GET METEO FOR PENTION-M
+# ==========================================================
+from gaussianPuff.config import PasquillGiffordStability
+
+@app.get("/get_meteo")
+def get_meteo():
+    """
+    Restituisce condizioni meteo fisiche e coerenti 
+    con GaussianPuff senza avviare una simulazione.
+    """
+    try:
+        # Valori fisici e coerenti
+        temperature = 20.0   # °C — GaussianPuff NON simula la temperatura
+        humidity = 0.55      # RH medio fisico
+
+        # vento realistico e stabile (usato anche in PLUME)
+        wind_speed = 4.2     # m/s
+        wind_dir_deg = 225   # SW→NE (tipico NW Europe)
+
+        # classe di stabilità neutra (scelta fisica)
+        stability_class = "D"
+
+        return {
+            "temperature": temperature,
+            "humidity": humidity,
+            "wind_speed": wind_speed,
+            "wind_dir_deg": wind_dir_deg,
+            "stability_class": stability_class
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.post("/start_simulation")
 def start_simulation(payload: dict):
     logger.info("Ricevuta richiesta /start_simulation")
@@ -68,6 +102,7 @@ def start_simulation(payload: dict):
             stability_value=stability_value,
             wind_type=wind_type,
             wind_speed=raw_config["wind_speed"],
+            wind_dir_deg=raw_config.get("wind_dir_deg", 225.0),
             output=output_type,
             stacks=raw_config["stacks"],
             dry_size=raw_config["dry_size"],

@@ -240,7 +240,6 @@ function openReportPopup() {
       <h3>Detected substance</h3>
       <div class="report-grid">
         <div><div class="report-item-label">Compound</div><div class="report-item-value">${sub.compound_name}</div></div>
-        <div><div class="report-item-label">Molecular formula</div><div class="report-item-value">${sub.molecular_formula}</div></div>
         <div><div class="report-item-label">Noise level</div><div class="report-item-value">${sub.noise_level}</div></div>
         <div><div class="report-item-label">EI Mass Spectrum (600 bins)</div><div class="report-item-value">${(sub.spectrum_ei_1_600||[]).join(", ")}</div></div>
       </div>
@@ -305,9 +304,18 @@ function openReportPopup() {
     <div class="report-section">
       <h3>Security / Audit</h3>
       <div class="report-grid">
-        <div><div class="report-item-label">Bundle signature</div><div class="report-item-value">${bundle.signature}</div></div>
-        <div><div class="report-item-label">Export signature</div><div class="report-item-value">${fexport.signature}</div></div>
-        <div><div class="report-item-label">Compliance tags</div><div class="report-item-value">${(fexport.compliance_tags||[]).join(", ")}</div></div>
+        <div>
+          <div class="report-item-label">Bundle hash (SHA256)</div>
+          <div class="report-item-value">${bundle.hash_sha256}</div>
+        </div>
+        <div>
+          <div class="report-item-label">Digital signature</div>
+          <div class="report-item-value">${bundle.signature}</div>
+        </div>
+        <div>
+          <div class="report-item-label">Compliance tags</div>
+          <div class="report-item-value">${(fexport.compliance_tags || []).join(", ")}</div>
+        </div>
       </div>
     </div>
   `;
@@ -410,12 +418,15 @@ async function renderPdfMap() {
 
     // ---- ATTENDI IL RENDER COMPLETO ----
     setTimeout(() => {
+      // forza Leaflet a ricalcolare le dimensioni del canvas
+      pdfMap.invalidateSize();
+
       leafletImage(pdfMap, (err, canvas) => {
         pdfMap.remove();
         if (err) return reject(err);
         resolve(canvas.toDataURL("image/png"));
       });
-    }, 800);
+    }, 1200); // timeout leggermente più alto per sicurezza
   });
 }
 
@@ -531,7 +542,6 @@ async function exportPDF() {
     // Substance
     section("Detected substance");
     field("Compound", sub.compound_name);
-    field("Formula", sub.molecular_formula);
     field("Noise", sub.noise_level);
     field("EI Mass Spectrum (600 bins)", (sub.spectrum_ei_1_600 || []).join(", "));
 
@@ -575,8 +585,8 @@ async function exportPDF() {
 
     // Audit
     section("Security & Audit");
-    field("Bundle signature", bundle.signature);
-    field("Export signature", forensicExport.signature);
+    field("Bundle hash (SHA256)", bundle.hash_sha256);
+    field("Digital signature", bundle.signature);
     field("Compliance tags", (forensicExport.compliance_tags || []).join(", "));
 
     const simId = ev.simulation_id || "unknown";

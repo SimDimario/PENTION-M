@@ -47,7 +47,6 @@ class SensorAir(BaseModel):
 
 class SensorSubstance(BaseModel):
     compound_name: str
-    molecular_formula: Optional[str] = ""
     concentration_series_mg_m3: List[float]
     unit: str
     noise_level: float
@@ -91,8 +90,6 @@ class UIOutput(BaseModel):
 
 class ForensicExport(BaseModel):
     export_file: str
-    hash_sha256: str
-    signature: str
     compliance_tags: List[str]
 
 class SimulationData(BaseModel):
@@ -139,22 +136,41 @@ def generate_concentration_map_from_gaussian(sensor_air: dict, src_x: int, src_y
     Esegue una simulazione GaussianPuff e restituisce:
     - conc_map_2d: mappa media nel tempo (H x W, normalizzata 0–1)
     - conc_time_series: media spaziale nel tempo (len = n_step temporali)
+    Usa realmente:
+      - wind_speed_mps
+      - wind_dir_deg
+      - stability_class (A–F → PasquillGiffordStability)
     """
     try:
-        # Configurazione base del modello
+        # mappa classe di stabilità (A–F) → Pasquill-Gifford
+        stab_map = {
+            "A": PasquillGiffordStability.VERY_UNSTABLE,
+            "B": PasquillGiffordStability.MODERATELY_UNSTABLE,
+            "C": PasquillGiffordStability.SLIGHTLY_UNSTABLE,
+            "D": PasquillGiffordStability.NEUTRAL,
+            "E": PasquillGiffordStability.MODERATELY_STABLE,
+            "F": PasquillGiffordStability.VERY_STABLE,
+        }
+        stab_key = str(sensor_air.get("stability_class", "D")).upper()
+        stab_value = stab_map.get(stab_key, PasquillGiffordStability.NEUTRAL)
+
+        wind_speed = float(sensor_air.get("wind_speed_mps", 4.0))
+        wind_dir_deg = float(sensor_air.get("wind_dir_deg", 225.0))
+
         config = ModelConfig(
             days=1,
-            RH=0.6,  # umidità relativa media
+            RH=0.6,  # oppure puoi passare un humidity fisico se vuoi
             aerosol_type=None,  # o NPS.CATHINONE_ANALOGUES
             humidify=False,
             stability_profile=StabilityType.CONSTANT,
-            stability_value=PasquillGiffordStability.SLIGHTLY_UNSTABLE,
+            stability_value=stab_value,
             wind_type=WindType.CONSTANT,
-            wind_speed=sensor_air["wind_speed_mps"],
+            wind_speed=wind_speed,
             output=OutputType.PLAN_VIEW,
             dispersion_model=DispersionModelType.PLUME,
             stacks=[(src_x, src_y, 10.0, 20.0)],
-            grid_size=500
+            grid_size=500,
+            wind_dir_deg=wind_dir_deg,
         )
 
         C1, (x_grid, y_grid, z_grid), times, stability_array, wind_dir_series, *_ = run_dispersion_model(config)
@@ -170,7 +186,7 @@ def generate_concentration_map_from_gaussian(sensor_air: dict, src_x: int, src_y
 
     except Exception as e:
         print(f"[WARN] GaussianPuff simulation failed: {e}")
-        return np.zeros((500, 500)).tolist(), [0.0], np.zeros((500,500,1))
+        return np.zeros((500, 500)).tolist(), [0.0], np.zeros((500, 500, 1))
 
 def append_log(entry: dict):
     """Salva i log in formato JSON lines"""
@@ -224,6 +240,15 @@ def ingest_data(sim_data: SimulationData):
     })
 
     # ============= 1. GAUSSIAN PUFF: MAPPA DI CONCENTRAZIONE =============
+    def grid_to_latlon(x, y, lat0=52.35, lat1=52.39, lon0=4.88, lon1=4.92, grid=500):
+        """
+        Conversione inversa:
+        coordinate griglia (0..499) → coordinate geografiche.
+        """
+        lat = lat0 + (y / (grid - 1)) * (lat1 - lat0)
+        lon = lon0 + (x / (grid - 1)) * (lon1 - lon0)
+        return float(lat), float(lon)
+
 
     # Convertiamo la posizione reale (lat/lon) in coordinate locali per GaussianPuff (0..499)
     def latlon_to_grid(lat, lon, lat0=52.35, lat1=52.39, lon0=4.88, lon1=4.92, grid=500):
@@ -241,8 +266,9 @@ def ingest_data(sim_data: SimulationData):
     # Usa il vento simulato come input fisico principale.
     conc_map_real, conc_time_series, C1 = generate_concentration_map_from_gaussian(
         {
-            "wind_speed_mps": sim_data.SensorAir.wind_speed_mps
-            # in futuro possiamo passare anche stability_class ecc.
+            "wind_speed_mps": sim_data.SensorAir.wind_speed_mps,
+            "wind_dir_deg": sim_data.SensorAir.wind_dir_deg,
+            "stability_class": sim_data.SensorAir.stability_class
         },
         src_x,
         src_y
@@ -348,6 +374,11 @@ def ingest_data(sim_data: SimulationData):
     #  REAL SENSOR TIME-SERIES  C[x,y,t]
     # ==========================================
     for s in payload_sensors:
+        # aggiungiamo anche le feature PIML globali
+        s["sigma_y"] = sigma_y
+        s["sigma_z"] = sigma_z
+        s["pe_number"] = pe_number
+
         x = int(s["gps_x"])
         y = int(s["gps_y"])
         # estrai la serie temporale completa
@@ -374,6 +405,9 @@ def ingest_data(sim_data: SimulationData):
         "gps_x": src_x,
         "gps_y": src_y,
         "stability_value": stability_index,
+        "sigma_y": sigma_y,
+        "sigma_z": sigma_z,
+        "pe_number": pe_number,
     })
 
     resp_localization = safe_post(
@@ -399,6 +433,16 @@ def ingest_data(sim_data: SimulationData):
         return None
 
     predicted_source_xy = extract_source_xy(resp_localization)
+
+    pred_lat = None
+    pred_lon = None
+
+    if predicted_source_xy is not None:
+        try:
+            px, py = predicted_source_xy
+            pred_lat, pred_lon = grid_to_latlon(px, py)
+        except Exception:
+            pred_lat, pred_lon = None, None
 
     # 1) Preinizializzazione
     predicted_class = sim_data.SensorSubstance.compound_name
@@ -612,8 +656,6 @@ def ingest_data(sim_data: SimulationData):
 
         sim_data.ForensicExport = ForensicExport(
             export_file=f"{sim_data.simulation_id}_bundle.zip",
-            hash_sha256="",
-            signature="",
             compliance_tags=compliance_tags
         )
 
@@ -629,8 +671,8 @@ def ingest_data(sim_data: SimulationData):
         },
         "SensorSubstance": {
             "compound_name": sim_data.SensorSubstance.compound_name,
-            "molecular_formula": sim_data.SensorSubstance.molecular_formula,
             "spectrum_ei_1_600": spectrum_ui_original.tolist(),
+            "concentration_series_mg_m3": sim_data.SensorSubstance.concentration_series_mg_m3,
             "unit": "EI_intensity",
             "noise_level": sim_data.SensorSubstance.noise_level,
         },
@@ -639,11 +681,16 @@ def ingest_data(sim_data: SimulationData):
             "longitude": sim_data.SensorGPS.longitude,
             "altitude_m": sim_data.SensorGPS.altitude_m,
         },
+        "SourceGPS": {
+            "latitude": sim_data.SourceGPS.latitude,
+            "longitude": sim_data.SourceGPS.longitude
+        },
         "PIML_Features": {
             "sigma_y": sim_data.PIML_Features.sigma_y,
             "sigma_z": sim_data.PIML_Features.sigma_z,
             "pe_number": sim_data.PIML_Features.pe_number,
             "stability_index": stability_to_index(sim_data.SensorAir.stability_class),
+            "wind_vector": sim_data.PIML_Features.wind_vector,
         },
         "Inference": {
             "predicted_class": predicted_class or "",
@@ -654,6 +701,10 @@ def ingest_data(sim_data: SimulationData):
                 if predicted_source_xy is not None
                 else sim_data.Inference.predicted_source_location
             ),
+        },
+        "inference_latlon": {
+            "latitude": pred_lat if pred_lat is not None else None,
+            "longitude": pred_lon if pred_lon is not None else None
         },
         "Monitoring": {
             "model_version": sim_data.Monitoring.model_version or "v1.0",
@@ -668,8 +719,6 @@ def ingest_data(sim_data: SimulationData):
         },
         "ForensicExport": {
             "export_file": sim_data.ForensicExport.export_file or "",
-            "hash_sha256": sim_data.ForensicExport.hash_sha256 or "",
-            "signature": sim_data.ForensicExport.signature or "",
             "compliance_tags": sim_data.ForensicExport.compliance_tags or [],
         },
         "SensorNetworkTimeSeries": payload_sensors,

@@ -53,7 +53,6 @@ class SensorSimM:
 
         return {
             "compound_name": compound,
-            "molecular_formula": "",
             "concentration_series_mg_m3": [round(float(v), 4) for v in conc],
             "unit": "mg/m³",
             "noise_level": noise_level
@@ -139,8 +138,6 @@ class SensorSimM:
             },
             "ForensicExport": {
                 "export_file": f"{sim_id}_bundle.zip",
-                "hash_sha256": uuid.uuid4().hex,
-                "signature": "sig_" + uuid.uuid4().hex[:16],
                 "compliance_tags": ["GDPR", "LEA_audit_ok"]
             }
         }
