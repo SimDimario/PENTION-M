@@ -63,12 +63,23 @@ def run_single_simulation(i, csv_date, keep_until=KEEP_NPY_UNTIL):
     sensor_air = SensorAir(sensor_id=0, x=0.0, y=0.0, z=2.0)
     wind_speed, wind_type, stability_type, stability_value, humidify, dry_size, RH = sensor_air.sample_meteorology()
 
+    # 1. posizione sorgente nella binary map
     x_src, y_src = random_position()
-    h_src = round(np.random.uniform(1, 10), 2)
-    Q = round(np.random.uniform(0.0001, 0.01), 4)
-    stacks = [(x_src, y_src, Q, h_src)]
 
-    disp_model = random.choice([DispersionModelType.PLUME, DispersionModelType.PUFF])
+    # 2. converti pixel → metri (pixel * 10m - 2500m per centrare)
+    px_to_m = 10.0
+    x_src_m = x_src * px_to_m - 2500.0
+    y_src_m = y_src * px_to_m - 2500.0
+
+    # 3. altezza e Q fisici
+    h_src = round(np.random.uniform(1, 10), 2)
+    Q = np.random.uniform(5.0, 50.0) / 3600.0  # kg/s
+
+    # 4. stacks corretti
+    stacks = [(x_src_m, y_src_m, Q, h_src)]
+
+
+    disp_model = DispersionModelType.PLUME
     config = ModelConfig(
         days=random.choice([5, 10, 15]),
         aerosol_type=random.choice(list(NPS)),
@@ -81,24 +92,22 @@ def run_single_simulation(i, csv_date, keep_until=KEEP_NPY_UNTIL):
         wind_speed=wind_speed,
         output=OutputType.PLAN_VIEW,
         stacks=stacks,
-        dispersion_model=disp_model,
-        config_puff=ConfigPuff() if disp_model == DispersionModelType.PUFF else None
+        dispersion_model=DispersionModelType.PLUME,
+        config_puff=None
     )
 
     C1, (x, y, z), times, stability, wind_dir, stab_label, wind_label, puff = run_dispersion_model(config)
 
-    dist = np.mean(np.sqrt((x - x_src) ** 2 + (y - y_src) ** 2))
-    sigma_y, sigma_z = sigma_from_distance(dist, stability_index(stability_value))
-
     fname = f"sim_{i}_conc_real_{csv_date}.npy"
-    conc_path = os.path.join(SAVE_DIR_CONC, fname)
 
-    # salva o elimina npy
+    # Salviamo SOLO per le prime `keep_until` simulazioni
+    # e SOLO la snapshot 2D finale (niente tensore 3D gigante)
     if i < keep_until:
-        np.save(conc_path, C1)
-    else:
-        np.save(conc_path, C1)
-        os.remove(conc_path)
+        conc_path = os.path.join(SAVE_DIR_CONC, fname)
+        conc_2d = C1[:, :, -1].astype(np.float32)  # snapshot finale, 2D, molto leggera
+        np.save(conc_path, conc_2d)
+    # per i >= keep_until NON salviamo proprio il file .npy
+    # ma continuiamo a restituire fname nel dizionario (serve solo al CSV)
 
     wind_angle_mean = float(np.degrees(np.arctan2(np.mean(np.sin(np.deg2rad(wind_dir))),
                                                  np.mean(np.cos(np.deg2rad(wind_dir))))))
@@ -110,8 +119,6 @@ def run_single_simulation(i, csv_date, keep_until=KEEP_NPY_UNTIL):
         "wind_dir_mean": round(wind_angle_mean, 2),
         "stability_class": stability_value.name,
         "stability_index": stability_index(stability_value),
-        "sigma_y": sigma_y,
-        "sigma_z": sigma_z,
         "RH": RH,
         "humidify": humidify,
         "source_x": x_src,

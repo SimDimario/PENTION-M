@@ -86,18 +86,14 @@ def run_dispersion_model(config: ModelConfig, bounds: Optional[Tuple] = None):
         x_grid=x[config.x_slice]*np.ones(np.shape(y));    # x is defined to be x at x_slice       
    
     # ==========================================================
-    # FIX: USE EXTERNAL (REAL) WIND FROM CONFIG FOR PENTION-M
+    # WIND: introduce real variability in time (fix flat maps)
     # ==========================================================
-    # Wind speed fixed (realistic)
-    wind_speed = config.wind_speed * np.ones_like(times)
+    base_speed = config.wind_speed
+    base_dir = config.wind_dir_deg if hasattr(config, "wind_dir_deg") else 225.0
 
-    # Wind direction fixed (realistic)
-    # UI uses 0–360°, so apply directly
-    if hasattr(config, "wind_dir_deg"):
-        wind_dir = np.full_like(times, config.wind_dir_deg)
-    else:
-        # fallback: default 225°
-        wind_dir = np.full_like(times, 225.0)
+    # vento variabile con piccoli disturbi realistici
+    wind_speed = base_speed + np.random.uniform(-1.0, 1.0, size=len(times))
+    wind_dir = base_dir + np.random.uniform(-5.0, 5.0, size=len(times))
 
     wind_label = f"Fixed {float(wind_dir[0]):.1f}°"
         
@@ -139,7 +135,8 @@ def run_dispersion_model(config: ModelConfig, bounds: Optional[Tuple] = None):
                     C = gauss_func_puff(puff, x_grid, y_grid, z_grid, dt, stability[t], wind_speed[t], wind_dir[t]) #type:ignore
                     C1[:, :, t] += C #type:ignore
 
-    if config.humidify:
+    # Apply hygroscopic growth only when stable (RH < 0.85)
+    if config.humidify and config.RH < 0.85:
         C1= apply_hygroscopic_growth(C1, config.RH, config.dry_size, config.aerosol_type) #type:ignore
 
     return C1, (x_grid, y_grid, z_grid), times, stability, wind_dir, stability_label, wind_label, (puffs if config.dispersion_model == DispersionModelType.PUFF else None) #, (sigma_y, sigma_z if config.dispersion_model == DispersionModelType.PUFF else None) #type:ignore

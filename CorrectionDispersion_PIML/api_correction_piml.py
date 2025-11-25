@@ -80,7 +80,7 @@ def predict_endpoint(payload: DispersionInput):
         else DEFAULT_BUILDING_MAP
     )
 
-    glob_feat = np.array(payload.global_features, dtype=np.float32) if payload.global_features else None
+    glob_feat = None  # le global features non sono usate nella versione attuale del modello
 
     C_tensor = None
     if payload.concentration_tensor_3d is not None:
@@ -103,7 +103,6 @@ def predict_endpoint(payload: DispersionInput):
         glob_feat,
         C_tensor
     )
-
 
     return {
         "status": "ok",

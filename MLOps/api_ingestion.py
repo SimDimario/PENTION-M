@@ -177,7 +177,10 @@ def generate_concentration_map_from_gaussian(sensor_air: dict, src_x: int, src_y
 
         # mappa media nel tempo (H x W)
         conc_map_2d = np.mean(C1, axis=2)
-        conc_map_2d = conc_map_2d / np.max(conc_map_2d + 1e-8)
+        p95 = np.percentile(conc_map_2d, 95)
+        conc_map_2d = conc_map_2d / (p95 + 1e-6)
+        conc_map_2d = np.clip(conc_map_2d, 0, 1)
+
 
         # serie temporale (media su spazio, funzione del tempo)
         conc_time_series = np.mean(C1, axis=(0, 1))
@@ -258,21 +261,23 @@ def ingest_data(sim_data: SimulationData):
         gy = max(0, min(grid-1, gy))
         return gx, gy
 
+    # Convertiamo la posizione reale (lat/lon) in coordinate locali (0..499)
     src_x, src_y = latlon_to_grid(
-        sim_data.SourceGPS.latitude,
-        sim_data.SourceGPS.longitude
+            sim_data.SourceGPS.latitude,
+            sim_data.SourceGPS.longitude
     )
 
-    # Usa il vento simulato come input fisico principale.
+    # Eseguiamo GaussianPuff usando la vera sorgente convertita
     conc_map_real, conc_time_series, C1 = generate_concentration_map_from_gaussian(
-        {
-            "wind_speed_mps": sim_data.SensorAir.wind_speed_mps,
-            "wind_dir_deg": sim_data.SensorAir.wind_dir_deg,
-            "stability_class": sim_data.SensorAir.stability_class
-        },
-        src_x,
-        src_y
+            {
+                "wind_speed_mps": sim_data.SensorAir.wind_speed_mps,
+                "wind_dir_deg": sim_data.SensorAir.wind_dir_deg,
+                "stability_class": sim_data.SensorAir.stability_class
+            },
+            src_x,
+            src_y
     )
+
 
     from gaussianPuff.sigmaCalculation import calc_sigmas
 
@@ -319,12 +324,6 @@ def ingest_data(sim_data: SimulationData):
         "wind_dir": [sim_data.SensorAir.wind_dir_deg],
         "concentration_map": conc_map_real,
         "building_map": building_map_real,
-        "global_features": [
-            sigma_y,
-            sigma_z,
-            pe_number,
-            stability_index
-        ],
     }
 
     # === TODO3: passiamo anche il TENSORE 3D completo C1 (x, y, t) ===

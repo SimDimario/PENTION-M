@@ -22,7 +22,7 @@ REGISTRY_PATH = os.path.join(LOGS_DIR, "model_registry.json")
 # Dataset
 BINARY_MAP_PATH = os.path.join(SCRIPT_DIR, "binary_maps_data/amsterdam_netherlands_bbox.npy")
 REAL_CONC_PATH = os.path.join(SCRIPT_DIR, "dataset", "real_dispersion")
-CSV_PATH = os.path.join(SCRIPT_DIR, "dataset", "nps_simulated_dataset_gaussiano_2025-11-10_PIML_processed.csv")
+CSV_PATH = os.path.join(SCRIPT_DIR, "dataset", "nps_simulated_dataset_gaussiano_2025-11-24_PIML_processed.csv")
 
 # ============================================================
 # FUNZIONE DI RETRAINING REALE

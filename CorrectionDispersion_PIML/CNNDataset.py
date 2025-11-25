@@ -18,11 +18,7 @@ class CNNDataset2(Dataset):
         wind_dir = np.array(self.wind_dir[idx], dtype=np.float32)
         wind_speed = np.array(self.wind_speed[idx], dtype=np.float32)
 
-        # --- Gestione delle feature globali (es. GPS)
-        if self.global_features is not None:
-            global_feat = np.array(self.global_features[idx], dtype=np.float32)
-        else:
-            global_feat = np.zeros(2, dtype=np.float32)  # [gps_x, gps_y]
+        global_feat = np.zeros(0, dtype=np.float32)
 
         conc_map_tensor = torch.tensor(conc_map, dtype=torch.float32).unsqueeze(0)  # [1, m, m]
         wind_dir_tensor = torch.tensor(wind_dir, dtype=torch.float32)

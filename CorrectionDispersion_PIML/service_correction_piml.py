@@ -67,7 +67,7 @@ def load_model(binary_map, m=500, device=None, pretrained_path=None):
         m=m,
         n_channel=1,
         wind_dim=2,
-        n_global_features=2
+        n_global_features=0
     ).to(device)
 
     # === Caso: path esplicito ===
@@ -142,15 +142,24 @@ def load_model(binary_map, m=500, device=None, pretrained_path=None):
     )
     logger.critical(err_msg)
     raise RuntimeError(err_msg)
-def correct_dispersion_piml(wind_dir, wind_speed, concentration_map, building_map, global_feature=None,C_tensor=None, device=None, m=500, pretrained_path=None):
+
+def correct_dispersion_piml(
+    wind_dir,
+    wind_speed,
+    concentration_map,
+    building_map,
+    global_feature=None,
+    C_tensor=None,
+    device=None,
+    m=500,
+    pretrained_path=None
+):
     logger.info("Starting dispersion correction...")
 
-    # === Device setup ===
     if device is None:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logger.debug(f"Using device: {device}")
 
-    # === Load binary map from disk if missing ===
     binary_map_path = os.path.join(
         SCRIPT_DIR,
         "binary_maps_data",
@@ -164,16 +173,15 @@ def correct_dispersion_piml(wind_dir, wind_speed, concentration_map, building_ma
             logger.info(f"Loaded binary map from {binary_map_path} with shape {building_map.shape}")
         else:
             logger.error(f"[ERROR] Default binary map not found at {binary_map_path}")
-            building_map = np.zeros((m, m), dtype=np.float32)  # fallback
+            building_map = np.zeros((m, m), dtype=np.float32)
     else:
         logger.info(f"Received building_map with shape {building_map.shape}")
 
     logger.info(f"building map: {building_map.shape}")
 
-    # === Load model ===
     model = load_model(building_map, m=m, device=device, pretrained_path=pretrained_path)
 
-    # === Validate and fix concentration_map shape ===
+    # --- shape concentration_map ------------------------------------------
     if concentration_map is None or concentration_map.size == 0:
         logger.warning("Empty concentration_map received — using zeros fallback.")
         concentration_map = np.zeros((m, m, 1), dtype=np.float32)
@@ -184,12 +192,16 @@ def correct_dispersion_piml(wind_dir, wind_speed, concentration_map, building_ma
         logger.warning(f"2D concentration_map of shape {concentration_map.shape} — adding fake time axis.")
         concentration_map = concentration_map[:, :, np.newaxis]
 
-    # === Aggregate concentration map ===
+    # normalizzazione runtime (p95, coerente col training)
+    p95 = np.percentile(concentration_map, 95)
+    concentration_map = concentration_map / (p95 + 1e-6)
+    concentration_map = np.clip(concentration_map, 0, 1)
+
     cm_agg = np.mean(concentration_map, axis=2)
     mc = torch.tensor(cm_agg, dtype=torch.float32, device=device).unsqueeze(0).unsqueeze(0)
     logger.debug(f"Concentration map tensor shape: {mc.shape}")
 
-    # === Wind features ===
+    # vento medio
     wind_dir_cos, wind_dir_sin = calculate_mean_direction(wind_dir)
     degree_angle = np.degrees(np.arctan2(wind_dir_sin, wind_dir_cos)) % 360
     logger.debug(f"Wind direction: {degree_angle}°")
@@ -197,19 +209,13 @@ def correct_dispersion_piml(wind_dir, wind_speed, concentration_map, building_ma
     wind_features = torch.tensor([[wind_speed, degree_angle]], dtype=torch.float32, device=device)
     logger.debug(f"Wind features tensor: {wind_features}")
 
-    # === Global features ===
-    if global_feature is not None:
-        global_features = torch.tensor(global_feature[:2], dtype=torch.float32, device=device).unsqueeze(0)
-        logger.debug(f"Global features trimmed to first 2 values: {global_features.tolist()}")
-    else:
-        global_features = None
+    global_features = None  # non usate in questa versione
 
-    # === Model inference ===
     logger.info("Running model inference...")
     with torch.no_grad():
         try:
-            output = model(mc, wind_features, global_features)
-            output = output.detach().cpu().numpy()[0]  # shape (m, m)
+            output = model(mc, wind_features)          # [1,m,m]
+            output = output.detach().cpu().numpy()[0]  # (m,m)  <-- NIENTE * building_map
             logger.info(f"Inference completed. Output shape: {output.shape}")
         except Exception as e:
             logger.error(f"Error during model inference: {e}")
@@ -219,4 +225,3 @@ def correct_dispersion_piml(wind_dir, wind_speed, concentration_map, building_ma
         "corrected_map": output.tolist(),
         "model_version": get_model_version()
     }
-

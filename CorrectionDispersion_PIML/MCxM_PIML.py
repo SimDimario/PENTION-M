@@ -1,20 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
-# === Mask Layer ==========================================================
-class MaskLayer(nn.Module):
-    """Apply building mask (0 = building, 1 = free space) to concentration map."""
-    def __init__(self, mask):
-        super().__init__()
-        mask = torch.tensor(mask, dtype=torch.float32)
-        self.register_buffer("mask", mask)
-
-    def forward(self, x):
-        return x * self.mask  # element-wise masking
-
-
-# === EarlyStopping utility ===============================================
+# --- opzionale, lasciato per compatibilità con altri script ---
 class EarlyStopping:
     def __init__(self, patience=5, min_delta=1e-4, verbose=True):
         self.patience = patience
@@ -40,91 +29,134 @@ class EarlyStopping:
                 self.early_stop = True
 
 
-# === MCxM_PIML network ===================================================
+# --- blocchi UNet ---------------------------------------------------------
+class ConvBlock(nn.Module):
+    def __init__(self, in_ch, out_ch, dropout_p=0.0):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(out_ch)
+        self.conv2 = nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(out_ch)
+        self.dropout = nn.Dropout2d(p=dropout_p)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = F.relu(x, inplace=True)
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = F.relu(x, inplace=True)
+        x = self.dropout(x)
+        return x
+
+
 class MCxM_PIML(nn.Module):
     """
-    Physics-Informed Mask Correction Module (PIML variant)
-    ------------------------------------------------------
-    Inputs:
-        gauss_disp   : (B,1,H,W) raw dispersion map
-        wind_features: (B,2) [speed, dir_deg]
-        global_feat  : (B,G) optional physical/global features
-    Output:
-        corrected dispersion map (B,H,W)
+    UNet 2D:
+    - input: gaussian_map (1 channel) + building_mask (1 channel) -> 2 canali
+    - vento: modulazione nel bottleneck tramite MLP
+    - output: m x m
     """
 
-    def __init__(self, mask, m=500, dropout_p=0.2,
+    def __init__(self, mask_unused, m=500, dropout_p=0.1,
                  n_channel=1, n_global_features=0, wind_dim=2):
         super().__init__()
         self.m = m
-        self.n_channel = n_channel
         self.wind_dim = wind_dim
         self.n_global_features = n_global_features
 
-        # --- Mask layer ---
-        self.mask_layer = MaskLayer(mask)
+        # --- registra building map come buffer (1x1xHxW) -------------------
+        if isinstance(mask_unused, np.ndarray):
+            bmap = torch.from_numpy(mask_unused.astype("float32"))
+        elif isinstance(mask_unused, torch.Tensor):
+            bmap = mask_unused.detach().float().cpu()
+        else:
+            raise TypeError("mask_unused deve essere np.ndarray o torch.Tensor")
 
-        # --- CNN encoder-decoder (spatial feature extractor) ---
-        self.encoder = nn.Sequential(
-            nn.Conv2d(n_channel, 16, kernel_size=5, padding=2),
-            nn.BatchNorm2d(16),
-            nn.ReLU(),
-            nn.Conv2d(16, 32, kernel_size=5, padding=2, stride=2),
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=3, padding=1, stride=2),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.Dropout2d(p=dropout_p)
+        if bmap.dim() != 2:
+            raise ValueError("mask_unused deve avere shape [H, W]")
+
+        bmap = bmap.unsqueeze(0).unsqueeze(0)  # [1,1,H,W]
+        self.register_buffer("building", bmap)
+
+        # --- UNet: 1 livello di down/up (500 -> 250 -> 500) ----------------
+        in_ch = n_channel + 1  # gauss + building
+
+        self.enc1 = ConvBlock(in_ch, 32, dropout_p=dropout_p)
+        self.pool1 = nn.MaxPool2d(2)  # 500 -> 250
+
+        self.enc2 = ConvBlock(32, 64, dropout_p=dropout_p)
+
+        # bottleneck
+        self.bottleneck = ConvBlock(64, 128, dropout_p=dropout_p)
+
+        # up
+        self.up2 = nn.ConvTranspose2d(128, 32, kernel_size=2, stride=2)  # 250->500
+        self.dec1 = ConvBlock(32 + 32, 32, dropout_p=dropout_p)
+
+        self.out_conv = nn.Conv2d(32, 1, kernel_size=1)
+
+        # vento -> modulazione bottleneck
+        self.wind_mlp = nn.Sequential(
+            nn.Linear(wind_dim, 64),
+            nn.ReLU(inplace=True),
+            nn.Linear(64, 128),
+            nn.ReLU(inplace=True),
         )
 
-        # dimensione ridotta (m/4 x m/4)
-        reduced_size = (m // 4) * (m // 4) * 64
-        fc_input = reduced_size + wind_dim + n_global_features
+        # init pesi
+        self._init_weights()
 
-        self.mlp = nn.Sequential(
-            nn.Linear(fc_input, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Dropout(p=dropout_p),
-            nn.Linear(512, m * m)  # ricostruzione mappa
-        )
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+                nn.init.kaiming_normal_(m.weight, nonlinearity="relu")
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            if isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight, nonlinearity="relu")
+                nn.init.zeros_(m.bias)
 
-        # inizializzazione pesi
-        for layer in self.encoder:
-            if isinstance(layer, nn.Conv2d):
-                nn.init.kaiming_normal_(layer.weight, nonlinearity="relu")
-        for layer in self.mlp:
-            if isinstance(layer, nn.Linear):
-                nn.init.kaiming_normal_(layer.weight, nonlinearity="relu")
-                nn.init.zeros_(layer.bias)
-
-    # ---------------------------------------------------------------------
     def forward(self, gauss_disp, wind_features, global_features=None):
         """
-        gauss_disp   : (B,1,H,W)
-        wind_features: (B,2)
-        global_feat  : (B,G) or None
+        gauss_disp: [B,1,H,W] (normalizzata)
+        wind_features: [B,2] = [wind_speed, wind_dir_deg]
         """
-        # 1. Applica la maschera urbana
-        u = self.mask_layer(gauss_disp)
+        B, _, H, W = gauss_disp.shape
 
-        # 2. Estrai feature spaziali
-        z = self.encoder(u)
-        z = torch.flatten(z, 1)
+        # allinea building mask alla risoluzione corrente
+        bmap = self.building
+        if bmap.shape[-2:] != (H, W):
+            bmap = F.interpolate(bmap, size=(H, W), mode="nearest")
 
-        # 3. Concatenazione fisica (vento + globali)
-        if global_features is not None:
-            z = torch.cat([z, wind_features, global_features], dim=1)
-        else:
-            z = torch.cat([z, wind_features], dim=1)
+        bmap = bmap.expand(B, -1, -1, -1)  # [B,1,H,W]
 
-        # 4. Decodifica (ricostruzione)
-        out = self.mlp(z)
-        out = out.view(-1, self.m, self.m)
+        x = torch.cat([gauss_disp, bmap], dim=1)  # [B,2,H,W]
 
-        # 5. Impone la maschera finale
-        out = self.mask_layer(out)
+        # encoder
+        e1 = self.enc1(x)          # [B,32,500,500]
+        p1 = self.pool1(e1)        # [B,32,250,250]
+
+        e2 = self.enc2(p1)         # [B,64,250,250]
+
+        # bottleneck + vento
+        b = self.bottleneck(e2)    # [B,128,250,250]
+
+        # vento: [B,2] -> [B,128,1,1] -> broadcast
+        wind_embed = self.wind_mlp(wind_features)  # [B,128]
+        wind_embed = wind_embed.view(B, 128, 1, 1)
+        b = b + wind_embed  # FiLM additivo semplice
+
+        # decoder
+        u2 = self.up2(b)           # [B,32,500,500]
+        # padding/crop se necessario
+        if u2.shape[-2:] != e1.shape[-2:]:
+            u2 = F.interpolate(u2, size=e1.shape[-2:], mode="bilinear", align_corners=False)
+
+        d1 = torch.cat([u2, e1], dim=1)   # [B,64,500,500]
+        d1 = self.dec1(d1)                # [B,32,500,500]
+
+        out = self.out_conv(d1)           # [B,1,500,500]
+        out = out.squeeze(1)              # [B,500,500]
+
         return out
