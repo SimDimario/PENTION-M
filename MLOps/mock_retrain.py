@@ -146,7 +146,6 @@ def retrain_loop():
         events = load_recent_monitoring(DRIFT_WINDOW)
         if len(events) < MIN_EVENTS:
             # comment di debug leggero
-            print(f"[RetrainService] DEBUG: eventi insufficienti ({len(events)}/{MIN_EVENTS})")
             continue
 
         last_event = events[-1]
@@ -181,12 +180,6 @@ def retrain_loop():
 
         mismatch_trigger = False
         retrain_needed = drift_trigger or mismatch_trigger
-
-        print(
-            f"[RetrainService] CHECK: drift_mean={drift_mean:.4f}, "
-            f"drift_trigger={drift_trigger}, mismatch={mismatch_trigger}, "
-            f"retrain_needed={retrain_needed}"
-        )
 
         if not retrain_needed:
             continue

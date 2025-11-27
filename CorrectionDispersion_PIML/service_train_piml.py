@@ -1,10 +1,6 @@
 import os
 import json
-
 import torch
-torch.set_num_threads(min(8, os.cpu_count()))
-torch.set_num_interop_threads(min(8, os.cpu_count()))
-
 import numpy as np
 import pandas as pd
 from datetime import datetime
