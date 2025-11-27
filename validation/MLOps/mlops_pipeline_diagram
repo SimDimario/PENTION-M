@@ -1,0 +1,23 @@
+digraph MLOps_Pipeline {
+	nodesep=1 rankdir=LR ranksep=1 splines=ortho
+	sensor [label="Sensor Simulation
+(GPS, Air, Substance EI)" fillcolor=lightyellow shape=box style=filled]
+	ingestion [label="mlops_ingestion
+(Payload Validator)" fillcolor=lightblue shape=box style=filled]
+	gauss [label="GaussianPuff
+(Physics Model)" fillcolor=lightgreen shape=box style=filled]
+	piml [label="CorrectionDispersion-PIML
+(MCxM CNN)" fillcolor=salmon shape=box style=filled]
+	src_loc [label="SourceLocalization-PIML
+(RandomForest)" fillcolor=pink shape=box style=filled]
+	clf [label="NPSClassifier
+(XGBoost)" fillcolor=orange shape=box style=filled]
+	mon [label="Monitoring Service
+(Drift, Latency, Version)" fillcolor=violet shape=box style=filled]
+	sensor -> ingestion
+	ingestion -> gauss
+	gauss -> piml
+	ingestion -> src_loc
+	gauss -> clf
+	piml -> mon
+}
