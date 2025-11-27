@@ -10,6 +10,8 @@ RUN pip install --no-cache-dir pip==23.2.1 && \
 
 COPY . .
 
-EXPOSE 8011
+# 🔥 RIMUOVI IL CMD QUI SOTTO
+# CMD ["uvicorn", "api_ingestion:app", "--host", "0.0.0.0", "--port", "8011"]
 
-CMD ["uvicorn", "api_ingestion:app", "--host", "0.0.0.0", "--port", "8011"]
+# Lascia il comando vuoto: il docker-compose lo sovrascriverà correttamente
+CMD ["bash"]

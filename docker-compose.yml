@@ -44,6 +44,8 @@ services:
       - gaussian_puff
     volumes:
       - ./CorrectionDispersion_PIML/models:/CorrectionDispersion_PIML/models
+      - ./CorrectionDispersion_PIML/binary_maps_data:/CorrectionDispersion_PIML/binary_maps_data
+      - ./logs:/logs
 
   source_localization_piml:
     build: ./EmissionSourceLocalization_PIML
@@ -109,7 +111,9 @@ services:
   mlops_retrain:
     build: ./MLOps
     container_name: mlops_retrain
-    command: uvicorn mock_retrain:app --host 0.0.0.0 --port 8014
+    command: uvicorn mock_retrain:app --host 0.0.0.0 --port 8014 --app-dir /MLOps
+    environment:
+      - PYTHONUNBUFFERED=1
     ports:
       - "8014:8014"
     volumes:
@@ -120,6 +124,10 @@ services:
     restart: unless-stopped
     depends_on:
       - mlops_monitoring
+    deploy:
+      resources:
+        limits:
+          cpus: "3"
 
   # -------------------- UI --------------------
   pention_system:

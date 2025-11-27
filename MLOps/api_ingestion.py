@@ -605,11 +605,6 @@ def ingest_data(sim_data: SimulationData):
     else:
         drift_value = sim_data.Monitoring.drift_score
 
-    # reset drift se il retrain lo richiede
-    reset_drift = reg.get("metrics", {}).get("drift_reset", False)
-    if reset_drift:
-        drift_value = 0.0
-
     print(f"[INFO] Latenza reale misurata: {latency_ms} ms, drift: {drift_value}")
 
     # aggiorniamo il payload interno (per forensic e UI)
@@ -622,8 +617,8 @@ def ingest_data(sim_data: SimulationData):
     sim_data.Monitoring.mse_free = mse_free
 
     # === MODEL OPS: trigger di retraining basato su drift ===
-    # soglia arbitraria ma chiara per la tesi (es. 0.7)
-    retrain = drift_value is not None and drift_value > 0.7
+    # soglia arbitraria ma chiara per la tesi (es. 0.3)
+    retrain = drift_value is not None and drift_value > 0.3
     sim_data.ModelOps.retraining_trigger = bool(retrain)
 
     monitoring_out = {
@@ -641,7 +636,7 @@ def ingest_data(sim_data: SimulationData):
     if sim_data.ForensicExport is None:
         compliance_tags = []
 
-        if drift_value is not None and drift_value > 0.7:
+        if drift_value is not None and drift_value > 0.3:
             compliance_tags.append("DRIFT_HIGH")
         else:
             compliance_tags.append("DRIFT_OK")
