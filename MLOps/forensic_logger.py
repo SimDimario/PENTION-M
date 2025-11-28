@@ -100,6 +100,9 @@ class ForensicEvent(BaseModel):
             raise ValueError("timestamp must be ISO 8601")
         return v
 
+    class Config:
+        extra = "allow"
+
 # ============================================================
 # FUNZIONI UTILI
 # ============================================================
@@ -193,7 +196,9 @@ def log_forensic(event: ForensicEvent):
     event_dict["artifacts"] = artifacts
 
     # === aggiungi compliance tags PRIMA di scrivere il bundle ===
-    event_dict["ForensicExport"]["compliance_tags"].extend([
+    fe = event_dict.setdefault("ForensicExport", {})
+    fe.setdefault("compliance_tags", [])
+    fe["compliance_tags"].extend([
         "SIGNATURE_OK",
         "HASH_OK",
         "ARTIFACTS_OK",

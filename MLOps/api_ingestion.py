@@ -210,6 +210,28 @@ def safe_post(url: str, payload: dict, label: str):
         print(f"[WARN] {label} not reachable: {e}")
         return {"status": "warning", "error": str(e)}
 
+def sanitize_correction_response(resp):
+    """
+    Rimuove la corrected_map dal runtime da salvare nel bundle forense
+    e la sostituisce con metadati leggeri (shape + hash).
+    """
+    if not isinstance(resp, dict):
+        return resp
+
+    clean = {k: v for k, v in resp.items()
+             if k not in ("corrected_map", "corrected_concentration_map")}
+
+    cm = resp.get("corrected_map") or resp.get("corrected_concentration_map")
+    if cm is not None:
+        try:
+            arr = np.array(cm, dtype=np.float32)
+            clean["corrected_map_shape"] = list(arr.shape)
+            clean["corrected_map_hash"] = hashlib.sha256(arr.tobytes()).hexdigest()
+        except Exception as e:
+            clean["corrected_map_error"] = f"hash_failed: {e}"
+
+    return clean
+
 # ============================================================
 # ENDPOINT PRINCIPALE
 # ============================================================
@@ -718,7 +740,7 @@ def ingest_data(sim_data: SimulationData):
         "SensorNetworkTimeSeries": payload_sensors,
         # metadati grezzi dei servizi PIML → utili per audit/analisi offline
         "PIML_Runtime": {
-            "correction_dispersion_piml": resp_correction,
+            "correction_dispersion_piml": sanitize_correction_response(resp_correction),
             "source_localization_piml": resp_localization,
         },
     }
