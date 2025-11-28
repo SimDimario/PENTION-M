@@ -216,14 +216,14 @@ def retrain_model():
         # if avg_val_loss < best_val_loss:
         #     best_val_loss = avg_val_loss
         #     torch.save(model.state_dict(), MODEL_PATH)
-        #     print(f"[RetrainService] 🔥 Nuovo best model salvato in {MODEL_PATH} (val_loss={best_val_loss:.6f})")
+        #     print(f"[RetrainService] Nuovo best model salvato in {MODEL_PATH} (val_loss={best_val_loss:.6f})")
 
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
-            print(f"[RetrainService] 🔥 Best model *virtuale* aggiornato (val_loss={best_val_loss:.6f})")
+            print(f"[RetrainService] Best model *virtuale* aggiornato (val_loss={best_val_loss:.6f})")
 
     duration_min = round((time() - t_start) / 60, 2)
-    print(f"[RetrainService] ⏱️ Durata totale retraining: {duration_min} minuti")
+    print(f"[RetrainService] Durata totale retraining: {duration_min} minuti")
 
     # --- Versioning numerico incrementale ---
     os.makedirs(LOGS_DIR, exist_ok=True)
@@ -254,7 +254,7 @@ def retrain_model():
 
     }
 
-    print(f"[RetrainService] ✅ Retraining completato. new_version={new_version}, metrics={metrics}")
+    print(f"[RetrainService] Retraining completato. new_version={new_version}, metrics={metrics}")
 
     return new_version, metrics
 

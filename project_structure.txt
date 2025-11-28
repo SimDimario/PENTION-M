@@ -525,29 +525,16 @@
 ├── logs
 │   ├── drift_baseline.json
 │   ├── forensic
-│   │   ├── bundle_20251127_184846_218dc57e.json
-│   │   ├── bundle_20251127_184900_f16efc33.json
-│   │   ├── bundle_20251127_184907_bdd7cbfc.json
-│   │   ├── bundle_20251127_184914_1818f127.json
-│   │   ├── bundle_20251127_184920_73de1ec3.json
-│   │   ├── bundle_20251127_184927_b20ea244.json
-│   │   ├── bundle_20251127_184934_3e422288.json
-│   │   ├── bundle_20251127_184941_5fc07eb2.json
-│   │   ├── bundle_20251127_184948_6de6c563.json
-│   │   ├── bundle_20251127_184955_4955c261.json
-│   │   ├── bundle_20251127_185001_4486da16.json
-│   │   ├── bundle_20251127_185008_32c12086.json
-│   │   ├── bundle_20251127_185014_213e4590.json
-│   │   ├── bundle_20251127_185021_fb82f125.json
-│   │   ├── bundle_20251127_185028_8387e889.json
-│   │   ├── bundle_20251127_185035_04bf6193.json
-│   │   ├── bundle_20251127_185041_16b72e91.json
-│   │   ├── bundle_20251127_185048_165e456c.json
-│   │   ├── bundle_20251127_185056_65741ef7.json
-│   │   ├── bundle_20251127_185102_15127b6b.json
-│   │   ├── bundle_20251127_185109_f4e3fe71.json
-│   │   ├── bundle_20251128_094431_a5ed1526.json
-│   │   └── bundle_20251128_095516_959708a1.json
+│   │   ├── bundle_20251128_110110_90113174.json
+│   │   ├── bundle_20251128_110119_ecfb52a4.json
+│   │   ├── bundle_20251128_110130_e1a04ee4.json
+│   │   ├── bundle_20251128_110141_6d83dfb5.json
+│   │   ├── bundle_20251128_110152_104436c2.json
+│   │   ├── bundle_20251128_110207_444087a5.json
+│   │   ├── bundle_20251128_110222_ced6f723.json
+│   │   ├── bundle_20251128_110237_a21514c1.json
+│   │   ├── bundle_20251128_110250_84d5d39a.json
+│   │   └── bundle_20251128_110418_178c5d96.json
 │   ├── ingestion_log.jsonl
 │   ├── model_registry.json
 │   ├── modelops_retrain_log.jsonl
@@ -556,6 +543,7 @@
 │   └── amsterdam_drive.graphml
 ├── project_structure.txt
 ├── struttura.py
+├── test.py
 ├── test_MLOps_end2end.py
 ├── test_datasetNPS
 │   ├── 1-s2.0-S2468170923000358-mmc1.csv
@@ -574,7 +562,9 @@
     ├── Forensic
     │   ├── Forensic_Validation.ipynb
     │   ├── forensic_validation.py
-    │   └── tamper_test.py
+    │   ├── forensic_validation_results.csv
+    │   ├── tamper_test.py
+    │   └── tampered_bundle.json
     ├── MLOps
     │   ├── MLOps_Validation_Analysis.ipynb
     │   ├── mlops_pipeline_diagram
@@ -582,6 +572,14 @@
     │   ├── mlops_pipeline_stress_test.py
     │   └── mlops_stress_results.csv
     ├── NPS
+    │   ├── NPS_Calibration_and_Robustness.ipynb
+    │   ├── nps_calibration_robustness.py
+    │   └── results_nps
+    │       ├── calibration_curve.png
+    │       ├── confidence_histogram.png
+    │       ├── noise_robustness.csv
+    │       ├── noise_robustness.png
+    │       └── summary.json
     └── PIML
         ├── PIML_Validation_All.ipynb
         ├── metrics.py

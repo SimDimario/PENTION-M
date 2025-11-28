@@ -80,5 +80,5 @@ plt.close()
 
 # === Salva dataset processato ===
 dataset.to_csv(OUTPUT_PATH, index=False)
-print(f"\n✅ Dataset PIML processato e salvato in:\n{OUTPUT_PATH}")
-print(f"📊 Grafici salvati in: {PLOT_DIR}")
+print(f"\nDataset PIML processato e salvato in:\n{OUTPUT_PATH}")
+print(f"Grafici salvati in: {PLOT_DIR}")

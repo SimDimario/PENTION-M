@@ -201,7 +201,7 @@ def load_model_if_needed():
     CACHED_DEVICE = device
     CACHED_BINARY_MAP = binary_map
 
-    print(f"[PIML] ✅ Modello PIML caricato/ricaricato. Versione: {CACHED_VERSION}, device={device}")
+    print(f"[PIML] Modello PIML caricato/ricaricato. Versione: {CACHED_VERSION}, device={device}")
 
     return CACHED_MODEL, CACHED_VERSION, CACHED_DEVICE, CACHED_BINARY_MAP
 

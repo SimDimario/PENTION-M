@@ -23,7 +23,7 @@ from gaussianPuff.Sensor import SensorAir
 N_SIMULATIONS = 1000
 SAVE_EVERY = 100
 KEEP_NPY_UNTIL = 300
-N_WORKERS = 8   # ⬅️ usa 8 processi in parallelo (puoi aumentare fino a 12–14)
+N_WORKERS = 8   # usa 8 processi in parallelo
 SAVE_DIR = "./CorrectionDispersion_PIML/dataset"
 SAVE_DIR_CONC = os.path.join(SAVE_DIR, "real_dispersion")
 BINARY_MAP_PATH = os.path.join(os.path.dirname(__file__), "binary_maps_data/amsterdam_netherlands_bbox.npy")
@@ -152,7 +152,7 @@ if __name__ == "__main__":
                 df_partial["gps_x"] = df_partial["source_x"] / df_partial["source_x"].max()
                 df_partial["gps_y"] = df_partial["source_y"] / df_partial["source_y"].max()
                 df_partial.to_csv(temp_csv_path, index=False)
-                print(f"\n💾 Checkpoint salvato ({len(results)}/{N_SIMULATIONS}) → {temp_csv_path}")
+                print(f"\nCheckpoint salvato ({len(results)}/{N_SIMULATIONS}) → {temp_csv_path}")
                 sys.stdout.flush()  # forza aggiornamento output
 
     # === SALVATAGGIO FINALE =============================================
@@ -163,8 +163,8 @@ if __name__ == "__main__":
     csv_path = os.path.join(SAVE_DIR, f"nps_simulated_dataset_gaussiano_{csv_date}_PIML.csv")
     df.to_csv(csv_path, index=False)
 
-    print(f"\n✅ Dataset PIML completo generato: {csv_path}")
+    print(f"\nDataset PIML completo generato: {csv_path}")
     print(f"Totale simulazioni: {len(df)}")
-    print(f"📊 GPS normalizzato incluso nel dataset.")
-    print(f"💾 Prime {KEEP_NPY_UNTIL} mappe salvate in: {SAVE_DIR_CONC}")
-    print(f"⚡ Le restanti sono state eliminate per risparmiare spazio.")
+    print(f"GPS normalizzato incluso nel dataset.")
+    print(f"Prime {KEEP_NPY_UNTIL} mappe salvate in: {SAVE_DIR_CONC}")
+    print(f"Le restanti sono state eliminate per risparmiare spazio.")

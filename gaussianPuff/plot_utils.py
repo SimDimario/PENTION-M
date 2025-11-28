@@ -225,7 +225,7 @@ def animate_plan_view(C1, x, y, binary_map=None, sensor_locs=None, interval=200,
 
     if save_path:
         ani.save(save_path, writer='pillow', fps=1000//interval)
-        print(f"✅ Animazione salvata in: {save_path}")
+        print(f"Animazione salvata in: {save_path}")
     else:
         plt.show()
 
