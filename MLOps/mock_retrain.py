@@ -56,10 +56,10 @@ REGISTRY_PATH = os.path.join(LOG_DIR, "model_registry.json")
 
 os.makedirs(LOG_DIR, exist_ok=True)
 
-CHECK_INTERVAL = 10      # ogni 10s
-DRIFT_THRESHOLD = 0.5    # soglia per il drift medio
-DRIFT_WINDOW = 5         # numero di eventi usati per la media
-MIN_EVENTS = 5           # minimo eventi per attivare logica
+CHECK_INTERVAL = 30      # ogni 10s
+DRIFT_THRESHOLD = 0.6    # soglia per il drift medio
+DRIFT_WINDOW = 10         # numero di eventi usati per la media
+MIN_EVENTS = 10           # minimo eventi per attivare logica
 
 running = True  # flag di controllo thread
 LAST_RETRAIN_AT = None  # timestamp dell’ultimo retrain riuscito
@@ -214,7 +214,7 @@ def retrain_loop():
                     "last_update": entry["timestamp"],
                     "current_model_version": new_version,
                     "previous_model_version": registry_version,
-                    "training_data_version": f"PIML_DS_{new_version}",
+                    "training_data_version": f"PIML_DS_v{int(new_version.replace('PIML_v',''))}",
                     "metrics": metrics
                 }, f, indent=2)
 
@@ -310,7 +310,7 @@ def trigger_manual():
         "last_update": entry["timestamp"],
         "previous_model_version": registry.get("current_model_version"),
         "current_model_version": new_version,
-        "training_data_version": f"PIML_DS_{new_version}",
+        "training_data_version": f"PIML_DS_v{int(new_version.replace('PIML_v',''))}",
         "metrics": metrics
     })
 

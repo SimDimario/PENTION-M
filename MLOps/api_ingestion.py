@@ -95,6 +95,7 @@ class ForensicExport(BaseModel):
 class SimulationData(BaseModel):
     simulation_id: str
     timestamp: str
+    event_start_ts: Optional[str] = None
     SensorAir: SensorAir
     SensorSubstance: SensorSubstance
     SensorGPS: SensorGPS
@@ -263,6 +264,7 @@ def ingest_data(sim_data: SimulationData):
        → Monitoring (drift + latency reali)
        → Forensic (bundle firmato con artifact hash)
     """
+    full_start_ts = sim_data.event_start_ts
 
     # ============= 0. LOG INIZIALE =============
     append_log({
@@ -597,6 +599,17 @@ def ingest_data(sim_data: SimulationData):
         td_version = reg.get("training_data_version", "PIML_DS_v1")
         sim_data.ModelOps.training_data_version = td_version
 
+    # 6-BIS) CALCOLO LATENCY END-TO-END (UI → INGESTION → TUTTA PIPELINE)
+    if full_start_ts:
+        try:
+            t0 = datetime.fromisoformat(full_start_ts.replace("Z", ""))
+            t1 = datetime.utcnow()
+            latency_full_ms = int((t1 - t0).total_seconds() * 1000)
+        except Exception:
+            latency_full_ms = 0
+    else:
+        latency_full_ms = 0
+
     # ============= 6. MONITORING: DRIFT + LATENZA REALE =============
     monitoring_payload = {
         "simulation_id": sim_data.simulation_id,
@@ -628,7 +641,7 @@ def ingest_data(sim_data: SimulationData):
         "Monitoring": {
             "model_version": sim_data.Monitoring.model_version,
             "drift_score": (sim_data.Monitoring.drift_score if sim_data.Monitoring else 0.0),
-            "latency_ms": (sim_data.Monitoring.latency_ms if sim_data.Monitoring else 0),
+            "latency_ms": latency_full_ms,
             "mse_free": mse_free,
         },
         "ModelOps": {
@@ -638,15 +651,12 @@ def ingest_data(sim_data: SimulationData):
         },
     }
 
-    # Misuriamo la latenza della POST /monitor_event
-    t0 = time.time()
+    # 7) CHIAMATA AL MONITORING SERVICE CON LATENCY END-TO-END
     resp_monitoring = safe_post(
         "http://mlops_monitoring:8012/monitor_event",
         monitoring_payload,
         label="Monitoring",
     )
-    t1 = time.time()
-    latency_ms = round((t1 - t0) * 1000, 2)
 
     # Recuperiamo il drift calcolato dal monitoring service
     if isinstance(resp_monitoring, dict):
@@ -657,14 +667,14 @@ def ingest_data(sim_data: SimulationData):
     else:
         drift_value = sim_data.Monitoring.drift_score
 
-    print(f"[INFO] Latenza reale misurata: {latency_ms} ms, drift: {drift_value}")
+    print(f"[INFO] Latenza end-to-end: {latency_full_ms} ms, drift: {drift_value}")
 
-    # aggiorniamo il payload interno (per forensic e UI)
-    monitoring_payload["Monitoring"]["latency_ms"] = latency_ms
+    # Aggiorno il payload interno
+    monitoring_payload["Monitoring"]["latency_ms"] = latency_full_ms
     monitoring_payload["Monitoring"]["drift_score"] = drift_value
 
-    # Aggiorna anche il blocco Monitoring interno a sim_data
-    sim_data.Monitoring.latency_ms = latency_ms
+    # Aggiorno il blocco Monitoring interno
+    sim_data.Monitoring.latency_ms = latency_full_ms
     sim_data.Monitoring.drift_score = drift_value
     sim_data.Monitoring.mse_free = mse_free
 
@@ -676,7 +686,7 @@ def ingest_data(sim_data: SimulationData):
     monitoring_out = {
         "simulation_id": sim_data.simulation_id,
         "model_version": sim_data.Monitoring.model_version,
-        "latency_ms": latency_ms,
+        "latency_ms": latency_full_ms,
         "drift_score": drift_value,
         "stability_index": sim_data.PIML_Features.stability_index,
         "confidence": confidence_clf,
@@ -693,7 +703,7 @@ def ingest_data(sim_data: SimulationData):
         else:
             compliance_tags.append("DRIFT_OK")
 
-        if latency_ms > 500:
+        if latency_full_ms > 500:
             compliance_tags.append("LATENCY_HIGH")
         else:
             compliance_tags.append("LATENCY_OK")
@@ -755,7 +765,7 @@ def ingest_data(sim_data: SimulationData):
         "Monitoring": {
             "model_version": sim_data.Monitoring.model_version or "v1.0",
             "drift_score": drift_value,
-            "latency_ms": latency_ms,
+            "latency_ms": latency_full_ms,
             "mse_free": mse_free,
         },
         "ModelOps": {

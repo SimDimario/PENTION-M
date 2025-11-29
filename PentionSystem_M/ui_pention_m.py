@@ -285,6 +285,9 @@ def build_simulation_payload(sim_id: str, lat: float, lon: float, source_lat: fl
 
 def call_ingestion_pipeline(sim_id: str, lat: float, lon: float, source_lat: float, source_lon: float):
     payload = build_simulation_payload(sim_id, lat, lon, source_lat, source_lon)
+
+    payload["event_start_ts"] = datetime.utcnow().isoformat() + "Z"
+
     try:
         resp = requests.post(INGESTION_URL, json=payload, timeout=180)
         try:

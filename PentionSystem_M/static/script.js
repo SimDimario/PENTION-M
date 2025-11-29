@@ -971,8 +971,16 @@ function connectWebSocket() {
 
         if (msg.monitoring.latency_ms !== undefined) {
           const latVal = msg.monitoring.latency_ms;
-          latencyEl.textContent = latVal + " ms";
-          colorizeMetric(latencyEl, latVal, { yellow: 80, red: 200 });
+
+          // opzionale: mostra in secondi invece che in ms
+          const latSec = (latVal / 1000).toFixed(1);
+          latencyEl.textContent = `${latSec} s`;
+
+          // soglie nuove, tarate sulla tua pipeline reale
+          colorizeMetric(latencyEl, latVal, {
+            yellow: 6000,  // > 6 s → giallo
+            red: 10000     // > 10 s → rosso
+          });
         }
 
         if (msg.monitoring.stability_index !== undefined) {
