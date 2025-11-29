@@ -19,27 +19,54 @@ scaler = joblib.load(os.path.join(MODEL_PATH, "scaler_piml.pkl"))
 MODEL_VERSION = "RF_PIML_v1"
 
 def estrai_feature(time, conc, window=None, spike_height=None):
-    time, conc = np.array(time), np.array(conc)
+    import json
+    if isinstance(time, str):
+        time = json.loads(time)
+    if isinstance(conc, str):
+        conc = json.loads(conc)
+
+    time = np.array(time, dtype=float)
+    conc = np.array(conc, dtype=float)
+
     if len(time) == 0 or len(conc) == 0:
-        return {k: 0.0 for k in ["C_max","t_peak","t_first_peak","mean","std","AUC","rise_rate","fall_rate","plume_duration","spike_count","spike_frequency"]}
+        return {k: 0.0 for k in [
+            "C_max","t_peak","t_first_peak","mean","std","AUC",
+            "rise_rate","fall_rate","plume_duration","spike_count","spike_frequency"
+        ]}
 
     C_max = np.max(conc)
     idx_max = np.argmax(conc)
-    t_peak = time[idx_max]
+    t_peak = time[idx_max]                     # ⬅⬅⬅ AGGIUNTO
+
     spike_height = spike_height or 0.1 * C_max
     peaks, _ = find_peaks(conc, height=spike_height)
     t_first_peak = time[peaks[0]] if len(peaks) > 0 else 0.0
+
     rise_rate = (C_max - conc[0]) / (t_peak - time[0] + 1e-6)
     fall_rate = (C_max - conc[-1]) / (time[-1] - t_peak + 1e-6)
+
     mean_val, std_val = float(np.mean(conc)), float(np.std(conc))
     auc = np.trapz(conc, time)
     above = np.where(conc > spike_height)[0]
     plume_duration = time[above[-1]] - time[above[0]] if len(above) > 1 else 0.0
-    spike_count, total_duration = len(peaks), (time[-1] - time[0] + 1e-6)
+    spike_count = len(peaks)
+    total_duration = (time[-1] - time[0] + 1e-6)
     spike_freq = spike_count / total_duration
-    return {"C_max":C_max,"t_peak":t_peak,"t_first_peak":t_first_peak,"mean":mean_val,"std":std_val,"AUC":auc,
-            "rise_rate":rise_rate,"fall_rate":fall_rate,"plume_duration":plume_duration,
-            "spike_count":spike_count,"spike_frequency":spike_freq}
+
+    return {
+        "C_max": C_max,
+        "t_peak": t_peak,
+        "t_first_peak": t_first_peak,
+        "mean": mean_val,
+        "std": std_val,
+        "AUC": auc,
+        "rise_rate": rise_rate,
+        "fall_rate": fall_rate,
+        "plume_duration": plume_duration,
+        "spike_count": spike_count,
+        "spike_frequency": spike_freq
+    }
+
 
 def predict_source_piml(sensors: list, n_sensor_operating: int):
     logger.info(f"[PIML] Predicting source for {len(sensors)} sensors")
@@ -51,7 +78,11 @@ def predict_source_piml(sensors: list, n_sensor_operating: int):
 
     agg_features = []
     for sensor_id, group in df.groupby("sensor_id"):
-        feat = estrai_feature(group["time"], group["conc"])
+        # ⬇⬇⬇ FIX QUI: estraiamo la LISTA vera dalla Series
+        time_seq = group["time"].iloc[0]
+        conc_seq = group["conc"].iloc[0]
+
+        feat = estrai_feature(time_seq, conc_seq)
         first = group.iloc[0]
         feat.update({
             "wind_dir_x": first["wind_dir_x"],
@@ -74,7 +105,8 @@ def predict_source_piml(sensors: list, n_sensor_operating: int):
     y_pred = model.predict(X_scaled)
 
     x, y = float(y_pred[0][0]), float(y_pred[0][1])
-    conf = float(np.exp(-np.var(y_pred)))  # semplice proxy di confidenza
+    var = float(np.var(y_pred))
+    conf = 1.0 / (1.0 + var)
 
     logger.info(f"[PIML] Predicted source: x={x:.3f}, y={y:.3f}, conf={conf:.3f}")
     return {
@@ -84,4 +116,3 @@ def predict_source_piml(sensors: list, n_sensor_operating: int):
         "model_version": MODEL_VERSION,
         "predicted_source_xy": [x, y]
     }
-

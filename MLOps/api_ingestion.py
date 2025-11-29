@@ -9,10 +9,10 @@ import os
 import sys
 import time
 import hashlib
+
 MODEL_REGISTRY_PATH = "/logs/model_registry.json"
 
 import numpy as np
-from SensorSim_M import generate_sensor_network_from_map
 
 # --- Fix import path per gaussianPuff (garantito) ---
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -280,29 +280,28 @@ def ingest_data(sim_data: SimulationData):
     })
 
     # ============= 1. GAUSSIAN PUFF: MAPPA DI CONCENTRAZIONE =============
-    def grid_to_latlon(x, y, lat0=52.35, lat1=52.39, lon0=4.88, lon1=4.92, grid=500):
-        """
-        Conversione inversa:
-        coordinate griglia (0..499) → coordinate geografiche.
-        """
-        lat = lat0 + (y / (grid - 1)) * (lat1 - lat0)
-        lon = lon0 + (x / (grid - 1)) * (lon1 - lon0)
-        return float(lat), float(lon)
+    # Bounding box WGS84 della UI (Amsterdam)
+    LAT_MIN = 52.35
+    LAT_MAX = 52.39
+    LON_MIN = 4.88
+    LON_MAX = 4.92
+    GRID = 500
 
-
-    # Convertiamo la posizione reale (lat/lon) in coordinate locali per GaussianPuff (0..499)
-    def latlon_to_grid(lat, lon, lat0=52.35, lat1=52.39, lon0=4.88, lon1=4.92, grid=500):
-        gx = int((lon - lon0) / (lon1 - lon0) * (grid - 1))
-        gy = int((lat - lat0) / (lat1 - lat0) * (grid - 1))
-        gx = max(0, min(grid-1, gx))
-        gy = max(0, min(grid-1, gy))
+    def latlon_to_grid(lat, lon):
+        gx = int((lon - LON_MIN) / (LON_MAX - LON_MIN) * (GRID - 1))
+        gy = int((lat - LAT_MIN) / (LAT_MAX - LAT_MIN) * (GRID - 1))
+        gx = max(0, min(GRID - 1, gx))
+        gy = max(0, min(GRID - 1, gy))
         return gx, gy
 
+    def grid_to_latlon(gx, gy):
+        lat = LAT_MIN + gy / (GRID - 1) * (LAT_MAX - LAT_MIN)
+        lon = LON_MIN + gx / (GRID - 1) * (LON_MAX - LON_MIN)
+        return lat, lon
+
+
     # Convertiamo la posizione reale (lat/lon) in coordinate locali (0..499)
-    src_x, src_y = latlon_to_grid(
-            sim_data.SourceGPS.latitude,
-            sim_data.SourceGPS.longitude
-    )
+    src_x, src_y = latlon_to_grid(sim_data.SourceGPS.latitude, sim_data.SourceGPS.longitude)
 
     # Eseguiamo GaussianPuff usando la vera sorgente convertita
     conc_map_real, conc_time_series, C1, stability_array, wind_dir_series = generate_concentration_map_from_gaussian(
@@ -315,7 +314,6 @@ def ingest_data(sim_data: SimulationData):
             src_x,
             src_y
     )
-
 
     from gaussianPuff.sigmaCalculation import calc_sigmas
 
@@ -416,44 +414,19 @@ def ingest_data(sim_data: SimulationData):
 
     # ============= 3. SENSOR NETWORK + SOURCE LOCALIZATION PIML =============
     # Generiamo sensori virtuali campionando dalla mappa 2D corretta.
-    payload_sensors = generate_sensor_network_from_map(
-        conc_map_np,
-        building_map_np,
-        n_sensors=5,
-        fault_rate=0.1,
-        seed=42
-    )
-
-    # ==========================================
-    #  REAL SENSOR TIME-SERIES  C[x,y,t]
-    # ==========================================
-    for s in payload_sensors:
-        # aggiungiamo anche le feature PIML globali
-        s["sigma_y"] = sigma_y
-        s["sigma_z"] = sigma_z
-        s["pe_number"] = pe_number
-
-        x = int(s["gps_x"])
-        y = int(s["gps_y"])
-        # estrai la serie temporale completa
-        series_sensor = C1[y, x, :].tolist()
-        s["concentration_series"] = series_sensor
-
-    # ==========================================
-    # VAN SENSOR (ID=999)
-    # ==========================================
+    payload_sensors = []
 
     van_series = C1[src_y, src_x, :].tolist()
+    van_time = list(range(len(van_series)))
 
     payload_sensors.append({
-        "sensor_id": 999,
-        "time": 0.0,
-        "sensor_is_fault": False,
-        # valore medio serve SOLO al PIML
-        "conc": float(np.mean(van_series)),
+        "sensor_id": 1,
+        "sensor_is_fault": False,        # ⬅ OBBLIGATORIA
+        "time": van_time,
+        "conc": van_series,
         "concentration_series": van_series,
-        "wind_dir_x": np.cos(np.radians(sim_data.SensorAir.wind_dir_deg)),
-        "wind_dir_y": np.sin(np.radians(sim_data.SensorAir.wind_dir_deg)),
+        "wind_dir_x": np.cos(np.radians(wind_dir_deg_eff)),
+        "wind_dir_y": np.sin(np.radians(wind_dir_deg_eff)),
         "wind_speed": sim_data.SensorAir.wind_speed_mps,
         "wind_type": 1,
         "gps_x": src_x,
@@ -464,11 +437,12 @@ def ingest_data(sim_data: SimulationData):
         "pe_number": pe_number,
     })
 
+
     resp_localization = safe_post(
         "http://loc_emission_source_piml:8010/predict_source_piml",
         {
             "payload_sensors": payload_sensors,
-            "n_sensor_operating": len(payload_sensors),
+            "n_sensor_operating": 1
         },
         label="EmissionSourceLocalization_PIML",
     )

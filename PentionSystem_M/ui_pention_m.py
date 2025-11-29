@@ -76,9 +76,18 @@ def load_graph():
     # 1) Prova a caricare da cache
     if os.path.exists(GRAPH_PATH):
         try:
-            print(f"[UI] Loading graph from cache: {GRAPH_PATH}", flush=True)
+            print("[UI] Loading graph from cache: ", GRAPH_PATH, flush=True)
             G = ox.load_graphml(GRAPH_PATH)
             G = nx.Graph(G)
+
+            # 🔥 DEBUG BOUNDING BOX DEL GRAFO OSM
+            lats = [v["y"] for k, v in G.nodes(data=True)]
+            lons = [v["x"] for k, v in G.nodes(data=True)]
+            print("[UI] BOUNDING BOX REAL:",
+                "lat:", min(lats), max(lats),
+                "lon:", min(lons), max(lons),
+                flush=True)
+
         except Exception as e:
             print(f"[UI] Error loading cached graph: {e}", flush=True)
             G = None
@@ -476,7 +485,11 @@ async def simulation_loop(force_near=False):
                     "distance_m": dist,
                 })
 
+                # 🔥 FIX: dai tempo al frontend di mostrare la card
+                await asyncio.sleep(0.15)
+
                 result = call_ingestion_pipeline(sim_id, van_lat, van_lon, source_lat, source_lon)
+
 
                 monitoring = result.get("body", {}).get("monitoring") or get_last_monitoring()
                 registry = get_model_registry()

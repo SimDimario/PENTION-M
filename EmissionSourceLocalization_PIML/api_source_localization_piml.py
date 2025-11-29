@@ -33,8 +33,8 @@ logger = logging.getLogger(__name__)
 class SensorData(BaseModel):
     sensor_id: int
     sensor_is_fault: bool
-    time: float | None
-    conc: float | None
+    time: List[float]
+    conc: List[float]
     wind_dir_x: float | None
     wind_dir_y: float | None
     wind_speed: float | None
