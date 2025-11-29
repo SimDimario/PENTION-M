@@ -136,10 +136,14 @@ def generate_concentration_map_from_gaussian(sensor_air: dict, src_x: int, src_y
     Esegue una simulazione GaussianPuff e restituisce:
     - conc_map_2d: mappa media nel tempo (H x W, normalizzata 0–1)
     - conc_time_series: media spaziale nel tempo (len = n_step temporali)
+    - C1: tensor completo (x, y, t)
+    - stability_array: serie temporale della stabilità (valori Pasquill-Gifford)
+    - wind_dir_series: serie temporale della direzione del vento (deg)
     Usa realmente:
       - wind_speed_mps
       - wind_dir_deg
       - stability_class (A–F → PasquillGiffordStability)
+      - humidity (RH)
     """
     try:
         # mappa classe di stabilità (A–F) → Pasquill-Gifford
@@ -157,10 +161,13 @@ def generate_concentration_map_from_gaussian(sensor_air: dict, src_x: int, src_y
         wind_speed = float(sensor_air.get("wind_speed_mps", 4.0))
         wind_dir_deg = float(sensor_air.get("wind_dir_deg", 225.0))
 
+        # Umidità relativa se disponibile
+        rh = float(sensor_air.get("humidity", 0.6))
+
         config = ModelConfig(
             days=1,
-            RH=0.6,  # oppure puoi passare un humidity fisico se vuoi
-            aerosol_type=None,  # o NPS.CATHINONE_ANALOGUES
+            RH=rh,
+            aerosol_type=None,  # oppure tipo reale se vorrai
             humidify=False,
             stability_profile=StabilityType.CONSTANT,
             stability_value=stab_value,
@@ -181,15 +188,21 @@ def generate_concentration_map_from_gaussian(sensor_air: dict, src_x: int, src_y
         conc_map_2d = conc_map_2d / (p95 + 1e-6)
         conc_map_2d = np.clip(conc_map_2d, 0, 1)
 
-
         # serie temporale (media su spazio, funzione del tempo)
         conc_time_series = np.mean(C1, axis=(0, 1))
 
-        return conc_map_2d.tolist(), conc_time_series.tolist(), C1
+        return conc_map_2d.tolist(), conc_time_series.tolist(), C1, stability_array, wind_dir_series
 
     except Exception as e:
         print(f"[WARN] GaussianPuff simulation failed: {e}")
-        return np.zeros((500, 500)).tolist(), [0.0], np.zeros((500, 500, 1))
+        # fallback safe: nessuna dinamica → stabilità neutra, vento fisso
+        return (
+            np.zeros((500, 500)).tolist(),
+            [0.0],
+            np.zeros((500, 500, 1)),
+            np.array([4.0], dtype=np.float32),         # stability_index ~ neutro
+            np.array([225.0], dtype=np.float32),       # direzione SW
+        )
 
 def append_log(entry: dict):
     """Salva i log in formato JSON lines"""
@@ -290,11 +303,12 @@ def ingest_data(sim_data: SimulationData):
     )
 
     # Eseguiamo GaussianPuff usando la vera sorgente convertita
-    conc_map_real, conc_time_series, C1 = generate_concentration_map_from_gaussian(
+    conc_map_real, conc_time_series, C1, stability_array, wind_dir_series = generate_concentration_map_from_gaussian(
             {
                 "wind_speed_mps": sim_data.SensorAir.wind_speed_mps,
                 "wind_dir_deg": sim_data.SensorAir.wind_dir_deg,
-                "stability_class": sim_data.SensorAir.stability_class
+                "stability_class": sim_data.SensorAir.stability_class,
+                "humidity": sim_data.SensorAir.humidity_,
             },
             src_x,
             src_y
@@ -318,16 +332,33 @@ def ingest_data(sim_data: SimulationData):
     # Péclet number semplificato
     pe_number = sim_data.SensorAir.wind_speed_mps / (sigma_y + 1e-6)
 
-    stability_index = stability_to_index(sim_data.SensorAir.stability_class)
+    # stability_index fisico: media della serie di stabilità di GaussianPuff
+    try:
+        if isinstance(stability_array, np.ndarray):
+            stability_index = float(np.mean(stability_array))
+        else:
+            stability_index = float(np.mean(stability_array))
+    except Exception:
+        # fallback sulla classe A–F se qualcosa va storto
+        stability_index = stability_to_index(sim_data.SensorAir.stability_class)
 
-    # Se la UI non ha mandato PIML_Features → li generiamo noi
+    # Direzione vento media dal modello (se disponibile), altrimenti da UI
+    try:
+        if isinstance(wind_dir_series, np.ndarray):
+            wind_dir_deg_eff = float(np.mean(wind_dir_series))
+        else:
+            wind_dir_deg_eff = float(sim_data.SensorAir.wind_dir_deg)
+    except Exception:
+        wind_dir_deg_eff = float(sim_data.SensorAir.wind_dir_deg)
+
+    # Se la UI non ha mandato PIML_Features → li generiamo noi (physics-informed)
     sim_data.PIML_Features = PIMLFeatures(
         sigma_y=sigma_y,
         sigma_z=sigma_z,
         pe_number=pe_number,
         wind_vector=[
-            np.cos(np.radians(sim_data.SensorAir.wind_dir_deg)),
-            np.sin(np.radians(sim_data.SensorAir.wind_dir_deg)),
+            float(np.cos(np.radians(wind_dir_deg_eff))),
+            float(np.sin(np.radians(wind_dir_deg_eff))),
         ],
         stability_index=stability_index
     )
@@ -535,7 +566,7 @@ def ingest_data(sim_data: SimulationData):
             v = reg.get("current_model_version")
             if v:
                 effective_model_version = v
-                print(f"[INFO] 🔄 Ingestion usa model_version reale: {effective_model_version}")
+                print(f"[INFO] Ingestion usa model_version reale: {effective_model_version}")
         except Exception as e:
             print(f"[WARN] Errore lettura registry: {e}")
     else:
@@ -582,8 +613,7 @@ def ingest_data(sim_data: SimulationData):
             "sigma_z": sim_data.PIML_Features.sigma_z,
             "pe_number": sim_data.PIML_Features.pe_number,
             "wind_vector": sim_data.PIML_Features.wind_vector,
-            # qui usiamo uno stability_index coerente con la classe Pasquill
-            "stability_index": stability_to_index(sim_data.SensorAir.stability_class),
+            "stability_index": sim_data.PIML_Features.stability_index,
         },
         "Inference": {
             "dispersion_map_id": sim_data.Inference.dispersion_map_id,
@@ -648,7 +678,7 @@ def ingest_data(sim_data: SimulationData):
         "model_version": sim_data.Monitoring.model_version,
         "latency_ms": latency_ms,
         "drift_score": drift_value,
-        "stability_index": stability_to_index(sim_data.SensorAir.stability_class),
+        "stability_index": sim_data.PIML_Features.stability_index,
         "confidence": confidence_clf,
     }
 
@@ -705,7 +735,7 @@ def ingest_data(sim_data: SimulationData):
             "sigma_y": sim_data.PIML_Features.sigma_y,
             "sigma_z": sim_data.PIML_Features.sigma_z,
             "pe_number": sim_data.PIML_Features.pe_number,
-            "stability_index": stability_to_index(sim_data.SensorAir.stability_class),
+            "stability_index": sim_data.PIML_Features.stability_index,
             "wind_vector": sim_data.PIML_Features.wind_vector,
         },
         "Inference": {

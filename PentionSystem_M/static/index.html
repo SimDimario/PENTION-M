@@ -61,26 +61,38 @@
         <div class="metric-value" id="sim-distance">–</div>
       </div> -->
       <div class="metric-row">
-        <div class="metric-label">Model version</div>
+        <div class="metric-label" data-tooltip="Versione del modello PIML attualmente in uso">Model version</div>
         <div class="metric-value" id="model-version">–</div>
       </div>
+
       <div class="metric-row">
-        <div class="metric-label">Drift score</div>
+        <div class="metric-label" data-tooltip="Indica quanto il modello sta divergendo dal comportamento atteso">Drift score</div>
         <div class="metric-value" id="drift-score">–</div>
       </div>
+
       <div class="metric-row">
-        <div class="metric-label">Latency</div>
+        <div class="metric-label" data-tooltip="Tempo totale della pipeline da ingestion → eventi MLOps">Latency</div>
         <div class="metric-value" id="latency-ms">–</div>
       </div>
+
       <div class="metric-row">
-        <div class="metric-label">Stability index</div>
+        <div class="metric-label" data-tooltip="Indice di stabilità Pasquill-Gifford (A–F) convertito a valore numerico 1–6">Stability index</div>
         <div class="metric-value" id="stability-index">–</div>
       </div>
+
       <div class="metric-row">
-        <div class="metric-label">Confidence</div>
+        <div class="metric-label" data-tooltip="Confidenza del classificatore NPS sulla sostanza rilevata">Confidence</div>
         <div class="metric-value" id="confidence">–</div>
       </div>
+
     </div>
+
+    <!-- MINI MASS SPECTRUM (sidebar) -->
+    <div id="mini-spectrum-card" class="card" style="display:none;">
+      <h2>EI Mass Spectrum</h2>
+      <canvas id="mini-spectrum-chart" height="120"></canvas>
+    </div>
+
 
     <!-- Forensic bundle card -->
     <div id="bundle-card" class="card" style="display:none;">
@@ -116,6 +128,8 @@
 
 <!-- Hidden map used ONLY for PDF rendering -->
 <div id="pdf-map" style="width:900px; height:600px; position:absolute; top:-9999px; left:-9999px;"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <!-- jsPDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

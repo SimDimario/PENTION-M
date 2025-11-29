@@ -17,6 +17,8 @@ html, body {
 #map {
   height: 100%;
   width: 100%;
+  position: relative;
+  z-index: 1;
 }
 
 #sidebar {
@@ -27,7 +29,11 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  position: relative;
+  z-index: 10;
+  overflow: visible; 
 }
+
 
 h1 {
   font-size: 18px;
@@ -312,8 +318,9 @@ pre {
 
 .report-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px 40px;
+  grid-template-columns: 1fr 1fr;   /* metà e metà */
+  gap: 14px 40px;
+  align-items: start;                /* allinea verticalmente */
 }
 
 .report-item-label {
@@ -323,6 +330,7 @@ pre {
 
 .report-item-value {
   color: #ffffff;
+  word-break: break-all;
 }
 
 .popup-export {
@@ -423,3 +431,107 @@ pre {
   top: -2000px !important;
   left: -2000px !important;
 }
+
+[data-tooltip] {
+  position: relative;
+  cursor: pointer;
+}
+
+/* BOX DEL TOOLTIP */
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  white-space: pre-line;
+  position: absolute;
+  right: 0;
+  top: -6px;
+  transform: translateY(-100%);
+  background: #0f172ae6;
+  color: #e2e8f0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  font-size: 11px;
+  opacity: 0;
+  pointer-events: none;
+  width: 220px;
+  max-width: 240px;
+  z-index: 99999;
+  transition: opacity 0.2s ease-out;
+}
+
+[data-tooltip]:hover::after {
+  opacity: 1;
+}
+
+/* FRECCIA */
+[data-tooltip]::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: 12px;
+  transform: translateY(-100%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: #0f172ae6 transparent transparent transparent;
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+}
+
+[data-tooltip]:hover::before {
+  opacity: 1;
+}
+
+/* MINI MASS SPECTRUM — Sidebar */
+#mini-spectrum-card {
+    padding: 12px;
+    height: 190px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 10px;
+    background: #0f1623;
+    border: 1px solid #1f2937;
+}
+
+#mini-spectrum-card h2 {
+    font-size: 14px;
+}
+
+/* Canvas del mini grafico */
+#mini-spectrum-chart {
+    width: 100% !important;
+    height: 150px !important;
+    display: block;
+}
+
+
+#full-spectrum-chart {
+  width: 100% !important;
+  max-height: 260px !important;
+  height: 260px !important;
+  background: #0c111b; 
+  border: 1px solid #1d2635;
+  padding: 10px;
+  border-radius: 8px;
+  overflow: hidden;
+  display: block;
+}
+
+.ts-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.ts-card {
+  background: #101827;
+  border: 1px solid #24304a;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  word-break: break-word;
+  line-height: 1.45;
+  box-shadow: 0 0 6px rgba(0,0,0,0.25);
+}
+
+

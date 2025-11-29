@@ -36,7 +36,7 @@ def retrain_model():
     Ritorna (new_version, metrics) per il registry MLOps.
     NON scrive direttamente nel registry: ci pensa mock_retrain.
     """
-    print("[RetrainService] 🔁 Avvio retraining PIML reale...")
+    print("[RetrainService] Avvio retraining PIML reale...")
 
     # --- Caricamento risorse base ---
     if not os.path.exists(BINARY_MAP_PATH):

@@ -6,6 +6,9 @@ from typing import List, Tuple, Optional
 import logging
 import numpy as np
 
+import random
+from datetime import datetime
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from gaussianPuff.gaussianModel import run_dispersion_model
 from gaussianPuff.config import ModelConfig, WindType, StabilityType, PasquillGiffordStability, NPS, OutputType, DispersionModelType, ConfigPuff
@@ -51,31 +54,54 @@ from gaussianPuff.config import PasquillGiffordStability
 @app.get("/get_meteo")
 def get_meteo():
     """
-    Restituisce condizioni meteo fisiche e coerenti 
-    con GaussianPuff senza avviare una simulazione.
+    Restituisce condizioni meteo pseudo-realistiche e variabili
+    ad ogni simulazione, senza avviare GaussianPuff.
     """
     try:
-        # Valori fisici e coerenti
-        temperature = 20.0   # °C — GaussianPuff NON simula la temperatura
-        humidity = 0.55      # RH medio fisico
+        # Ora del giorno (per variare temperatura/umidità in modo plausibile)
+        hour = datetime.utcnow().hour
 
-        # vento realistico e stabile (usato anche in PLUME)
-        wind_speed = 4.2     # m/s
-        wind_dir_deg = 225   # SW→NE (tipico NW Europe)
+        # Temperatura: più bassa di notte, più alta di giorno
+        if 6 <= hour < 12:      # mattina
+            temperature = random.uniform(8.0, 16.0)
+        elif 12 <= hour < 18:   # pomeriggio
+            temperature = random.uniform(12.0, 24.0)
+        else:                   # sera/notte
+            temperature = random.uniform(4.0, 18.0)
 
-        # classe di stabilità neutra (scelta fisica)
-        stability_class = "D"
+        # Umidità relativa (abbastanza alta in Olanda)
+        humidity = random.uniform(0.5, 0.9)
+
+        # Vento: velocità e direzione con variabilità
+        base_speed = 4.0
+        wind_speed = max(0.5, random.gauss(base_speed, 1.0))  # m/s
+
+        # Direzione centrata su SW (225°) ma con spread
+        wind_dir_deg = (225.0 + random.uniform(-60.0, 60.0)) % 360.0
+
+        # Classe di stabilità Pasquill-Gifford con distribuzione realistica
+        classes = ["A", "B", "C", "D", "E", "F"]
+        weights = [0.05, 0.10, 0.25, 0.30, 0.20, 0.10]  # neutrale e leggermente instabile più probabili
+        stability_class = random.choices(classes, weights=weights, k=1)[0]
 
         return {
-            "temperature": temperature,
-            "humidity": humidity,
-            "wind_speed": wind_speed,
-            "wind_dir_deg": wind_dir_deg,
+            "temperature": round(temperature, 2),
+            "humidity": round(humidity, 2),
+            "wind_speed": round(wind_speed, 2),
+            "wind_dir_deg": round(wind_dir_deg, 2),
             "stability_class": stability_class
         }
 
     except Exception as e:
-        return {"error": str(e)}
+        # Fallback neutro se succede qualcosa
+        return {
+            "temperature": 20.0,
+            "humidity": 0.55,
+            "wind_speed": 4.0,
+            "wind_dir_deg": 225.0,
+            "stability_class": "D",
+            "error": str(e),
+        }
 
 @app.post("/start_simulation")
 def start_simulation(payload: dict):
