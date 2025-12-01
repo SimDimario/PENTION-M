@@ -139,6 +139,7 @@ services:
     volumes:
       - ./gaussianPuff:/PentionSystem/gaussianPuff
       - ./ClassificatoreNPS/model:/PentionSystem/ClassificatoreNPS/model
+      - ./ClassificatoreNPS/datasetNPS:/PentionSystem/ClassificatoreNPS/datasetNPS
       - ./logs:/logs
 
   pentionsystem_m:

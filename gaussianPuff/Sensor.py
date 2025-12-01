@@ -120,8 +120,7 @@ class SensorSubstance:
         }
 
     import os
-    current_dir = os.path.dirname(__file__)
-    default_dataset_path = os.path.join(current_dir, '..', 'ClassificatoreNPS', 'datasetNPS', '1-s2.0-S2468170923000358-mmc1.csv')
+    default_dataset_path = "/PentionSystem/ClassificatoreNPS/datasetNPS/1-s2.0-S2468170923000358-mmc1.csv"
 
     def _generate_mass_spectra(self, df=pd.read_csv(default_dataset_path, sep=',', header=0), n_generic=9, noise_level=0.01):
 
