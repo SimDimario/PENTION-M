@@ -797,7 +797,12 @@ async function exportPDF() {
     field("Model version", monitoring.model_version);
     field("Latency (ms)", monitoring.latency_ms);
     field("Drift score", monitoring.drift_score);
-    field("MSE free", monitoring.mse_free);
+    field(
+      "MSE free",
+      monitoring && monitoring.mse_free !== undefined
+        ? monitoring.mse_free
+        : (evMonitoring?.mse_free ?? "N/A")
+    );
 
     section("PIML Runtime");
     field("Correction status", pimlRuntime.correction_dispersion_piml?.status);
