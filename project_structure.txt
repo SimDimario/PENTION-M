@@ -178,6 +178,7 @@
 ├── docker
 ├── docker-compose.yml
 ├── documents
+│   ├── .$PENTION-M_Architecture.drawio.bkp
 │   ├── Descrizione_documenti_prof.docx
 │   ├── PENTION-M_Architecture.drawio
 │   ├── PENTION_initial_requirements_elicitation.xlsx
@@ -236,9 +237,9 @@
 │   │   ├── bundle_20251129_165157_04b341e9.json
 │   │   ├── bundle_20251129_165208_0cb9af00.json
 │   │   │   ...
-│   │   ├── bundle_20251129_212752_7b2d3280.json
-│   │   ├── bundle_20251129_213552_90d57960.json
-│   │   └── bundle_20251201_095947_4ba45017.json
+│   │   ├── bundle_20251203_102259_77b85534.json
+│   │   ├── bundle_20251203_102611_c2dafb4a.json
+│   │   └── bundle_20251203_104113_21593dc4.json
 │   ├── ingestion_log.jsonl
 │   ├── model_registry.json
 │   ├── modelops_retrain_log.jsonl
@@ -259,7 +260,8 @@
     │   ├── forensic_validation.py
     │   ├── forensic_validation_results.csv
     │   ├── tamper_test.py
-    │   └── tampered_bundle.json
+    │   ├── tampered_bundle.json
+    │   └── verify_bundle.py
     ├── MLOps
     │   ├── MLOps_Validation_Analysis.ipynb
     │   ├── mlops_pipeline_diagram
