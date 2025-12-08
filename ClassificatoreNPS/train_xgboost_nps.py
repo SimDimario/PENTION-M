@@ -55,6 +55,9 @@ def augment_spectrum(s):
     dropout = np.random.rand(len(s)) < 0.02
     s[dropout] = 0
 
+    # ✅ (4.5) evita negativi prima della potenza
+    s = np.clip(s, 0, None)
+
     # (5) non-linear scaling
     s = s ** np.random.uniform(0.92, 1.05)
 

@@ -192,6 +192,11 @@
 │   │   │   ├── A+comprehensive+review+of+physics-informed+deep+learning+and+its+applications+in+geoenergy+development.pdf
 │   │   │   ├── MLOps_for_Cyberphysical_Production_Systems_Challenges_and_Solutions.pdf
 │   │   │   ├── Spiegazione paper.docx
+│   │   │   ├── Temperature scaling
+│   │   │   │   ├── 1706.04599v2.pdf
+│   │   │   │   ├── 1807.00263v1.pdf
+│   │   │   │   ├── 2106.07998v2.pdf
+│   │   │   │   └── spiegazione paper.docx
 │   │   │   ├── fluids-10-00226-v2.pdf
 │   │   │   ├── kashinath-et-al-2021-physics-informed-machine-learning-case-studies-for-weather-and-climate-modelling.pdf
 │   │   │   ├── paper13.pdf
@@ -240,9 +245,9 @@
 │   │   ├── bundle_20251129_165157_04b341e9.json
 │   │   ├── bundle_20251129_165208_0cb9af00.json
 │   │   │   ...
-│   │   ├── bundle_20251203_102611_c2dafb4a.json
-│   │   ├── bundle_20251203_104113_21593dc4.json
-│   │   └── bundle_20251203_173447_9a20b7a0.json
+│   │   ├── bundle_20251208_174129_af6a05a0.json
+│   │   ├── bundle_20251208_174145_b0ecf838.json
+│   │   └── bundle_20251208_174159_f2e5d8ae.json
 │   ├── ingestion_log.jsonl
 │   ├── model_registry.json
 │   ├── modelops_retrain_log.jsonl
