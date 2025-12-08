@@ -165,6 +165,11 @@ def health():
 def log_forensic(event: ForensicEvent):
     event_dict = json.loads(event.json(by_alias=True))
 
+    # --- Inject temperature scaling value if present ---
+    if "Inference" in event_dict and isinstance(event_dict["Inference"], dict):
+        if "temperature_used" not in event_dict["Inference"]:
+            event_dict["Inference"]["temperature_used"] = None
+
     # === 🔍 Aggiunta metadati forensi sugli artifact ===
     artifacts = {}
     try:

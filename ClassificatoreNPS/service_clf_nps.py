@@ -2,6 +2,7 @@ import numpy as np
 import joblib
 import os
 import logging
+import json
 from scipy.special import softmax
 from tensorflow.keras.models import load_model  # type: ignore
 from xgboost import XGBClassifier
@@ -158,7 +159,16 @@ def pipe_clf_brf(spectra: np.ndarray):
 
     return np.array(predictions)
 
-def pipe_clf_xgb(spectra: np.ndarray):
+def load_temperature():
+    config_path = os.path.join(base_dir, "model", "temp_config.json")
+    try:
+        with open(config_path, "r") as f:
+            cfg = json.load(f)
+        return float(cfg.get("T", 1.8))
+    except:
+        return 1.8
+
+def pipe_clf_xgb(spectra: np.ndarray, dynamic_T: float | None = None):
     if spectra is None or len(spectra) == 0:
         raise ValueError("Input spectra is empty or None")
     if spectra.ndim != 2:
@@ -172,7 +182,11 @@ def pipe_clf_xgb(spectra: np.ndarray):
         raw_probs = xgb_clf.predict_proba(spectra_scaled)[0]
 
         # ---- COARSE TEMPERATURE SCALING ----
-        T = 1.8      # valore che abbassa confidenze unrealistiche
+        if dynamic_T is not None:
+            T = float(dynamic_T)
+        else:
+            T = load_temperature()
+
         logits = np.log(np.clip(raw_probs, 1e-12, 1))
         logits_scaled = logits / T
         probs = softmax(logits_scaled)
@@ -184,6 +198,7 @@ def pipe_clf_xgb(spectra: np.ndarray):
         return {
             "predictions": [prediction],
             "confidence": confidence,
+            "temperature_used": T,
             "model": "XGB_v2"
         }
 

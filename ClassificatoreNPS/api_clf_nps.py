@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse
 import os
+import json
 import sys
 import numpy as np
 import pandas as pd
@@ -83,24 +84,35 @@ def predict_brf(input_data: Spectra):
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
 @app.post("/predict_xgb")
-def predict_xgb(input_data: Spectra):
+def predict_xgb(input_data: Spectra, dynamic_T: float | None = None):
     logger.info("Richiesta su /predict_xgb")
     try:
         mass_spectrum = input_data.to_numpy()
-        result = service_clf_nps.pipe_clf_xgb(mass_spectrum)
+        result = service_clf_nps.pipe_clf_xgb(mass_spectrum, dynamic_T)
 
         return JSONResponse(
             content={
                 "predictions": result["predictions"],
                 "confidence": result["confidence"],
+                "temperature_used": result.get("temperature_used", None),
                 "model": "XGB"
             },
             status_code=200
         )
+
     except Exception as e:
         logger.exception("Errore in /predict_xgb")
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
+@app.post("/set_temperature/{T}")
+def set_temperature(T: float):
+    config_path = os.path.join(os.path.dirname(__file__), "model", "temp_config.json")
+    try:
+        with open(config_path, "w") as f:
+            json.dump({"T": T}, f)
+        return {"status": "ok", "new_temperature": T}
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
 # ============================================================
 # ENDPOINT DI DEBUG (NON USATO DA INGESTION)

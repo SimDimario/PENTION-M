@@ -30,6 +30,7 @@
 │   │   ├── balanced_random_forest_rfe.pkl
 │   │   ├── dnn_spectra_version.keras
 │   │   ├── scale_dnn.pkl
+│   │   ├── temp_config.json
 │   │   ├── xgb_nps_model.json
 │   │   └── xgb_scaler.pkl
 │   ├── plots_model
@@ -180,6 +181,8 @@
 ├── documents
 │   ├── .$PENTION-M_Architecture.drawio.bkp
 │   ├── Descrizione_documenti_prof.docx
+│   ├── PENTION-M simulazione PIML + MLOps per la detection di sostanze NPS.pdf
+│   ├── PENTION-M simulazione PIML + MLOps per la detection di sostanze NPS.pptx
 │   ├── PENTION-M_Architecture.drawio
 │   ├── PENTION_initial_requirements_elicitation.xlsx
 │   ├── Paper utili
@@ -237,9 +240,9 @@
 │   │   ├── bundle_20251129_165157_04b341e9.json
 │   │   ├── bundle_20251129_165208_0cb9af00.json
 │   │   │   ...
-│   │   ├── bundle_20251203_102259_77b85534.json
 │   │   ├── bundle_20251203_102611_c2dafb4a.json
-│   │   └── bundle_20251203_104113_21593dc4.json
+│   │   ├── bundle_20251203_104113_21593dc4.json
+│   │   └── bundle_20251203_173447_9a20b7a0.json
 │   ├── ingestion_log.jsonl
 │   ├── model_registry.json
 │   ├── modelops_retrain_log.jsonl

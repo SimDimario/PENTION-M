@@ -246,6 +246,83 @@ def sanitize_correction_response(resp):
 
     return clean
 
+def compute_dynamic_temperature(
+    spectrum,
+    stability_class,
+    stability_index,
+    wind_speed,
+    drift_score,
+    mse_free,
+    latency_ms
+):
+    """
+    Meta-euristica ibrida ottimizzata per T dinamico.
+    Range finale: 1.0 – 3.0
+    """
+
+    # -------------------------------------
+    # 1) BASELINE PIÙ BASSA
+    # -------------------------------------
+    T = 1.2
+
+    # -------------------------------------
+    # 2) NOISE DELLO SPETTRO EI
+    # (contributo dimezzato)
+    # -------------------------------------
+    noise = float(np.std(spectrum))
+    T += min(noise * 0.15, 0.20)       # max +0.20
+
+    # -------------------------------------
+    # 3) STABILITY CLASS A-F
+    # (valori più moderati)
+    # -------------------------------------
+    stab_map = {"A": -0.20, "B": -0.10, "C": 0.0, "D": +0.10, "E": +0.20, "F": +0.30}
+    T += stab_map.get(stability_class.upper(), 0.0)
+
+    # -------------------------------------
+    # 4) PHYSICAL STABILITY INDEX (GaussianPuff)
+    # (influenza dimezzata)
+    # -------------------------------------
+    T += min((abs(stability_index - 3.5) / 4.0) * 0.25, 0.25)
+
+    # -------------------------------------
+    # 5) WIND TURBULENCE
+    # (range leggero)
+    # -------------------------------------
+    if wind_speed > 8:
+        T += 0.15
+    elif wind_speed > 5:
+        T += 0.05
+    elif wind_speed < 2:
+        T -= 0.10
+
+    # -------------------------------------
+    # 6) DRIFT DEL MODELLO
+    # (molto importante ma NON devastante)
+    # -------------------------------------
+    if drift_score > 0.6:
+        T += 0.30
+    elif drift_score > 0.3:
+        T += 0.15
+
+    # -------------------------------------
+    # 7) STRUCTURAL ERROR MSE (dispersion correction)
+    # -------------------------------------
+    T += min(mse_free * 1.0, 0.20)
+
+    # -------------------------------------
+    # 8) LATENCY HEALTH
+    # -------------------------------------
+    if latency_ms > 1500:
+        T += 0.15
+    elif latency_ms > 800:
+        T += 0.05
+
+    # -------------------------------------
+    # 9) CLAMPING FINALE
+    # -------------------------------------
+    return float(max(1.0, min(T, 3.0)))
+
 # ============================================================
 # ENDPOINT PRINCIPALE
 # ============================================================
@@ -508,9 +585,20 @@ def ingest_data(sim_data: SimulationData):
             else:
                 spectrum_noisy = np.pad(spectrum_noisy, (0, 600 - len(spectrum_noisy)))
 
-        # INVIO AL VERO CLASSIFICATORE
+        # --- CALCOLO TEMPERATURA DINAMICA ---
+        # Per ora usiamo drift e latency "0" (cioè nessun effetto MLOps diretto su T)
+        dynamic_T = compute_dynamic_temperature(
+            spectrum=spectrum_noisy,
+            stability_class=sim_data.SensorAir.stability_class,
+            stability_index=sim_data.PIML_Features.stability_index,
+            wind_speed=sim_data.SensorAir.wind_speed_mps,
+            drift_score=0.0,
+            mse_free=mse_free,
+            latency_ms=0
+        )
+
         resp_nps = safe_post(
-            "http://clas_nps:8000/predict_xgb",
+            f"http://clas_nps:8000/predict_xgb?dynamic_T={dynamic_T}",
             {"spectra": [spectrum_noisy.tolist()]},
             label="ClassificatoreNPS (XGB)"
         )
@@ -524,7 +612,6 @@ def ingest_data(sim_data: SimulationData):
 
     except Exception as e:
         print(f"[WARN] NPS classification failed: {e}")
-
 
     # ============= 5. MODEL REGISTRY E VERSIONING =============
     effective_model_version = "PIML_v1"  # default se registry assente
