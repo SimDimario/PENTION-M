@@ -8,8 +8,6 @@ from glob import glob
 from math import radians, sin, cos, sqrt, atan2
 import pandas as pd
 import numpy as np
-
-
 import requests
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
@@ -18,6 +16,12 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 import networkx as nx
 import osmnx as ox
+import sys
+sys.path.append("/shared_config")
+
+from config_geo import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX
+
+
 
 # ----------------------------------------------------
 # CONFIG
@@ -109,15 +113,11 @@ def load_graph():
         print("[UI] Building synthetic grid graph for Amsterdam area.", flush=True)
         G = nx.grid_2d_graph(20, 20)  # 20x20 = 400 nodi
 
-        # bounding box approssimativa su Amsterdam
-        lat_min, lat_max = 52.35, 52.39
-        lon_min, lon_max = 4.88, 4.92
-
         for (i, j) in G.nodes:
             fi = i / 19.0
             fj = j / 19.0
-            lat = lat_min + (lat_max - lat_min) * fi
-            lon = lon_min + (lon_max - lon_min) * fj
+            lat = LAT_MIN + (LAT_MAX - LAT_MIN) * fi
+            lon = LON_MIN + (LON_MAX - LON_MIN) * fj
             G.nodes[(i, j)]["y"] = float(lat)
             G.nodes[(i, j)]["x"] = float(lon)
 

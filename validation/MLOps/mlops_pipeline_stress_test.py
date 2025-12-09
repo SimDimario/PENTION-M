@@ -21,8 +21,10 @@ DEFAULT_INGESTION_URL = "http://localhost:8011/ingest_data"
 DEFAULT_METEO_URL = "http://localhost:8002/get_meteo"
 
 # Bounding box Amsterdam
-LAT_MIN, LAT_MAX = 52.35, 52.39
-LON_MIN, LON_MAX = 4.88, 4.92
+LAT_MIN = 52.35
+LAT_MAX = 52.39
+LON_MIN = 4.88
+LON_MAX = 4.92
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 DATASET_CANDIDATES = [

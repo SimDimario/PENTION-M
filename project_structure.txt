@@ -245,9 +245,9 @@
 │   │   ├── bundle_20251129_165157_04b341e9.json
 │   │   ├── bundle_20251129_165208_0cb9af00.json
 │   │   │   ...
-│   │   ├── bundle_20251208_174129_af6a05a0.json
-│   │   ├── bundle_20251208_174145_b0ecf838.json
-│   │   └── bundle_20251208_174159_f2e5d8ae.json
+│   │   ├── bundle_20251208_180413_59d5f560.json
+│   │   ├── bundle_20251208_180420_34599432.json
+│   │   └── bundle_20251209_130655_b56f4d30.json
 │   ├── ingestion_log.jsonl
 │   ├── model_registry.json
 │   ├── modelops_retrain_log.jsonl
@@ -255,6 +255,8 @@
 ├── osm_cache
 │   └── amsterdam_drive.graphml
 ├── project_structure.txt
+├── shared_config
+│   └── config_geo.py
 ├── struttura.py
 ├── test_MLOps_end2end.py
 └── validation

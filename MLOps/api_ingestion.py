@@ -9,10 +9,9 @@ import os
 import sys
 import time
 import hashlib
+import numpy as np
 
 MODEL_REGISTRY_PATH = "/logs/model_registry.json"
-
-import numpy as np
 
 # --- Fix import path per gaussianPuff (garantito) ---
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -22,6 +21,11 @@ sys.path.append("/MLOps")
 # --- Collegamento GaussianPuff ---
 from gaussianPuff.gaussianModel import run_dispersion_model
 from gaussianPuff.config import ModelConfig, StabilityType, WindType, OutputType, DispersionModelType, PasquillGiffordStability
+import sys
+sys.path.append("/shared_config")
+
+from config_geo import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, GRID
+
 
 # ============================================================
 # API INGESTION SERVICE – Layer 1 (PENTION-M)
@@ -358,11 +362,6 @@ def ingest_data(sim_data: SimulationData):
 
     # ============= 1. GAUSSIAN PUFF: MAPPA DI CONCENTRAZIONE =============
     # Bounding box WGS84 della UI (Amsterdam)
-    LAT_MIN = 52.35
-    LAT_MAX = 52.39
-    LON_MIN = 4.88
-    LON_MAX = 4.92
-    GRID = 500
 
     def latlon_to_grid(lat, lon):
         gx = int((lon - LON_MIN) / (LON_MAX - LON_MIN) * (GRID - 1))
