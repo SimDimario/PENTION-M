@@ -218,3 +218,23 @@ documents/Workshop-4-11-2025/(Audio) 2025-11-04.m4a
 test_datasetNPS/
 
 logs/
+
+# LaTeX generated files
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.run.xml
+*.synctex.gz
+*.toc
+*.out
+*.nav
+*.snm
+*.vrb
+
+.vscode/

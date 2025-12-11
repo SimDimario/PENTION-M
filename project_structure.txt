@@ -214,7 +214,17 @@
 │   │   ├── Trascrizione meeting PENTION.txt
 │   │   └── Workshop-requirement engineering.pptx
 │   ├── descrizionecodice.docx
-│   └── spiegazione sintetica.docx
+│   ├── spiegazione sintetica.docx
+│   └── thesis_latex
+│       ├── bib.bib
+│       ├── chapters
+│       │   └── 01_introduzione.tex
+│       ├── img
+│       │   └── logo_unisa.png
+│       ├── main.pdf
+│       ├── main.tex
+│       ├── preambolo.tex
+│       └── struttura_tesi.tex
 ├── gaussianPuff
 │   ├── .dockerignore
 │   ├── Dockerfile
@@ -245,9 +255,9 @@
 │   │   ├── bundle_20251129_165157_04b341e9.json
 │   │   ├── bundle_20251129_165208_0cb9af00.json
 │   │   │   ...
-│   │   ├── bundle_20251208_180413_59d5f560.json
-│   │   ├── bundle_20251208_180420_34599432.json
-│   │   └── bundle_20251209_130655_b56f4d30.json
+│   │   ├── bundle_20251209_130655_b56f4d30.json
+│   │   ├── bundle_20251210_113828_40280e5c.json
+│   │   └── bundle_20251210_151741_ae02d155.json
 │   ├── ingestion_log.jsonl
 │   ├── model_registry.json
 │   ├── modelops_retrain_log.jsonl

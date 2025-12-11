@@ -1,0 +1,27 @@
+%! TeX root = main.tex
+
+\input{preambolo}
+
+\begin{document}
+
+\input{frontespizio}
+\input{impostazioni_tesi}
+
+\include{chapters/01_introduzione}
+%\include{chapters/02_conclusione}
+
+\chapter*{Acknowledgements}
+\addcontentsline{toc}{chapter}{Acknowledgements}
+
+\printbibliography[
+    heading=bibintoc,
+    title={References}
+]
+
+\listoffigures
+\addcontentsline{toc}{chapter}{\listfigurename}
+
+\listoftables
+\addcontentsline{toc}{chapter}{\listtablename}
+
+\end{document}
