@@ -1,0 +1,154 @@
+% !TEX root = ../main.tex
+
+\chapter{Background, Stato dell’Arte e Fondamenti}
+\label{chap:background}
+
+Questo capitolo fornisce il contesto teorico e tecnico necessario a inquadrare il lavoro presentato nella tesi.
+In particolare, vengono introdotti il dominio applicativo delle \emph{New Psychoactive Substances} (NPS), le tecniche analitiche basate su spettrometria di massa a ionizzazione elettronica (EI), le principali fonti di dati spettrali utilizzate in ambito forense, nonché i modelli fisici e metodologici alla base del sistema PENTION-M.
+Il capitolo si conclude con una panoramica sullo stato dell’arte relativo al \emph{Physics-Informed Machine Learning} e al ruolo dell’MLOps in sistemi cyber-fisici e contesti forensi.
+
+\section{New Psychoactive Substances (NPS)}
+\label{sec:nps}
+
+Le \emph{New Psychoactive Substances} (NPS) rappresentano una classe eterogenea di composti chimici progettati per imitare gli effetti di sostanze stupefacenti tradizionali, eludendo al contempo i controlli normativi e le liste delle sostanze proibite.
+Secondo le definizioni fornite dagli organismi internazionali di riferimento, quali EMCDDA ed UNODC, una NPS è una sostanza non controllata o recentemente controllata che può rappresentare un rischio per la salute pubblica \cite{emcdda_nps, unodc_nps}.
+
+Dal punto di vista operativo, le NPS pongono sfide significative alle forze dell’ordine (LEAs) e ai laboratori forensi:
+\begin{itemize}
+    \item elevata variabilità strutturale e molecolare;
+    \item rapida introduzione sul mercato di nuove varianti;
+    \item somiglianza spettrale tra composti appartenenti alla stessa classe chimica;
+    \item necessità di identificazione rapida in contesti non controllati.
+\end{itemize}
+
+Queste caratteristiche rendono particolarmente complessa l’identificazione affidabile delle NPS in scenari operativi dinamici, come controlli su strada, ispezioni portuali o interventi in aree urbane densamente popolate.
+
+\section{Spettrometria di Massa a Ionizzazione Elettronica}
+\label{sec:ei}
+
+La spettrometria di massa a ionizzazione elettronica (Electron Ionization, EI) è una delle tecniche analitiche più consolidate in ambito forense per l’identificazione di sostanze chimiche.
+Nel processo EI, le molecole vengono ionizzate mediante impatto elettronico ad alta energia (tipicamente 70 eV), generando una serie di frammenti caratteristici che producono uno spettro di massa discreto \cite{gross_mass_spec}.
+
+Uno spettro EI può essere rappresentato come una funzione discreta:
+\[
+S = \{(m/z_i, I_i)\}_{i=1}^{N}
+\]
+dove $m/z_i$ indica il rapporto massa/carica e $I_i$ l’intensità relativa del frammento.
+
+I principali vantaggi dell’EI in ambito NPS includono:
+\begin{itemize}
+    \item elevata riproducibilità degli spettri;
+    \item compatibilità con ampie librerie di riferimento;
+    \item robustezza rispetto a condizioni operative variabili.
+\end{itemize}
+
+Tuttavia, la frammentazione intensa introdotta dall’EI può generare spettri molto simili tra composti strutturalmente affini, rendendo necessarie tecniche avanzate di analisi e classificazione automatica.
+
+\section{Dataset e Banche Dati per la Caratterizzazione delle NPS}
+\label{sec:datasets}
+
+L’efficacia di un sistema di classificazione basato su spettrometria di massa dipende in larga misura dalla qualità, dalla copertura e dalla coerenza dei dataset utilizzati per l’addestramento dei modelli.
+
+Nel contesto delle NPS, non esiste una singola banca dati esaustiva: i dati disponibili sono distribuiti su più fonti, spesso eterogenee per formato, qualità e convenzioni di naming.
+Questa frammentazione rende necessaria una fase esplicita di integrazione e normalizzazione dei dataset.
+
+\subsection{Panoramica delle Fonti di Dati EI}
+\label{subsec:ei_sources}
+
+Le principali fonti di dati EI utilizzate in questo lavoro includono:
+\begin{itemize}
+    \item librerie open access (es. SWGDRUG, MoNA);
+    \item database accademici e istituzionali (es. SDBS);
+    \item dataset rilasciati come supplementi a pubblicazioni scientifiche;
+    \item archivi forensi ad accesso regolamentato (es. ENFSI).
+\end{itemize}
+
+L’uso combinato di tali fonti consente di ottenere una copertura ampia delle classi NPS, a fronte però di una maggiore complessità nella fase di preprocessing.
+
+\subsection{SWGDRUG}
+\label{subsec:swgdrug}
+
+La libreria SWGDRUG (\emph{Scientific Working Group for the Analysis of Seized Drugs}) rappresenta uno degli standard de facto per la spettrometria di massa forense.
+Essa fornisce spettri EI di elevata qualità, generalmente accompagnati da metadati affidabili e coerenti \cite{swgdrug}.
+
+I principali limiti di SWGDRUG riguardano:
+\begin{itemize}
+    \item la copertura incompleta delle NPS più recenti;
+    \item la presenza di varianti nominali per lo stesso composto.
+\end{itemize}
+
+\subsection{MoNA -- MassBank of North America}
+\label{subsec:mona}
+
+MoNA è una piattaforma open access che aggrega spettri di massa provenienti da numerose fonti \cite{mona}.
+Pur offrendo un’elevata quantità di dati, MoNA presenta una maggiore eterogeneità nella qualità degli spettri e nella completezza dei metadati, rendendo necessaria una selezione mirata dei record EI.
+
+\subsection{SDBS}
+\label{subsec:sdbs}
+
+Il database SDBS (\emph{Spectral Database for Organic Compounds}) fornisce spettri di riferimento per numerosi composti organici \cite{sdbs}.
+Nel contesto di questa tesi, SDBS è stato utilizzato per il recupero mirato di spettri EI relativi a specifiche sostanze NPS, in particolare nei casi di assenza di dati in altre librerie.
+
+\subsection{Problemi di Merging e Normalizzazione}
+\label{subsec:merging}
+
+L’integrazione di più fonti EI richiede la risoluzione di diversi problemi:
+\begin{itemize}
+    \item duplicazione di composti con naming differente;
+    \item differenze nella risoluzione $m/z$;
+    \item normalizzazione delle intensità;
+    \item gestione di spettri incompleti o rumorosi.
+\end{itemize}
+
+Nel sistema PENTION-M, gli spettri EI sono stati vettorizzati su un dominio discreto $m/z \in [1,600]$, con normalizzazione delle intensità e deduplicazione basata su similarità semantica dei nomi chimici e, ove disponibile, su identificatori strutturali.
+
+\subsection{Dataset Finale: \texttt{PENTION\_EI\_Complete}}
+\label{subsec:pention_dataset}
+
+Il risultato del processo di integrazione è il dataset \texttt{PENTION\_EI\_Complete}, che rappresenta una base spettrale unificata per l’addestramento del classificatore NPS.
+Il dataset copre un ampio insieme di classi chimiche rilevanti dal punto di vista forense ed è progettato per supportare modelli di classificazione robusti e generalizzabili.
+
+\section{Simulazione della Dispersione Chimica in Ambienti Urbani}
+\label{sec:dispersion}
+
+La modellazione della dispersione di sostanze chimiche in atmosfera è un problema classico della fisica ambientale.
+In contesti urbani, tale problema è ulteriormente complicato dalla presenza di edifici, dalla variabilità meteorologica e dalla complessità geometrica dello spazio.
+
+I modelli gaussiani di dispersione, in particolare i modelli \emph{Gaussian Puff} e \emph{Gaussian Plume}, rappresentano una soluzione consolidata per la simulazione di rilasci puntuali \cite{turner_gaussian}.
+Nel lavoro presentato, tali modelli sono utilizzati come base fisica per la generazione di mappe di concentrazione coerenti, successivamente corrette mediante tecniche di apprendimento automatico informate dalla fisica.
+
+\section{Physics-Informed Machine Learning}
+\label{sec:piml}
+
+Il \emph{Physics-Informed Machine Learning} (PIML) rappresenta un paradigma che integra conoscenza fisica nei modelli di apprendimento automatico al fine di migliorarne robustezza, interpretabilità e capacità di generalizzazione \cite{kashinath_piml, meng_piml}.
+
+Nel PIML, la conoscenza fisica può essere incorporata a diversi livelli:
+\begin{itemize}
+    \item livello dei dati (dataset generati da modelli fisici);
+    \item livello delle feature (variabili fisicamente significative);
+    \item livello della funzione di perdita (vincoli fisici).
+\end{itemize}
+
+Nel contesto di PENTION-M, il PIML è utilizzato per correggere la dispersione gaussiana e per migliorare la localizzazione della sorgente, garantendo coerenza con i principi fisici del fenomeno simulato.
+
+\section{MLOps in Sistemi Cyber-Fisici e Contesti Forensi}
+\label{sec:mlops}
+
+L’adozione di modelli di Machine Learning in sistemi operativi richiede pipeline MLOps in grado di gestire versionamento, monitoraggio, drift dei dati e auditabilità \cite{faubel_mlops, calefato_secmlops}.
+
+In contesti forensi e investigativi, tali requisiti sono ulteriormente rafforzati dalla necessità di:
+\begin{itemize}
+    \item tracciabilità end-to-end delle decisioni;
+    \item riproducibilità delle inferenze;
+    \item garanzia di integrità e non ripudio dei risultati.
+\end{itemize}
+
+Il sistema PENTION-M integra tali principi mediante una pipeline MLOps containerizzata e un meccanismo di logging forense basato su firme digitali e bundle verificabili.
+
+\section{PENTION-S: Architettura di Riferimento}
+\label{sec:pention_s}
+
+PENTION-S rappresenta la prima iterazione del progetto PENTION, focalizzata su un’architettura statica di analisi e classificazione delle NPS.
+Pur fornendo una base solida, PENTION-S presenta limiti intrinseci in termini di mobilità, adattabilità e integrazione operativa.
+
+Questi limiti costituiscono la motivazione principale per la progettazione di PENTION-M, che estende il sistema verso un paradigma mobile, fisicamente informato e forense-ready, come discusso nei capitoli successivi.
