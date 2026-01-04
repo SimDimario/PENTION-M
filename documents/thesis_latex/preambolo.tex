@@ -2,7 +2,9 @@
 
 \documentclass[a4paper, 12pt, oneside]{book}
 
-\usepackage[utf8]{inputenc}
+\usepackage{fontspec}
+\setmainfont{Latin Modern Roman}
+
 \usepackage[margin=3cm, bindingoffset=1cm]{geometry}
 \linespread{1.5}
 
@@ -15,8 +17,11 @@
 \usepackage{graphicx}
 \usepackage{indentfirst}
 \usepackage{fancyhdr}
+\usepackage{xurl}
+\usepackage[hidelinks]{hyperref}
 
 \setlength{\parindent}{1cm}
+\setlength{\headheight}{14.5pt}
 
 \pagestyle{fancy}
 \renewcommand{\chaptermark}[1]{\markboth{\thechapter.\ \uppercase{#1}}{}}
