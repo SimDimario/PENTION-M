@@ -1,0 +1,340 @@
+% !TEX root = ../main.tex
+
+\chapter{Metodologia: Design Science Research (DSR)}
+\label{chap:dsr}
+
+Questo capitolo descrive la metodologia adottata per la progettazione e lo sviluppo di PENTION-M.
+In linea con la natura \emph{problem-driven} del contesto forense-operativo, la tesi è impostata secondo un approccio di \emph{Design Science Research} (DSR), in cui la produzione dell'artefatto (PENTION-M) e la sua valutazione sono integrate lungo l'intero ciclo di sviluppo (\emph{validation by construction}).
+Il capitolo dettaglia: (i) la motivazione della scelta metodologica; (ii) le fasi del processo DSR; (iii) la loro concretizzazione nel progetto PENTION-M; (iv) la campagna di \emph{Requirements Engineering} (RE) condotta con stakeholder del progetto; (v) le iterazioni principali dell'artefatto e il loro legame con i requisiti; (vi) un \emph{Data Flow Model} del processo
+
+
+\section{Perch\'e adottare il Design Science}
+\label{sec:dsr_why}
+
+Il problema affrontato in questa tesi presenta caratteristiche che rendono poco adatti approcci puramente sperimentali o esclusivamente ingegneristici.
+Da un lato, PENTION-M deve rispondere a vincoli operativi reali (tempi, robustezza, semplicit\`a d'uso, interoperabilit\`a tra enti, auditabilit\`a e catena di custodia).
+Dall'altro, la soluzione richiede l'integrazione di componenti eterogenei (simulazione fisica, modelli PIML, pipeline MLOps e meccanismi di logging forense) che devono coesistere in un unico sistema coerente.
+
+Il DSR \`e un paradigma di ricerca applicata che mira a generare conoscenza attraverso la progettazione e la valutazione di un artefatto in grado di risolvere un problema rilevante.
+In questo lavoro, l'artefatto non \`e un singolo modello di Machine Learning, ma un prototipo cyber-fisico mobile che implementa un flusso end-to-end: acquisizione di segnali, simulazione fisica, correzione PIML, localizzazione, classificazione, monitoraggio e produzione di evidenze verificabili.
+
+Infine, l'adozione del DSR consente di strutturare in modo rigoroso la collaborazione con stakeholder (LEAs, partner industriali, coordinamento di progetto e supervisori accademici), formalizzando una campagna di RE e rendendo esplicito come i requisiti abbiano guidato le decisioni architetturali e algoritmiche.
+
+\section{Fasi del Design Science Research}
+\label{sec:dsr_phases}
+
+Il processo DSR adottato in questa tesi \`e organizzato in sei fasi, presentate di seguito in forma generica e successivamente istanziate sul caso PENTION-M:
+
+\begin{enumerate}
+  \item \textbf{Identificazione del problema e motivazione} (\emph{Problem Identification}): definizione del problema e dei vincoli del dominio, con evidenza della rilevanza pratica.
+  \item \textbf{Definizione degli obiettivi della soluzione} (\emph{Objectives of a Solution}): traduzione del problema in obiettivi misurabili e requisiti di sistema.
+  \item \textbf{Progettazione e sviluppo} (\emph{Design \& Development}): progettazione e implementazione dell'artefatto secondo i requisiti.
+  \item \textbf{Dimostrazione} (\emph{Demonstration}): utilizzo dell'artefatto in scenari rappresentativi per mostrare che gli obiettivi possono essere soddisfatti.
+  \item \textbf{Valutazione} (\emph{Evaluation}): raccolta evidenze (tecniche e qualitative) per verificare quanto l'artefatto soddisfi requisiti e obiettivi.
+  \item \textbf{Comunicazione} (\emph{Communication}): documentazione e presentazione dei risultati, incluse limitazioni e sviluppi futuri.
+\end{enumerate}
+
+In PENTION-M la valutazione non \`e confinata a un esperimento finale isolato: ogni iterazione dell'artefatto ha incluso momenti di revisione dei requisiti, feedback stakeholder e miglioramenti incrementali.
+Questo approccio \`e coerente con una validazione \emph{by construction}, in cui la qualit\`a del sistema emerge dalla convergenza progressiva tra esigenze del dominio e scelte progettuali.
+
+\section{Applicazione del DSR al progetto PENTION-M}
+\label{sec:dsr_application}
+
+\subsection{Identificazione del problema}
+\label{subsec:problem_identification}
+
+Il problema di partenza deriva dal dominio di contrasto a laboratori clandestini e traffico di sostanze sintetiche/NPS in cui:
+\begin{itemize}
+  \item le operazioni sul campo sono spesso \emph{reattive} e rallentate dai tempi di analisi;
+  \item la complessit\`a dell'ambiente (urbano, logistico, veicolare) rende difficile interpretare segnali e contesto (es.\ vento, contaminazioni, residui);
+  \item gli strumenti correnti rappresentano un riferimento operativo per usabilit\`a, ma non coprono scenari di campionamento su larga scala (es.\ container, aree urbane estese);
+  \item la componente forense impone requisiti di tracciabilit\`a e riproducibilit\`a dei risultati.
+\end{itemize}
+
+Inoltre, PENTION-S (baseline di progetto) presenta limiti intrinseci di mobilit\`a, adattabilit\`a e integrazione operativa, motivando l'evoluzione verso PENTION-M come prototipo mobile end-to-end.
+
+\subsection{Analisi preliminare del sistema PENTION-S}
+\label{subsec:pention_s_analysis}
+
+Nel corso delle fasi iniziali del progetto è stato analizzato il sistema \textsc{PENTION-S}, sviluppato per scenari statici e installazioni fisse in infrastrutture critiche.
+Tale analisi non aveva lo scopo di estendere o aggiornare direttamente l’artefatto esistente, poiché \textsc{PENTION-S} e \textsc{PENTION-M} sono stati concepiti nel progetto come due sistemi autonomi e complementari, destinati a scenari operativi differenti.
+
+Il lavoro svolto su \textsc{PENTION-S} non rappresenta quindi una fase precedente dello stesso artefatto, ma una base conoscitiva iniziale utile a comprendere modelli, scelte progettuali e limiti operativi tipici dei sistemi statici.
+Queste informazioni sono state utilizzate come input metodologico per l’identificazione dei requisiti e per orientare le scelte architetturali di \textsc{PENTION-M}, che è stato sviluppato attraverso un processo di design iterativo dedicato esclusivamente alla mobilità e agli scenari dinamici di pattugliamento urbano.
+
+\subsection{Obiettivi della soluzione}
+\label{subsec:solution_objectives}
+
+Gli obiettivi della soluzione sono stati definiti come una combinazione di requisiti operativi e obiettivi tecnico-scientifici:
+
+\begin{itemize}
+  \item \textbf{Portabilit\`a e scenario ``mobile lab''}: supporto a un laboratorio mobile su van, con possibilit\`a di utilizzo ibrido (sensore handheld + unit\`a nel van).
+  \item \textbf{Rilevamento affidabile e controllabile}: minimizzazione dei falsi positivi e gestione di soglie operative realistiche.
+  \item \textbf{Supporto decisionale AI}: l'AI deve agire come \emph{decision support} e non sostituire la decisione umana.
+  \item \textbf{Spiegabilit\`a e auditabilit\`a}: tracciamento dei parametri rilevanti e riproducibilit\`a delle inferenze.
+  \item \textbf{Gestione di dati ed evidenze}: esportazione in formati standard, logging robusto e supporto alla catena di custodia (firma digitale, timestamp, integrit\`a).
+  \item \textbf{Coerenza fisica della pipeline}: integrazione di conoscenza fisica (simulazione e vincoli PIML) per robustezza e plausibilit\`a dei risultati.
+  \item \textbf{Robustezza e aggiornabilità del classificatore NPS}: costruzione e validazione di un dataset EI consolidato e di una pipeline di addestramento ripetibile, in grado di supportare l’evoluzione delle sostanze emergenti.
+\end{itemize}
+
+\subsection{Progettazione e sviluppo}
+\label{subsec:design_development}
+
+La progettazione e sviluppo dell'artefatto ha portato a un'architettura a microservizi containerizzati (descritta nel dettaglio nel Capitolo~\ref{chap:architecture}), organizzata in livelli funzionali che implementano una pipeline end-to-end.
+Le scelte progettuali principali includono:
+\begin{itemize}
+  \item separazione delle responsabilit\`a tra servizi (ingestion, simulazione fisica, modelli PIML, classificazione, monitoring, logging forense);
+  \item integrazione di vincoli fisici e maschere geometriche in fase di learning (coerenza fisica e plausibilit\`a in ambiente urbano);
+  \item introduzione di componenti MLOps per versionamento dei modelli, raccolta di metriche operative e monitoraggio del comportamento della pipeline, inclusa la predisposizione concettuale alla gestione del drift;
+  \item generazione di evidenze forensi verificabili tramite \emph{forensic bundle} firmato e \emph{tamper-evident}.
+\end{itemize}
+
+\subsection{Dimostrazione}
+\label{subsec:demonstration}
+
+La dimostrazione dell'artefatto \`e avvenuta tramite:
+\begin{itemize}
+  \item demo incrementalmente eseguite su scenari simulati rappresentativi (patrolling $\rightarrow$ detection $\rightarrow$ pipeline $\rightarrow$ export);
+  \item revisione con supervisori accademici e discussione delle scelte metodologiche e architetturali;
+  \item confronto con stakeholder di progetto per verificare aderenza a esigenze operative e vincoli forensi.
+\end{itemize}
+
+\subsection{Valutazione}
+\label{subsec:evaluation}
+
+La valutazione \`e stata integrata nelle iterazioni come:
+\begin{itemize}
+  \item valutazione qualitativa tramite feedback stakeholder sui requisiti (usabilit\`a, output, interpretabilit\`a, workflow operativo);
+  \item valutazione tecnica tramite metriche (latenza end-to-end, coerenza fisica, stabilit\`a della localizzazione, calibrazione/confidenza, robustezza del logging forense).
+\end{itemize}
+La descrizione completa della valutazione e dei risultati sperimentali \`e presentata nel Capitolo~\ref{chap:evaluation}.
+
+\subsection{Comunicazione}
+\label{subsec:communication}
+
+La comunicazione dei risultati \`e realizzata attraverso:
+\begin{itemize}
+  \item la presente tesi, che documenta il processo DSR, la RE e la progettazione dell'artefatto;
+  \item la produzione di documentazione tecnica e log di sviluppo (tracciabilit\`a delle iterazioni, configurazioni e decisioni);
+  \item la preparazione di materiale per demo e workshop con stakeholder.
+\end{itemize}
+
+\section{Requirements Engineering}
+\label{sec:requirements_engineering}
+
+La campagna di Requirements Engineering \`e parte integrante del ciclo DSR: ha permesso di formalizzare esigenze operative e vincoli di contesto, e di convertirli in requisiti verificabili che hanno guidato l'evoluzione di PENTION-M.
+La RE \`e stata condotta tra ottobre e novembre 2025 e si \`e basata su questionari preliminari e un workshop strutturato.
+
+\subsection{Stakeholder coinvolti}
+\label{subsec:stakeholders}
+
+Gli stakeholder coinvolti nella RE e nelle iterazioni includono:
+
+\begin{itemize}
+  \item \textbf{LEAs olandesi / End users}: RIEC Limburg (partecipanti al workshop e compilatori dei questionari), con ruoli operativi legati a investigazioni e interventi sul territorio.
+  \item \textbf{Consorzio e partner di progetto}: coordinamento e partner industriali (es.\ MION) e advisory board (es.\ Guardia Civil) che contribuiscono a requisiti di fattibilit\`a, integrazione e roadmap.
+  \item \textbf{Supervisori accademici}: revisione metodologica (DSR), scelte di ingegneria del software e qualit\`a della documentazione.
+\end{itemize}
+
+\subsection{Strumenti e protocollo di elicitazione}
+\label{subsec:re_tools}
+
+La RE \`e stata realizzata tramite tre canali complementari:
+
+\begin{itemize}
+  \item \textbf{Questionari preliminari}: due questionari compilati dalle LEAs olandesi nelle date del 6 e 13 ottobre 2025, focalizzati su \emph{Operational Challenges} e \emph{Substances \& Precursors}.
+  \item \textbf{Workshop di elicitazione requisiti}: sessione tenuta il 4 novembre 2025 con brainstorming guidato e raccolta feedback, basata su una presentazione strutturata (\emph{one question per slide}) che copriva nove macro-temi: sfide operative, portabilit\`a, accuratezza di detection, AI assistance, explainability, sostanze/precursori, contesto operativo, gestione dati/evidenze, interazione utente e feedback.
+  \item \textbf{Interazioni iterative}: scambi informali e revisioni incrementali con supervisori e partner per chiarire priorit\`a e vincoli (es.\ requisiti forensi e compliance).
+\end{itemize}
+
+\subsection{Classificazione dei requisiti}
+\label{subsec:re_taxonomy}
+
+Per facilitare la tracciabilit\`a tra esigenze emerse e design dell'artefatto, i requisiti sono stati classificati in quattro categorie:
+
+\begin{itemize}
+  \item \textbf{Requisiti operativi} (workflow, scenari, usabilit\`a, output atteso);
+  \item \textbf{Requisiti tecnici} (latenza, portabilit\`a software/hardware, modularit\`a, interoperabilit\`a);
+  \item \textbf{Requisiti fisici e di modello} (coerenza con dispersione/trasporto, gestione ostacoli urbani, soglie operative);
+  \item \textbf{Requisiti legali e forensi} (audit trail, riproducibilit\`a, integrit\`a, non ripudio, chain of custody, GDPR/compliance).
+\end{itemize}
+
+\subsection{Sintesi dei requisiti emersi}
+\label{subsec:requirements_summary}
+
+La Tabella~\ref{tab:requirements} sintetizza i requisiti principali emersi da questionari e workshop, organizzandoli con un identificativo (R\#) e indicando la loro traduzione in funzionalit\`a di sistema.
+L'elenco \`e stato pensato per essere usato anche come \emph{traceability matrix} tra RE e capitoli tecnici successivi.
+
+\renewcommand{\arraystretch}{1.25}
+
+\begin{longtable}{>{\bfseries}p{1cm} p{4cm} p{7cm}}
+\caption{Sintesi consolidata dei requisiti emersi dalla campagna di Requirements Engineering (questionari e workshop LEAs) e loro mapping su PENTION-M.}
+\label{tab:requirements} \\
+\toprule
+ID & Requisito & Implicazioni progettuali in PENTION-M \\
+\midrule
+\endfirsthead
+
+\toprule
+ID & Requisito & Implicazioni progettuali in PENTION-M \\
+\midrule
+\endhead
+
+R1 & Rilevamento proattivo e rapido sul campo &
+Pipeline end-to-end real-time con esecuzione automatizzata e interfaccia operativa (patrolling $\rightarrow$ detection $\rightarrow$ output). \\
+
+R2 & Facilit\`a d’uso per operatori non specialisti &
+Interfaccia minimale con output chiaro (Hit / No Hit + confidenza), ispirata agli strumenti attualmente in uso (es.\ TruNarc, MX908). \\
+
+R3 & Portabilit\`a (mobile lab su van) &
+Architettura containerizzata e modulare; modello operativo ``Ghostbusters van'' per supportare interventi mobili sul territorio. \\
+
+R4 & Supporto a configurazioni ibride (handheld + van) &
+Separazione tra unit\`a di campionamento portatile e unit\`a di analisi installata nel van; supporto a scenari ibridi di ispezione. \\
+
+R5 & Accuratezza di rilevamento controllabile &
+Introduzione di soglie operative realistiche emerse dal confronto con le LEA (basso FAR, DR elevato) e calibrazione delle confidenze per distinguere segnali operativamente rilevanti da tracce trascurabili. \\
+
+R6 & Gestione di \emph{old positives} e contaminazioni &
+Parametrizzazione del contesto operativo e delle soglie di rilevamento per ridurre l’impatto di residui storici o contaminazioni ambientali. \\
+
+R7 & AI come \emph{decision support tool} &
+Utilizzo dell’AI come supporto all’analisi e all’interpretazione, mantenendo la decisione finale in capo all’operatore umano. \\
+
+R8 & Explainability e audit trail completa &
+Logging dei parametri rilevanti (meteo, configurazione, versione del modello) e tracciabilit\`a end-to-end delle inferenze per supporto investigativo. \\
+
+R9 & Modalit\`a operative differenziate &
+Supporto a diversi scenari operativi (urbano, hub postali, checkpoint) tramite profili di configurazione adattivi. \\
+
+R10 & Banca dati dinamica per NPS e precursori &
+Integrazione di una base dati aggiornabile per la gestione di NPS emergenti e precursori, con supporto a identificazione parziale e \emph{unknown matching}. \\
+
+R11 & Gestione delle evidenze e interoperabilit\`a &
+Esportazione dei risultati in formati standard e interoperabili, compatibili con i sistemi informativi di polizia e dogane. \\
+
+R12 & Integrit\`a, non ripudio e chain of custody &
+Meccanismi di logging forense con firma digitale, timestamp e propriet\`a \emph{tamper-evident} a supporto della catena di custodia. \\
+\bottomrule
+\end{longtable}
+
+\section{Iterazioni dell'artefatto e tracciabilit\`a ai requisiti}
+\label{sec:artifact_iterations}
+
+Lo sviluppo di PENTION-M \`e avvenuto attraverso un processo iterativo e incrementale, coerente con l'approccio di Design Science Research, in cui l’artefatto \`e stato progressivamente raffinato sia sul piano modellistico (PIML) sia su quello architetturale (MLOps).
+Le versioni descritte in questa sezione rappresentano iterazioni concettuali e architetturali dell’artefatto, ciascuna delle quali ha contribuito a definire e validare specifici aspetti della pipeline MLOps simulata per un sistema cyber-fisico mobile.
+
+\subsection{Versione 1: prototipo abilitante e pipeline simulata}
+\label{subsec:iter_v1}
+
+La prima iterazione dell’artefatto ha avuto uno scopo principalmente abilitante: costruire un prototipo funzionante end-to-end in grado di simulare uno scenario operativo mobile e produrre output interpretabili.
+Questa fase ha consentito di validare la fattibilit\`a complessiva dell’approccio e di creare una base tecnica su cui innestare successivi raffinamenti.
+
+Gli elementi introdotti includono:
+\begin{itemize}
+  \item una pipeline simulata end-to-end con esecuzione automatizzata (supporto a R1);
+  \item una prima separazione modulare dei componenti, con containerizzazione orientata alla portabilit\`a (supporto a R3);
+  \item una interfaccia utente minimale, focalizzata sulla chiarezza dell’output operativo (supporto a R2).
+\end{itemize}
+
+Questa versione non mirava all’accuratezza fisica o alla validazione forense, ma a stabilire una base coerente per esplorare integrazioni successive senza richiedere una riprogettazione completa del sistema.
+
+\subsection{Versione 2: integrazione fisica e modelli PIML}
+\label{subsec:iter_v2}
+
+La seconda iterazione ha introdotto un cambiamento concettuale rilevante, spostando la pipeline da un comportamento puramente simulativo e data-driven verso un approccio fisicamente informato.
+Questa evoluzione \`e stata guidata dalla necessit\`a di garantire coerenza fisica e plausibilit\`a degli output in contesti urbani e operativi.
+
+In particolare, sono stati introdotti:
+\begin{itemize}
+  \item un modello di simulazione fisica della dispersione come base di riferimento per la generazione delle mappe di concentrazione;
+  \item modelli di Physics-Informed Machine Learning per la correzione delle mappe e la localizzazione della sorgente;
+  \item vincoli fisici e geometrici integrati nella loss (non negativit\`a, coerenza con la direzione del vento, maschere spaziali).
+\end{itemize}
+
+Questa iterazione ha risposto ai requisiti legati alla gestione di diversi contesti operativi e alla coerenza fisica degli output (in particolare R9), riducendo il rischio di soluzioni numericamente corrette ma fisicamente implausibili.
+Questa iterazione ha inoltre posto le basi per l’integrazione dei modelli fisicamente informati all’interno di una pipeline MLOps, rendendo esplicita la separazione tra generazione dei dati, inferenza e logging dei risultati.
+
+\subsection{Versione 3: calibrazione delle confidenze e controllo dell’overconfidence}
+\label{subsec:iter_v3}
+
+Durante le iterazioni precedenti \`e emersa una criticit\`a tipica dei modelli di classificazione in contesti operativi: la tendenza all’overconfidence, potenzialmente dannosa in scenari investigativi.
+La terza iterazione ha quindi affrontato esplicitamente il problema della calibrazione delle probabilit\`a.
+
+\begin{itemize}
+  \item \`e stata introdotta una strategia di Temperature Scaling adattivo per migliorare l’affidabilit\`a delle confidenze (supporto a R5);
+  \item sono state definite soglie operative pi\`u robuste rispetto a rumore e contaminazioni, contribuendo alla gestione degli \emph{old positives} (supporto a R6);
+  \item l’output del sistema \`e stato reso pi\`u interpretabile per l’operatore umano, rafforzando il ruolo dell’AI come strumento di supporto decisionale (supporto a R2 e R7).
+\end{itemize}
+
+Questa iterazione ha rafforzato il ruolo della pipeline MLOps come strato decisionale operativo, introducendo meccanismi di controllo delle confidenze e di gestione delle soglie che separano l’inferenza del modello dalla decisione finale, mantenuta in capo all’operatore umano.
+
+\subsection{Versione 4: logging forense e tracciabilit\`a delle evidenze}
+\label{subsec:iter_v4}
+
+La quarta iterazione rappresenta l’introduzione esplicita delle componenti MLOps del sistema.
+Guidata dai requisiti forensi e di auditabilità, questa fase ha esteso la pipeline oltre la sola inferenza, includendo logging strutturato, versioning dei modelli e gestione delle evidenze, elementi centrali in un contesto cyber-fisico investigativo.
+
+Sono stati introdotti:
+\begin{itemize}
+  \item un meccanismo di logging forense in grado di catturare input, output e parametri rilevanti per ogni esecuzione end-to-end;
+  \item la generazione di un \emph{forensic bundle} contenente metadati, risultati intermedi e finali, e versionamento dei modelli;
+  \item meccanismi di integrit\`a e non ripudio (firma digitale, propriet\`a \emph{tamper-evident});
+  \item l’esportazione delle evidenze in formati strutturati e interoperabili (supporto a R8, R11 e R12).
+\end{itemize}
+
+Questa iterazione colloca PENTION-M non solo come sistema di analisi basato su AI, ma come prototipo di architettura MLOps per ambienti investigativi, in cui inferenza, tracciabilità, auditabilità e sicurezza dei risultati sono parte integrante del ciclo di vita del modello.
+
+\subsection{Iterazione finale: consolidamento dell’architettura PIML e MLOps}
+\label{subsec:iter_final}
+
+L’iterazione finale ha avuto come obiettivo il consolidamento dell’architettura complessiva PIML e MLOps sviluppata nel corso del progetto.
+In questa fase, l’attenzione si \`e concentrata sull’allineamento tra modelli, pipeline operativa e requisiti LEA, verificando la coerenza end-to-end del sistema simulato.
+
+In particolare, sono state consolidate:
+\begin{itemize}
+  \item la pipeline MLOps simulata, comprensiva di ingestion, validazione, inferenza, logging e gestione delle evidenze;
+  \item il versioning dei modelli e la tracciabilit\`a completa delle esecuzioni;
+  \item l’integrazione tra componenti PIML e interfaccia operativa, garantendo riproducibilit\`a e auditabilit\`a dei risultati.
+\end{itemize}
+
+Questa fase conclude il ciclo DSR presentato in questa tesi, producendo un prototipo coerente di sistema PIML–MLOps per un contesto cyber-fisico mobile simulato.
+Sebbene il sistema operi in un contesto simulato, l’architettura MLOps implementata è completa dal punto di vista concettuale e funzionale, e riproduce fedelmente il ciclo di vita di un modello in un sistema cyber-fisico mobile reale.
+
+\section{Data Flow Model del processo DSR}
+\label{sec:dsr_dataflow}
+
+A valle delle iterazioni dell’artefatto descritte nella sezione precedente, risulta utile sintetizzare il flusso complessivo del processo DSR in una rappresentazione unificata, al fine di rendere esplicito il percorso metodologico seguito in questa tesi.
+A tal fine, è stato introdotto un \emph{Data Flow Model} non solo del sistema PENTION-M, ma anche del processo di Design Science Research adottato.
+Tale rappresentazione chiarisce come il lavoro di ricerca abbia guidato, in modo strutturato, la progettazione di un’architettura \emph{Physics-Informed Machine Learning} integrata in un contesto \emph{MLOps} per sistemi cyber-fisici simulati.
+
+La Figura~\ref{fig:dsr_process_flow} fornisce una sintesi visuale del processo DSR seguito.
+Il diagramma evidenzia come i requisiti operativi, forensi e tecnici raccolti nel contesto LEA siano stati progressivamente tradotti in scelte architetturali, componenti PIML e meccanismi MLOps, attraverso iterazioni successive dell’artefatto.
+
+\begin{itemize}
+  \item il ruolo del contesto iniziale e dell’analisi della baseline PENTION-S come input conoscitivo;
+  \item la fase di Requirements Engineering, basata su questionari e workshop con le LEAs, e la produzione di una lista consolidata di requisiti (R1--R12);
+  \item lo sviluppo iterativo dell’artefatto attraverso versioni successive (V1--V4), guidato dal feedback degli stakeholder;
+  \item la valutazione integrata (\emph{validation by construction}) e il feedback continuo come meccanismi centrali di refinement;
+  \item l’output finale del processo, rappresentato dal prototipo PENTION-M e dalla relativa documentazione.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{dsr_process_flow.png}
+\caption{Data Flow Model del processo di Design Science Research adottato per il progetto PENTION-M.}
+\label{fig:dsr_process_flow}
+\end{figure}
+
+La figura non descrive l’architettura del sistema, che è presentata nel Capitolo~\ref{chap:architecture}, ma ha lo scopo di chiarire la relazione tra le fasi metodologiche del DSR e le attività svolte nel corso del progetto.
+
+\section{Discussione: validazione by construction e collegamento ai capitoli successivi}
+\label{sec:by_construction_bridge}
+
+Il processo descritto in questo capitolo mostra come la validazione di PENTION-M non sia stata concepita come un singolo esperimento finale, ma come un principio metodologico integrato nello sviluppo dell’artefatto.
+In linea con l’approccio di Design Science Research, ogni iterazione ha tradotto requisiti in scelte progettuali e architetturali, producendo evidenze progressive della loro implementazione e coerenza.
+
+Questo approccio di \emph{validation by construction} costituisce il filo conduttore tra la metodologia presentata in questo capitolo, l’architettura del sistema descritta nel Capitolo~\ref{chap:architecture} e le attività di valutazione discusse nel Capitolo~\ref{chap:evaluation}.
+In particolare, le scelte architetturali illustrate nel capitolo successivo rappresentano la concretizzazione tecnica dei requisiti e delle iterazioni metodologiche qui descritte, mentre il capitolo di valutazione analizzerà le prestazioni e le proprietà del sistema risultante.
+
+La distinzione tra metodologia, architettura e valutazione consente di mantenere una chiara separazione dei ruoli dei capitoli, preservando al contempo la continuità logica del percorso di ricerca.
