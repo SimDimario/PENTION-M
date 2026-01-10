@@ -35,6 +35,18 @@ Uno spettro EI può essere rappresentato come una funzione discreta:
 \]
 dove $m/z_i$ indica il rapporto massa/carica e $I_i$ l’intensità relativa del frammento.
 
+Dal punto di vista strumentale, uno spettrometro di massa è composto da tre elementi
+fondamentali: una sorgente di ionizzazione, un analizzatore di massa e un rivelatore.
+Nel caso dell’ionizzazione elettronica, le molecole vengono bombardate con elettroni
+ad alta energia, producendo ioni molecolari e frammenti caratteristici che vengono
+successivamente separati in base al rapporto massa/carica.
+
+Il risultato dell’analisi è uno spettro di massa che può essere interpretato come una
+vera e propria impronta chimica della sostanza analizzata.
+Tale impronta risulta particolarmente utile in ambito forense, poiché consente il
+confronto diretto con librerie di riferimento e l’identificazione automatica tramite
+tecniche di matching spettrale o modelli di apprendimento automatico.
+
 I principali vantaggi dell’EI in ambito NPS includono:
 \begin{itemize}
 	\item elevata riproducibilità degli spettri;
@@ -138,6 +150,25 @@ Studi successivi hanno approfondito l’utilizzo delle \emph{Physics-Informed Ne
 Tali approcci sono stati inoltre applicati a sistemi fisici complessi in ambito geofisico ed energetico, dimostrando la capacità del PIML di sostituire o affiancare simulazioni numeriche tradizionali ad elevato costo computazionale \cite{geoenergy_piml_review}.
 
 Nel contesto di PENTION-M, il PIML è utilizzato per correggere la dispersione gaussiana e per migliorare la localizzazione della sorgente, garantendo coerenza con i principi fisici del fenomeno simulato.
+
+In particolare, l’integrazione della conoscenza fisica avviene a più livelli della pipeline,
+includendo la generazione dei dati simulati, l’ingegnerizzazione delle feature fisiche e
+l’introduzione di vincoli nella funzione di perdita dei modelli di apprendimento automatico.
+Questa scelta consente di mantenere la coerenza fisica del sistema pur beneficiando
+della flessibilità dei modelli data-driven.
+
+Negli ultimi anni, l’impiego dell’intelligenza artificiale nel dominio delle NPS si è esteso
+anche a scenari di identificazione in assenza di spettri di riferimento completi.
+Approcci basati su modelli generativi e predittivi sono stati proposti per stimare spettri
+di massa a partire dalla struttura molecolare o per suggerire candidati plausibili quando
+un composto non è presente nelle librerie esistenti.
+
+Sebbene tali metodologie risultino promettenti in ambito di analisi offline o di supporto
+alla ricerca chimica, il loro utilizzo in contesti operativi sul campo rimane limitato a causa
+dei requisiti di affidabilità, spiegabilità e tracciabilità richiesti dalle applicazioni forensi.
+In PENTION-M, l’uso dell’AI è pertanto orientato a supportare il processo decisionale
+attraverso modelli fisicamente informati e pipeline controllate, piuttosto che a sostituire
+le procedure di identificazione forense consolidate.
 
 \section{MLOps in Sistemi Cyber-Fisici e Contesti Forensi}
 \label{sec:mlops}

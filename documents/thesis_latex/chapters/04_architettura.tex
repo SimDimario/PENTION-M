@@ -1,7 +1,1347 @@
 % !TEX root = ../main.tex
 
-\chapter{Architettura del sistema PENTION-M}
+\chapter{Architettura e Realizzazione di \textsc{PENTION-M}}
 \label{chap:architecture}
 
-Questo capitolo descrive l’architettura del sistema PENTION-M, progettata per supportare scenari operativi mobili e dinamici e per integrare in modo coerente simulazione fisica, modelli di Machine Learning physics-informed, pipeline MLOps e meccanismi di logging forense.
-L’architettura è organizzata in livelli funzionali e implementata tramite microservizi containerizzati, al fine di garantire modularità, portabilità e tracciabilità end-to-end del flusso di dati e decisioni.
+\section{Introduzione al Capitolo}
+
+Il presente capitolo costituisce il nucleo tecnico della tesi e descrive in dettaglio
+l’architettura e la realizzazione del sistema \textsc{PENTION-M}, l’artefatto sviluppato
+nell’ambito del processo di \emph{Design Science Research} illustrato nel Capitolo~\ref{chap:dsr}.
+
+In coerenza con l’approccio metodologico adottato, l’architettura di \textsc{PENTION-M}
+non viene presentata come una semplice implementazione software, ma come la
+concretizzazione tecnica dei requisiti emersi dalla campagna di \emph{Requirements Engineering}
+e delle iterazioni progettuali descritte nel capitolo precedente.
+Ogni scelta architetturale, modellistica e infrastrutturale è pertanto riconducibile
+a specifiche esigenze operative, fisiche e forensi espresse dagli stakeholder del progetto.
+
+Il sistema è concepito come un \emph{cyber--physical system} simulato che riproduce il
+funzionamento di un laboratorio mobile per il rilevamento e l’analisi di sostanze
+psicoattive emergenti.
+Sebbene l’artefatto operi in un contesto simulato, l’architettura è stata progettata per
+riflettere fedelmente un possibile deployment reale.
+A tal fine, il sistema adotta un’architettura a livelli funzionali, pensata per separare
+in modo esplicito le fasi di acquisizione dei dati, modellazione fisica, inferenza,
+monitoraggio operativo e produzione di evidenze verificabili.
+
+L’architettura complessiva integra:
+(i) una pipeline end-to-end per l’acquisizione e l’elaborazione dei dati;
+(ii) modelli fisici e modelli di \emph{Physics-Informed Machine Learning};
+(iii) una pipeline MLOps completa per il controllo del ciclo di vita dei modelli;
+(iv) meccanismi di logging forense e generazione di evidenze digitali auditabili.
+
+Il capitolo è organizzato come segue.
+Nella Sezione~\ref{sec:arch_overview} viene presentata la visione architetturale complessiva
+di \textsc{PENTION-M}, introducendo i principi di design e la scomposizione del sistema in
+livelli architetturali funzionali.
+Le sezioni successive approfondiscono il flusso operativo del sistema, i singoli layer
+fisici e di apprendimento automatico, la pipeline MLOps, il sistema di logging forense
+e l’interfaccia operativa.
+Il capitolo si conclude con una discussione delle scelte architetturali e dei principali
+trade-off, preparando il terreno per la valutazione dell’artefatto nel
+Capitolo~\ref{chap:evaluation}.
+
+\section{Visione architetturale complessiva di \textsc{PENTION-M}}
+\label{sec:arch_overview}
+
+Dal punto di vista funzionale, \textsc{PENTION-M} implementa un flusso operativo
+end-to-end, la cui realizzazione è supportata da una specifica architettura a layer che riproduce il comportamento di un laboratorio mobile per la detection
+e l’analisi di sostanze psicoattive emergenti in contesto urbano.
+Il sistema integra componenti di simulazione fisica, modelli di apprendimento automatico,
+servizi MLOps e meccanismi di logging forense all’interno di una pipeline coerente,
+tracciabile e riproducibile.
+
+Dal punto di vista concettuale, \textsc{PENTION-M} è concepito come un
+\emph{cyber--physical system} simulato, in cui una componente fisica virtuale
+(rappresentazione dell’ambiente urbano, della dispersione chimica e del movimento
+del veicolo) è strettamente integrata con una componente computazionale responsabile
+dell’elaborazione dei dati, dell’inferenza e della produzione degli output operativi.
+Questa integrazione consente di analizzare il comportamento del sistema in scenari
+realistici mantenendo il controllo sulla \emph{ground truth} e sui parametri ambientali.
+
+L’intero sistema è implementato come insieme di servizi containerizzati, ciascuno
+responsabile di una specifica funzione della pipeline.
+La containerizzazione garantisce isolamento delle dipendenze, portabilità del sistema
+e riproducibilità delle esecuzioni, consentendo di simulare un deployment operativo
+in cui i vari componenti cooperano come microservizi.
+Nel contesto della presente tesi, tali servizi sono eseguiti in un ambiente computazionale
+controllato; tuttavia, l’architettura è progettata per riflettere uno scenario
+\emph{edge-only} e \emph{offline-capable}, in cui tutte le operazioni di inferenza,
+monitoraggio e logging avvengono localmente a bordo del laboratorio mobile.
+
+Dal punto di vista funzionale, \textsc{PENTION-M} implementa una pipeline sequenziale
+che inizia con la generazione e acquisizione dei dati di scenario, prosegue con
+l’elaborazione fisica e data-driven delle informazioni, e si conclude con la
+produzione di output operativi e di evidenze forensi verificabili.
+Ogni fase della pipeline è progettata per produrre metadati espliciti che descrivono
+lo stato del sistema, i parametri utilizzati e le versioni degli artefatti coinvolti,
+abilitando una tracciabilità end-to-end del processo decisionale.
+
+La visione architetturale adottata non mira a massimizzare le prestazioni di singoli
+modelli isolati, ma a garantire coerenza, robustezza e auditabilità dell’intero sistema.
+In particolare, l’architettura privilegia:
+(i) la separazione delle responsabilità tra le diverse fasi del flusso operativo;
+(ii) l’integrazione esplicita di conoscenza fisica nei modelli di apprendimento;
+(iii) il monitoraggio continuo del comportamento dei modelli in esecuzione;
+(iv) la produzione nativa di evidenze digitali forensi.
+
+Sulla base di questi principi, l’architettura di \textsc{PENTION-M} è organizzata in
+un insieme di livelli architetturali funzionali, ciascuno dei quali incapsula una
+specifica porzione del flusso operativo.
+La Sezione~\ref{sec:arch_layers} introduce formalmente tale architettura a layer,
+descrivendo il ruolo di ciascun livello e la loro interazione all’interno della
+pipeline end-to-end.
+
+\section{Architettura a 8 Layer di \textsc{PENTION-M}}
+\label{sec:arch_layers}
+
+L’architettura di \textsc{PENTION-M} è organizzata secondo un modello a
+\textbf{otto livelli architetturali funzionali}, numerati da Layer~0 a Layer~7,
+che descrive in modo esplicito la progressione del flusso operativo
+dal contesto fisico simulato fino alla produzione di output operativi
+e di evidenze forensi verificabili.
+
+L’adozione di un’architettura a layer risponde a tre obiettivi principali:
+(i) strutturare il sistema come una pipeline end-to-end coerente;
+(ii) separare responsabilità fisiche, computazionali e operative;
+(iii) rendere tracciabili e auditabili le trasformazioni dei dati lungo
+l’intero processo decisionale.
+Ogni layer incapsula una fase specifica del flusso e comunica con i livelli
+adiacenti tramite interfacce ben definite, riducendo accoppiamenti impliciti
+e facilitando l’analisi e l’evoluzione dell’artefatto.
+
+La Figura~\ref{fig:pention_architecture_layers} mostra la visione complessiva
+dell’architettura a 8 layer di \textsc{PENTION-M}, evidenziando la suddivisione
+in tre macro-aree funzionali: \emph{Data Flow}, \emph{Inference} e \emph{Output}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{img/PENTION-M_Architecture.png}
+    \caption{Architettura a 8 layer di \textsc{PENTION-M} e flusso end-to-end del sistema.}
+    \label{fig:pention_architecture_layers}
+\end{figure}
+
+\subsection*{Panoramica dei layer}
+
+\begin{itemize}
+  \item \textbf{Layer 0 – Edge I/O (Simulato)}:
+  rappresenta il punto di ingresso del sistema e simula la generazione dei
+  segnali provenienti dai sensori virtuali, includendo condizioni meteorologiche,
+  segnali di posizione e dati relativi alla sostanza rilasciata.
+
+  \item \textbf{Layer 1 – Data Ingestion}:
+  gestisce la raccolta dei dati simulati, i controlli di validità e la loro
+  normalizzazione in un formato strutturato coerente, che costituisce
+  l’evento di riferimento per la pipeline.
+
+  \item \textbf{Layer 2 – PIML Feature Layer}:
+  trasforma i dati grezzi in feature fisicamente significative, integrando
+  parametri ambientali, vincoli fisici e informazioni di contesto utili
+  ai modelli di inferenza.
+
+  \item \textbf{Layer 3 – Inference Services}:
+  comprende i servizi responsabili della predizione della dispersione,
+  della localizzazione della sorgente e della classificazione della sostanza,
+  combinando modelli fisici e modelli di \emph{Physics-Informed Machine Learning}.
+
+  \item \textbf{Layer 4 – Monitoring \& Telemetry}:
+  osserva il comportamento dei modelli in esecuzione, raccogliendo metriche
+  di latenza, stabilità e affidabilità utili al controllo operativo del sistema.
+
+  \item \textbf{Layer 5 – ModelOps \& Logging}:
+  gestisce il versionamento degli artefatti, il tracciamento delle configurazioni
+  di esecuzione e la produzione di audit trail forensi.
+
+  \item \textbf{Layer 6 – Interfaccia Utente Operativa}:
+  fornisce all’operatore una rappresentazione sintetica e interpretabile
+  dei risultati, supportando il processo decisionale in tempo reale.
+
+  \item \textbf{Layer 7 – Forensic Export}:
+  consente l’esportazione delle evidenze generate dal sistema sotto forma
+  di pacchetti verificabili, conformi ai requisiti normativi e forensi.
+\end{itemize}
+
+Nei paragrafi successivi, ciascun layer viene analizzato in dettaglio,
+descrivendone il ruolo funzionale, le principali scelte progettuali e
+il contributo al comportamento complessivo di \textsc{PENTION-M}.
+
+\section{Layer 0 – Edge I/O e simulazione dei sensori}
+
+Il Layer~0 rappresenta il punto di ingresso dell’intero sistema \textsc{PENTION-M}
+ed è responsabile della simulazione dei sensori e della generazione dei dati
+fisici e chimici che alimentano la pipeline end-to-end.
+In coerenza con la natura sperimentale dell’artefatto, tutti i dati acquisiti
+in questo layer sono interamente simulati, pur essendo progettati per riflettere
+in modo realistico il comportamento di un laboratorio mobile operativo.
+
+Il layer implementa una simulazione integrata di sensori ambientali, di posizione
+e di rilevamento chimico, generando un evento di acquisizione strutturato che
+costituisce l’input per i layer successivi.
+La scelta di concentrare la simulazione dei sensori in un layer dedicato consente
+di separare nettamente la generazione dei dati dalla loro elaborazione e inferenza,
+facilitando la tracciabilità e la riproducibilità degli esperimenti.
+
+\subsection*{Sensori simulati}
+
+Il sistema simula tre principali categorie di sensori:
+
+\begin{itemize}
+  \item \textbf{Sensori meteorologici}: generano parametri ambientali quali
+  velocità e direzione del vento, temperatura, umidità relativa e classe di
+  stabilità atmosferica secondo la classificazione di Pasquill--Gifford.
+  Tali parametri costituiscono una componente fondamentale per la modellazione
+  della dispersione chimica nei layer successivi.
+
+  \item \textbf{Sensori di posizione (GPS)}: simulano la posizione del laboratorio
+  mobile all’interno di una bounding box urbana predefinita.
+  Le coordinate geografiche sono generate in modo coerente con lo scenario urbano
+  simulato, consentendo di associare ogni misura a un contesto spaziale realistico.
+
+  \item \textbf{Sensori di sostanza}: simulano la rilevazione di concentrazioni
+  chimiche e la generazione dello spettro di massa a ionizzazione elettronica (EI).
+  La sostanza da rilevare è selezionata in modo casuale da un dataset reale di
+  spettri di massa di sostanze psicoattive emergenti, al quale viene applicato
+  rumore controllato per simulare incertezze strumentali e condizioni operative
+  realistiche.
+\end{itemize}
+
+La generazione dello spettro EI non si limita a una forma puramente sintetica,
+ma sfrutta spettri reali come base, garantendo una maggiore aderenza alle
+caratteristiche chimiche delle sostanze simulate e rendendo più significativo
+l’addestramento e la valutazione dei modelli di classificazione.
+
+\subsection*{Generazione dello scenario e casualità controllata}
+
+Per ogni simulazione, il Layer~0 genera uno scenario indipendente identificato
+da un \texttt{simulation\_id} univoco e da un timestamp.
+La sostanza rilasciata, i parametri ambientali e la posizione del veicolo sono
+selezionati in modo pseudo-casuale.
+
+Questo approccio consente di esplorare un ampio spazio di scenari operativi,
+mantenendo al contempo il controllo sulla \emph{ground truth} e sui parametri
+di simulazione, elemento essenziale per la successiva validazione dei modelli
+fisici e di \emph{Physics-Informed Machine Learning}.
+
+\subsection*{Output del Layer 0}
+
+L’output del Layer~0 consiste in un evento strutturato che aggrega tutte le
+misure simulate dei sensori e i relativi metadati.
+Tale evento include esclusivamente dati grezzi e informazioni di contesto
+(timestamp, identificativo della simulazione, configurazione dello scenario),
+senza effettuare alcuna inferenza o decisione automatica.
+
+L’evento generato viene trasmesso al Layer~1, dove ha inizio la fase di
+ingestion e validazione dei dati.
+Questa separazione garantisce che il Layer~0 rimanga limitato alla sola
+simulazione dell’acquisizione fisica, riflettendo il ruolo dei sensori reali
+in un sistema operativo e preservando la modularità complessiva
+dell’architettura di \textsc{PENTION-M}.
+
+\section{Layer 1 -- Data Ingestion e validazione}
+\label{sec:layer_ingestion}
+
+Il Layer~1 rappresenta il punto di ingresso operativo della pipeline di
+\textsc{PENTION-M} e svolge la funzione di \emph{orchestratore centrale}
+del flusso end-to-end.
+A questo livello, i dati generati dal Layer~0 vengono ricevuti,
+validati, arricchiti e trasformati in un evento strutturato unificato
+che costituisce l’unità informativa di riferimento per tutte le fasi
+successive della pipeline.
+
+Il servizio di ingestion è implementato come microservizio containerizzato
+ed è progettato per operare in modalità \emph{edge-only} e \emph{offline-capable},
+riflettendo uno scenario operativo reale in cui l’intero processo di
+acquisizione e analisi avviene localmente a bordo del laboratorio mobile.
+
+\subsection{Struttura del payload e validazione iniziale}
+
+Il Layer~1 riceve in ingresso un payload JSON generato dal sistema di
+simulazione dei sensori virtuali.
+Tale payload include informazioni eterogenee relative a:
+(i) condizioni ambientali e meteorologiche;
+(ii) posizione geografica del veicolo;
+(iii) segnali chimici e spettrali associati alla sostanza rilasciata;
+(iv) identificativi di simulazione e timestamp.
+
+All’atto della ricezione, il payload è sottoposto a una fase di
+validazione sintattica e semantica.
+La validazione include:
+\begin{itemize}
+  \item verifica della presenza dei campi obbligatori;
+  \item controllo della coerenza temporale (timestamp in formato ISO~8601);
+  \item normalizzazione delle coordinate geografiche rispetto al
+  bounding box di scenario;
+  \item controllo dei range fisici dei parametri ambientali principali.
+\end{itemize}
+
+I dati validati vengono quindi normalizzati in una rappresentazione
+strutturata che costituisce l’\emph{evento unificato} della pipeline.
+
+\subsection{Costruzione dell’evento unificato}
+
+L’evento unificato aggrega in un singolo oggetto informativo
+tutte le informazioni rilevanti per l’inferenza, il monitoraggio
+e la tracciabilità forense.
+In particolare, l’evento include:
+\begin{itemize}
+  \item dati grezzi dei sensori virtuali;
+  \item feature fisiche derivate (ad esempio parametri di dispersione);
+  \item risultati intermedi e finali dei servizi di inferenza;
+  \item metriche di monitoraggio runtime;
+  \item metadati ModelOps relativi a versioni e configurazioni;
+  \item metadati forensi e di compliance.
+\end{itemize}
+
+Questa scelta progettuale consente di mantenere una rappresentazione
+coerente e auto-consistente dello stato del sistema in ogni istante
+della pipeline, facilitando sia l’analisi operativa sia le attività
+di audit e validazione successive.
+
+\subsection{Orchestrazione dei servizi downstream}
+
+Una volta costruito l’evento unificato, il Layer~1 coordina
+l’invocazione dei servizi di inferenza downstream.
+In particolare:
+\begin{itemize}
+  \item il servizio di simulazione fisica e correzione PIML della dispersione;
+  \item il servizio di localizzazione della sorgente basato su PIML;
+  \item il servizio di classificazione della sostanza tramite modello XGBoost.
+\end{itemize}
+
+Il Layer~1 non implementa logica di inferenza diretta, ma funge da
+punto di integrazione tra i diversi moduli specializzati,
+gestendo la propagazione dei risultati all’interno dell’evento unificato.
+
+\subsection{Integrazione con Monitoring e ModelOps}
+
+Contestualmente all’orchestrazione dei servizi di inferenza,
+il Layer~1 inizializza e aggiorna i meccanismi di monitoraggio runtime.
+Vengono raccolte metriche relative a:
+\begin{itemize}
+  \item latenza dei servizi;
+  \item stabilità delle predizioni;
+  \item indicatori di drift rispetto a baseline di riferimento;
+  \item stato delle versioni di modello attive.
+\end{itemize}
+
+Le informazioni ModelOps associate all’evento includono l’identificativo
+del modello utilizzato, la versione del dataset di training e
+l’eventuale attivazione di trigger di retraining.
+Tali informazioni sono persistite in log strutturati e contribuiscono
+alla tracciabilità completa del ciclo di vita dei modelli.
+
+\subsection{Logging forense e produzione delle evidenze}
+
+La fase finale del Layer~1 prevede la generazione delle evidenze forensi.
+L’evento unificato viene serializzato in forma canonica e sottoposto
+a hashing crittografico tramite algoritmo SHA--256.
+Il digest risultante viene firmato digitalmente mediante chiavi
+Ed25519 generate e gestite localmente dal sistema.
+
+Il risultato è un \emph{forensic bundle} contenente:
+\begin{itemize}
+  \item l’evento completo;
+  \item l’hash crittografico;
+  \item la firma digitale;
+  \item la chiave pubblica di verifica;
+  \item metadati di compliance e integrità degli artefatti.
+\end{itemize}
+
+I bundle forensi sono immutabili e verificabili ex-post,
+consentendo la riproduzione e la validazione indipendente
+del processo decisionale del sistema.
+In questo modo, il Layer~1 garantisce non solo l’integrità
+del flusso operativo, ma anche la conformità ai requisiti
+forensi e normativi definiti in fase di progettazione.
+
+\section{Layer 2 -- Feature fisiche e PIML Feature Layer}
+\label{sec:layer2_features}
+
+Il Layer~2 rappresenta il livello di \emph{feature engineering} fisicamente informato di
+\textsc{PENTION-M}.
+A partire dall’evento unificato prodotto dal Layer~1, questo livello ha l’obiettivo di:
+(i) rendere espliciti i parametri fisici latenti rilevanti per la dispersione e la localizzazione
+della sorgente;
+(ii) costruire rappresentazioni numeriche compatibili con i modelli di inferenza impiegati
+nei layer successivi;
+(iii) integrare informazione contestuale urbana mediante maschere geometriche.
+
+Nel prototipo implementato, una parte delle feature fisiche viene materializzata già in fase
+di simulazione (\texttt{SensorSim\_M.py}) per esigenze di efficienza e semplificazione del
+flusso end-to-end.
+Tali feature vengono inserite nel campo \texttt{piml\_features} dell’evento e propagate ai
+servizi di inferenza (Layer~3) tramite payload strutturati.
+Dal punto di vista architetturale, questa scelta non altera il ruolo del Layer~2:
+le trasformazioni restano concettualmente riconducibili al livello di feature fisiche,
+anche quando sono materializzate anticipatamente dal simulatore.
+
+\subsection{Feature meteorologiche e parametri fisici di dispersione}
+
+Il sistema include un insieme di parametri ambientali e fisici associati alla dispersione
+in atmosfera, tra cui condizioni meteorologiche, informazioni sul vento e variabili di
+stabilità.
+In particolare, nel simulatore vengono prodotti i parametri:
+\texttt{wind\_speed}, \texttt{wind\_dir} e \texttt{stability\_class}, che descrivono lo stato
+atmosferico dello scenario.
+
+Per rendere la direzione del vento utilizzabile in modelli data-driven e PIML, essa viene
+codificata anche tramite una rappresentazione vettoriale nel piano:
+\begin{equation}
+\mathbf{v} =
+\begin{bmatrix}
+v_x \\ v_y
+\end{bmatrix}
+=
+\begin{bmatrix}
+\cos(\theta) \\ \sin(\theta)
+\end{bmatrix}
+\cdot \|\mathbf{v}\|,
+\end{equation}
+dove $\theta$ rappresenta la direzione del vento e $\|\mathbf{v}\|$ la sua intensità.
+Questa codifica evita discontinuità angolari e migliora la stabilità dell’apprendimento.
+
+Sulla base della classe di stabilità e delle condizioni di scenario, vengono inoltre
+calcolati i parametri di dispersione laterale e verticale $(\sigma_y, \sigma_z)$,
+che costituiscono parametri fisici espliciti del modello di dispersione gaussiano.
+Tali quantità vengono propagate come feature interpretabili e direttamente collegate
+alla fisica del fenomeno.
+
+\subsection{Maschere urbane e contesto geometrico (building map)}
+
+Oltre ai parametri atmosferici, \textsc{PENTION-M} integra informazione di contesto urbano
+attraverso una \emph{building map} binaria che approssima la presenza di edifici
+nell’area di interesse.
+La maschera viene generata mediante lo script \texttt{binary\_map\_gen.py}, che interroga
+OpenStreetMap e costruisce una griglia discretizzata associata a una specifica bounding box.
+
+Nel servizio di correzione PIML, la building map viene caricata da file (\texttt{.npy})
+e utilizzata come canale informativo aggiuntivo insieme alle mappe di concentrazione.
+Lo schema di input del servizio di correzione prevede infatti:
+(i) parametri del vento;
+(ii) una \texttt{concentration\_map} bidimensionale;
+(iii) una \texttt{building\_map} binaria bidimensionale.
+
+Questa scelta consente di incorporare nel flusso data-driven un vincolo geometrico
+che approssima l’effetto schermante e canalizzante dell’ambiente urbano,
+in coerenza con l’approccio \emph{Physics-Informed} adottato.
+
+\subsection{Feature derivate per la localizzazione della sorgente}
+
+Per il task di localizzazione della sorgente, il Layer~2 include un insieme di feature
+derivate che combinano informazioni sul vento e sulla stabilità atmosferica in variabili
+più informative.
+Nel processo di training del modello PIML di localizzazione
+(\texttt{emission\_source\_piml.ipynb}) vengono utilizzate, tra le altre,
+feature trigonometrizzate della direzione del vento (seno e coseno),
+indicatori sintetici di allineamento vento--moto e termini di interazione
+tra vento, stabilità e variabili ambientali.
+
+Nel contesto architetturale, tali trasformazioni appartengono al Layer~2 poiché
+rappresentano un’esplicitazione di conoscenza fisica e relazionale che migliora
+l’apprendimento del modello di localizzazione, implementato nel Layer~3.
+La corrispondenza tra feature utilizzate in fase di training e feature calcolate a runtime
+è garantita a livello implementativo nel servizio di localizzazione dedicato.
+
+\section{Layer 3 -- Inference Services}
+\label{sec:layer3_inference}
+
+Il Layer~3 rappresenta il livello di \emph{inferenza} dell’architettura di
+\textsc{PENTION-M} ed è responsabile dell’elaborazione dei dati e delle feature
+prodotte dai layer precedenti al fine di generare output operativi interpretabili.
+In questo livello sono collocati i servizi che implementano i modelli fisici,
+data-driven e \emph{Physics-Informed Machine Learning}, ciascuno specializzato
+in uno specifico task di analisi.
+
+Dal punto di vista architetturale, il Layer~3 è composto da un insieme di
+microservizi containerizzati, esposti tramite interfacce API ben definite e
+invocati dal Layer~1 durante l’orchestrazione della pipeline end-to-end.
+Ogni servizio opera in modo indipendente, consumando un sottoinsieme strutturato
+dell’evento unificato e producendo risultati che vengono reintegrati nello stesso
+evento come output intermedi o finali.
+
+Nel prototipo implementato, il Layer~3 include tre principali classi di servizi:
+\begin{itemize}
+    \item simulazione fisica e correzione della dispersione;
+    \item localizzazione della sorgente di emissione;
+    \item classificazione della sostanza tramite spettrometria di massa.
+\end{itemize}
+
+Questa separazione riflette una precisa scelta progettuale: ogni servizio
+incapsula una specifica competenza modellistica, riducendo l’accoppiamento tra
+componenti e facilitando l’evoluzione indipendente dei modelli.
+Il Layer~3 non gestisce direttamente aspetti di monitoraggio, versionamento o
+logging forense, che sono delegati ai layer successivi, ma si concentra
+esclusivamente sull’esecuzione dell’inferenza.
+
+\subsection{Simulazione fisica della dispersione}
+\label{sec:layer3_dispersion}
+
+Il primo servizio di inferenza del Layer~3 è dedicato alla simulazione fisica
+della dispersione della sostanza rilasciata nello scenario.
+Questo servizio implementa un modello di dispersione di tipo \emph{Gaussian Puff},
+utilizzato come baseline fisica per descrivere la propagazione spaziale e temporale
+della concentrazione in atmosfera.
+
+Il modello riceve in ingresso le feature fisiche prodotte dal Layer~2, tra cui
+i parametri del vento, la classe di stabilità atmosferica e i coefficienti di
+dispersione laterale e verticale $(\sigma_y, \sigma_z)$.
+A partire da tali informazioni, il servizio genera una rappresentazione della
+distribuzione di concentrazione nello spazio, mantenendo una chiara interpretabilità
+fisica delle grandezze coinvolte.
+
+Nel contesto di \textsc{PENTION-M}, la simulazione fisica non ha l’obiettivo di
+fornire una previsione atmosferica ad alta fedeltà, ma di costituire un riferimento
+modellistico coerente e controllabile, utile sia per l’analisi qualitativa dello
+scenario sia come base per l’integrazione con modelli PIML nei servizi successivi.
+
+Dal punto di vista architetturale, il servizio di dispersione è esposto come
+microservizio indipendente e viene invocato dal Layer~1 durante la fase di
+orchestrazione.
+Il risultato della simulazione viene reintegrato nell’evento unificato sotto forma
+di mappe di concentrazione strutturate, che possono essere utilizzate sia a scopo
+operativo sia come input per i modelli di correzione e localizzazione basati su
+\emph{Physics-Informed Machine Learning}.
+
+La presenza esplicita di un modello fisico nel Layer~3 consente di mantenere
+un collegamento diretto tra dati osservati, assunzioni fisiche e output di inferenza,
+costituendo un elemento chiave per la trasparenza e la verificabilità del sistema.
+
+\subsection{Modello PIML di correzione della dispersione}
+\label{sec:layer3_piml_correction}
+
+Il secondo servizio di inferenza del Layer~3 è dedicato alla correzione
+fisicamente informata dei campi di concentrazione generati dal modello
+di dispersione gaussiano.
+Questo servizio implementa un approccio di \emph{Physics-Informed Machine Learning} (PIML)
+finalizzato a ridurre le discrepanze tra la simulazione fisica semplificata
+e una rappresentazione più realistica della dispersione in ambiente urbano.
+
+L’obiettivo del modello non è sostituire il modello fisico di base,
+bensì correggerne sistematicamente gli errori strutturali,
+mantenendo coerenza con i vincoli fisici noti e con il contesto geometrico
+dello scenario.
+In questo senso, il modello PIML opera come un \emph{correction layer}
+che apprende deviazioni sistematiche dovute a fenomeni non esplicitamente
+modellati, quali l’interazione con l’ambiente urbano e la complessità
+dei flussi locali.
+
+\paragraph{Architettura del modello MCxM--PIML}
+
+Il modello adottato è una rete neurale convoluzionale bidimensionale,
+implementata nel modulo \texttt{MCxM\_PIML.py},
+progettata per operare su mappe spaziali di concentrazione.
+L’architettura segue uno schema encoder--decoder di tipo \emph{U-Net--like},
+in cui le operazioni convoluzionali consentono di catturare pattern spaziali
+sia locali sia globali rilevanti per il fenomeno di dispersione.
+
+L’input del modello è multi-canale e comprende:
+(i) la mappa di concentrazione prodotta dal modello gaussiano;
+(ii) una \emph{building map} binaria che rappresenta la presenza di edifici
+nel contesto urbano;
+(iii) un insieme di parametri fisici scalari associati allo scenario,
+tra cui velocità e direzione del vento, classe di stabilità atmosferica
+e umidità relativa.
+Questa rappresentazione consente al modello di apprendere correzioni
+spazialmente dipendenti, modulandole in funzione sia del campo di
+concentrazione sia del contesto geometrico e ambientale.
+
+L’output del modello è una mappa di concentrazione corretta,
+della stessa dimensionalità dell’input,
+progettata per approssimare un campo di dispersione più realistico
+rispetto alla simulazione fisica di base.
+
+\paragraph{Integrazione dei vincoli fisici nella funzione di loss}
+
+Un elemento centrale dell’approccio PIML adottato è la definizione di una
+funzione di loss fisicamente informata,
+implementata nel modulo \texttt{loss\_function\_piml.py}.
+La funzione di perdita combina una componente di errore predittivo
+con termini di penalizzazione che riflettono vincoli fisici espliciti.
+
+In particolare, la loss include contributi associati a:
+(i) accuratezza della previsione rispetto al campo di riferimento;
+(ii) regolarità spaziale del campo corretto, al fine di evitare
+discontinuità non fisicamente plausibili;
+(iii) penalizzazione della presenza di concentrazione all’interno
+delle aree edificate;
+(iv) coerenza tra il gradiente spaziale del campo di concentrazione
+e la direzione del vento dominante.
+Questo approccio guida l’addestramento verso soluzioni che risultano
+non solo numericamente accurate, ma anche fisicamente coerenti,
+riducendo il rischio di overfitting puramente data-driven.
+
+\paragraph{Dataset PIML e pipeline di addestramento}
+
+Il modello è addestrato su un dataset simulato specificamente progettato
+per il contesto PIML.
+I dati vengono generati tramite lo script \texttt{simulation\_gen.py}
+e successivamente preprocessati mediante
+\texttt{dataset\_preprocessing\_piml.py}.
+Per ciascuna simulazione, il dataset include:
+(i) parametri ambientali e meteorologici;
+(ii) mappe di concentrazione generate dal modello fisico;
+(iii) mappe di riferimento della dispersione ``reale'';
+(iv) maschere urbane coerenti con la bounding box geografica dello scenario.
+
+La pipeline di training, implementata in
+\texttt{cnn\_train\_pipeline\_piml.py},
+gestisce la suddivisione in training e validation set,
+il caricamento dei dati tramite la classe \texttt{CNNDataset}
+e l’ottimizzazione dei pesi del modello.
+L’andamento della loss su training e validation è utilizzato
+per monitorare la stabilità dell’addestramento
+e verificare l’assenza di fenomeni di overfitting.
+
+\paragraph{Esposizione come servizio di inferenza}
+
+Una volta addestrato, il modello PIML viene serializzato
+e caricato dal servizio di inferenza
+\texttt{service\_correction\_piml.py},
+esposto tramite API REST definite in
+\texttt{api\_correction\_piml.py}.
+Il servizio riceve in ingresso le mappe di concentrazione
+e i parametri di scenario prodotti dai layer precedenti
+e restituisce una mappa corretta che viene integrata
+nell’evento unificato della pipeline.
+
+Dal punto di vista architetturale, il servizio è stateless
+e completamente containerizzato,
+garantendo riproducibilità delle inferenze e integrazione
+trasparente nel flusso end-to-end.
+Le informazioni relative alla versione del modello
+e ai parametri di esecuzione vengono propagate
+ai layer di Monitoring e ModelOps
+per finalità di tracciabilità e auditabilità.
+
+\paragraph{Ruolo del modello PIML nel Layer di inferenza}
+
+Il modello PIML di correzione della dispersione rappresenta
+un punto di equilibrio tra modellazione fisica
+e apprendimento automatico.
+All’interno del Layer~3,
+esso agisce come ponte tra simulazione fisica
+e inferenza avanzata,
+migliorando l’affidabilità delle mappe di concentrazione
+utilizzate dai successivi moduli di localizzazione della sorgente
+e di valutazione operativa del rischio.
+
+\subsection{Modello di localizzazione della sorgente}
+\label{sec:layer3_source_localization}
+
+Il terzo servizio di inferenza del Layer~3 è dedicato alla
+\emph{localizzazione della sorgente di emissione} della sostanza rilevata,
+ovvero alla stima delle coordinate spaziali della sorgente responsabile
+del campo di concentrazione osservato dai sensori.
+Questo task rappresenta un passaggio cruciale nella pipeline operativa di
+\textsc{PENTION-M}, in quanto traduce l’informazione di dispersione in un
+output direttamente utilizzabile a fini investigativi e decisionali.
+
+Nel prototipo implementato, la localizzazione della sorgente è realizzata
+mediante un modello di \emph{Physics-Informed Machine Learning} (PIML),
+progettato per integrare esplicitamente informazione fisica e geometrica
+nel processo di inferenza, riducendo l’ambiguità tipica degli approcci
+puramente data-driven.
+
+\paragraph{Feature fisiche utilizzate}
+
+Il modello di localizzazione opera su un insieme di feature derivate
+prodotte dal Layer~2, che rendono esplicite le principali grandezze fisiche
+coinvolte nel fenomeno di dispersione.
+In particolare, l’input del modello include:
+
+\begin{itemize}
+    \item componenti cartesiane della direzione del vento
+    ($\cos(\theta)$, $\sin(\theta)$), che evitano discontinuità angolari;
+    \item intensità del vento (\texttt{wind\_speed});
+    \item indicatori di stabilità atmosferica, derivati dalla classificazione
+    di Pasquill--Gifford;
+    \item coordinate spaziali dei sensori operativi (\texttt{gps\_x},
+    \texttt{gps\_y});
+    \item serie temporali delle concentrazioni misurate dai sensori;
+\end{itemize}
+
+Questa rappresentazione consente al modello di apprendere relazioni
+fisicamente plausibili tra la distribuzione spaziale delle misure,
+le condizioni ambientali e la posizione della sorgente.
+L’utilizzo esplicito di feature fisiche riduce la dimensionalità latente
+del problema e migliora la stabilità dell’inferenza in scenari eterogenei.
+
+\paragraph{Architettura e addestramento del modello PIML}
+
+Il modello di localizzazione è addestrato offline utilizzando il notebook
+\texttt{emission\_source\_piml.ipynb}, a partire da dataset simulati
+coerenti con gli scenari operativi di \textsc{PENTION-M}.
+L’addestramento sfrutta una normalizzazione consistente delle feature,
+serializzata nel file \texttt{scaler\_piml.pkl}, al fine di garantire
+coerenza tra fase di training e fase di inferenza runtime.
+
+Il modello finale, salvato come \texttt{emission\_source\_model\_piml.pkl},
+implementa una regressione multivariata che stima direttamente le
+coordinate spaziali della sorgente.
+L’approccio PIML consente di limitare soluzioni non fisicamente plausibili,
+vincolando implicitamente lo spazio delle predizioni alle configurazioni
+compatibili con la dinamica della dispersione atmosferica.
+
+\paragraph{Stabilità dell’inferenza e output del servizio}
+
+Dal punto di vista operativo, il modello di localizzazione è esposto come
+microservizio stateless tramite API REST definite in
+\texttt{api\_source\_localization\_piml.py}
+e implementate nel servizio
+\texttt{service\_source\_localization\_piml.py}.
+Il servizio riceve in ingresso i dati strutturati dei sensori e restituisce
+una stima puntuale della posizione della sorgente, accompagnata da metadati
+di esecuzione e versioning del modello.
+
+Le metriche di validazione ottenute in fase di test mostrano una buona
+stabilità del modello, con errori medi dell’ordine di alcune decine di metri,
+compatibili con la risoluzione spaziale dello scenario simulato.
+In particolare, i valori di RMSE e MAE confermano la capacità del modello
+di fornire stime robuste anche in presenza di rumore e di parziale
+incompletezza delle misure.
+
+All’interno dell’architettura di \textsc{PENTION-M}, l’output del servizio
+di localizzazione viene reintegrato nell’evento unificato della pipeline
+e reso disponibile sia per la visualizzazione operativa (Layer~6)
+sia per la produzione di evidenze forensi verificabili (Layer~7).
+In questo modo, il modello di localizzazione della sorgente completa
+il Layer~3 di inferenza, fornendo un collegamento diretto tra
+modellazione fisica, apprendimento automatico e supporto decisionale.
+
+\section{Layer 4 -- Monitoring e Telemetry}
+\label{sec:layer4_monitoring}
+
+Il Layer~4 rappresenta il livello di \emph{monitoring operativo e telemetry} di
+\textsc{PENTION-M} ed è responsabile dell’osservazione continua del comportamento
+della pipeline durante l’esecuzione.
+A differenza di approcci MLOps tradizionali orientati esclusivamente a metriche
+statistiche di accuratezza offline, questo layer è progettato per monitorare
+\emph{proprietà runtime fisicamente e operativamente rilevanti}, in coerenza
+con la natura cyber--fisica e forense del sistema.
+
+Il servizio di monitoring è implementato come microservizio containerizzato
+(\texttt{monitoring\_service.py}) ed è invocato automaticamente dal Layer~1
+al termine di ogni ciclo di inferenza end-to-end.
+Il layer non interviene direttamente nel processo decisionale,
+ma fornisce una visione strutturata dello stato del sistema,
+abilitando controlli di stabilità, affidabilità e auditabilità.
+
+\subsection{Ruolo del monitoring nel contesto PENTION-M}
+
+Nel contesto di \textsc{PENTION-M}, il monitoring assolve a tre funzioni principali:
+\begin{itemize}
+    \item \textbf{controllo operativo runtime}, monitorando latenza,
+    drift e stabilità delle predizioni durante l’esecuzione;
+    \item \textbf{supporto alla pipeline ModelOps}, fornendo segnali
+    quantitativi per la gestione delle versioni e dei retraining;
+    \item \textbf{tracciabilità forense}, producendo log strutturati
+    e immutabili utilizzabili per audit e validazione ex-post.
+\end{itemize}
+
+Questa impostazione riflette una precisa scelta progettuale:
+il monitoring non è trattato come componente accessoria,
+ma come parte integrante dell’architettura di validazione
+\emph{by construction} dell’artefatto.
+
+\subsection{Struttura dell’evento di monitoring}
+
+Il Layer~4 riceve in ingresso l’evento unificato prodotto dal Layer~1,
+che include informazioni sui sensori, sulle feature PIML,
+sui risultati di inferenza e sui metadati ModelOps.
+A partire da tale evento, il servizio di monitoring estrae
+un sottoinsieme coerente di informazioni rilevanti,
+organizzate in un blocco di telemetry strutturato.
+
+In particolare, per ogni simulazione vengono monitorate:
+\begin{itemize}
+    \item la latenza complessiva della pipeline (\texttt{latency\_ms});
+    \item la versione del modello attivo (\texttt{model\_version});
+    \item indicatori di stabilità fisica e modellistica;
+    \item la confidenza associata alle predizioni;
+    \item un indice sintetico di drift (\texttt{drift\_score}).
+\end{itemize}
+
+Tali informazioni vengono serializzate in formato JSON Lines
+all’interno del file \texttt{monitoring\_log.jsonl},
+costituendo una traccia temporale ordinata degli eventi
+di esecuzione del sistema.
+
+\subsection{Monitoraggio della latenza}
+
+La latenza rappresenta una metrica critica nel contesto operativo
+di un laboratorio mobile.
+Il Layer~4 distingue tra:
+\begin{itemize}
+    \item latenza end-to-end osservata dal client;
+    \item latenza interna misurata dal sistema durante la pipeline.
+\end{itemize}
+
+La latenza interna è calcolata utilizzando timestamp coerenti
+propagati lungo il flusso di ingestion e inferenza.
+Questa misura consente di valutare il carico computazionale
+dei singoli componenti e di identificare condizioni di stress
+o degrado prestazionale.
+
+Nel contesto simulato di \textsc{PENTION-M},
+latenze dell’ordine di alcuni secondi sono considerate accettabili,
+in quanto il sistema esegue:
+(i) simulazioni fisiche costose;
+(ii) modelli PIML convoluzionali su mappe bidimensionali;
+(iii) pipeline di classificazione e logging forense.
+Il monitoring consente di caratterizzare tali latenze
+e di contestualizzarle correttamente.
+
+\subsection{Drift fisicamente informato}
+
+Un elemento distintivo del Layer~4 è l’introduzione di un
+\emph{drift fisicamente informato}, progettato per catturare
+variazioni anomale nel comportamento del sistema rispetto
+a una baseline operativa.
+
+Il drift non è calcolato esclusivamente sulle feature di input,
+ma su un vettore fisico composito che include:
+\begin{itemize}
+    \item parametri di dispersione ($\sigma_y$, $\sigma_z$);
+    \item indicatori di stabilità atmosferica;
+    \item numero di Péclet e grandezze di trasporto;
+    \item velocità e direzione del vento;
+    \item confidenza dei modelli di inferenza.
+\end{itemize}
+
+A partire da questo vettore, il servizio implementa un
+meccanismo di drift basato sulla distanza di Mahalanobis
+rispetto a una baseline incrementale,
+memorizzata nel file \texttt{drift\_baseline.json}.
+Durante le prime esecuzioni, la baseline viene costruita
+progressivamente; una volta stabilizzata,
+il drift viene normalizzato rispetto alla distribuzione storica.
+
+Il risultato è un valore scalare $\in [0,1]$ che quantifica
+la deviazione dello stato corrente del sistema
+rispetto al comportamento atteso,
+senza richiedere accesso alla ground truth reale.
+Questo approccio è particolarmente adatto a contesti
+fisico--forensi, in cui il concetto di drift deve riflettere
+anche coerenza fisica e affidabilità operativa.
+
+\subsection{Stabilità e confidenza delle predizioni}
+
+Oltre al drift, il Layer~4 monitora indicatori di stabilità
+delle predizioni prodotte dai modelli PIML e dal classificatore NPS.
+In particolare, vengono tracciate:
+\begin{itemize}
+    \item la confidenza associata alle predizioni di classificazione;
+    \item la coerenza delle stime di localizzazione della sorgente;
+    \item variazioni improvvise di output a parità di condizioni fisiche.
+\end{itemize}
+
+Queste informazioni consentono di individuare
+situazioni di overconfidence, instabilità numerica
+o degrado progressivo delle prestazioni,
+fornendo segnali utili sia all’operatore umano
+sia ai meccanismi ModelOps dei layer successivi.
+
+\subsection{Persistenza e auditabilità dei log}
+
+Tutti i dati di monitoring vengono persistiti
+in forma append-only, senza modifiche retroattive,
+garantendo l’integrità temporale delle informazioni.
+Il formato JSON Lines consente analisi batch,
+visualizzazioni offline e integrazione diretta
+con le procedure di validazione descritte nel Capitolo~5.
+
+Dal punto di vista architetturale,
+il Layer~4 costituisce il ponte tra inferenza e ModelOps:
+le metriche prodotte non influenzano direttamente
+l’output operativo immediato,
+ma alimentano i processi di controllo,
+versioning e logging forense implementati nel Layer~5.
+
+In questo modo, il monitoring non si limita a osservare il sistema,
+ma contribuisce attivamente alla sua validazione,
+robustezza e affidabilità complessiva.
+
+\section{Layer 5 -- ModelOps e logging forense}
+\label{sec:layer5_modelops_forensic}
+
+Il Layer~5 rappresenta il livello di \emph{ModelOps e logging forense} di
+\textsc{PENTION-M} ed è responsabile della gestione del ciclo di vita dei modelli,
+della tracciabilità delle configurazioni di esecuzione e della produzione di
+evidenze digitali verificabili.
+Questo layer costituisce un elemento chiave dell’artefatto, in quanto traduce
+le esigenze di auditabilità, riproducibilità e affidabilità emerse in fase di
+\emph{Requirements Engineering} in meccanismi tecnici espliciti e verificabili.
+
+A differenza di pipeline MLOps orientate esclusivamente all’automazione del
+retraining o all’ottimizzazione continua delle prestazioni,
+\textsc{PENTION-M} adotta un approccio \emph{conservativo e forense-aware}:
+le decisioni operative sono sempre accompagnate da metadati completi,
+e ogni esecuzione produce un audit trail immutabile.
+In questo senso, il Layer~5 non è progettato per intervenire dinamicamente
+sull’inferenza runtime, ma per garantire che ogni risultato prodotto dal sistema
+sia contestualizzato, verificabile e difendibile ex-post.
+
+\subsection{Ruolo del ModelOps nel contesto PENTION-M}
+
+Nel contesto di \textsc{PENTION-M}, il termine \emph{ModelOps} è inteso in senso
+esteso e include non solo il versionamento dei modelli,
+ma l’intera gestione del loro utilizzo operativo.
+Il Layer~5 assolve in particolare a quattro funzioni principali:
+\begin{itemize}
+    \item tracciamento delle versioni dei modelli e delle configurazioni attive;
+    \item associazione esplicita tra modelli, dati di input e output prodotti;
+    \item registrazione degli eventi rilevanti per il ciclo di vita dei modelli;
+    \item produzione di evidenze forensi verificabili e immutabili.
+\end{itemize}
+
+Questo approccio riflette una scelta progettuale deliberata:
+in un contesto investigativo e forense, la priorità non è l’adattamento
+automatico dei modelli, bensì la possibilità di ricostruire in modo completo
+e indipendente il processo decisionale seguito dal sistema in un determinato
+istante temporale.
+
+\subsection{Versioning dei modelli e audit trail}
+
+Il versionamento dei modelli è gestito tramite un registro persistente
+(\texttt{model\_registry.json}) che associa a ciascun modello utilizzato
+le informazioni rilevanti per la sua identificazione e riproducibilità.
+Per ogni servizio di inferenza vengono tracciati:
+\begin{itemize}
+    \item identificativo e versione del modello;
+    \item tipologia di modello (fisico, PIML, data-driven);
+    \item data di registrazione e di attivazione;
+    \item riferimento alla configurazione di training;
+\end{itemize}
+
+Durante l’esecuzione della pipeline, il Layer~1 propaga nell’evento unificato
+l’identificativo delle versioni di modello effettivamente utilizzate.
+Il Layer~5 raccoglie tali informazioni e le persiste come parte dell’audit trail,
+garantendo che ogni output possa essere ricondotto in modo univoco
+agli artefatti software che lo hanno generato.
+
+Le operazioni di retraining non avvengono in modo opaco o non supervisionato,
+ma sono attivate automaticamente in risposta a condizioni operative
+esplicitamente monitorate dal sistema.
+In particolare, eventi di drift, instabilità o degrado delle prestazioni
+possono generare automaticamente un trigger di retraining,
+gestito e registrato dal sottosistema ModelOps.
+
+Ogni evento di retraining viene tracciato separatamente nel file
+\texttt{modelops\_retrain\_log.jsonl},
+che documenta in modo esplicito:
+(i) la condizione che ha innescato il retraining;
+(ii) la versione precedente e quella candidata del modello;
+(iii) l’esito dell’operazione.
+
+Questa separazione tra rilevazione automatica,
+esecuzione controllata e tracciamento persistente
+consente di mantenere un elevato livello di automazione,
+senza compromettere i requisiti di auditabilità e controllo umano
+richiesti in un contesto forense.
+
+\subsection{Logging forense e struttura del bundle}
+
+Il cuore del Layer~5 è rappresentato dal sistema di logging forense,
+implementato nel modulo \texttt{forensic\_logger.py}.
+Al termine di ogni esecuzione completa della pipeline,
+l’evento unificato viene trasformato in un \emph{forensic bundle},
+ovvero un pacchetto digitale autosufficiente che rappresenta
+l’evidenza dell’attività svolta dal sistema.
+
+Il processo di generazione del bundle prevede:
+\begin{enumerate}
+    \item serializzazione canonica dell’evento unificato;
+    \item calcolo dell’hash crittografico tramite algoritmo SHA--256;
+    \item firma digitale del digest mediante algoritmo Ed25519;
+    \item inclusione della chiave pubblica necessaria alla verifica.
+\end{enumerate}
+
+Il bundle risultante contiene:
+\begin{itemize}
+    \item l’evento completo, comprensivo di input, output e metadati;
+    \item l’hash SHA--256 dell’evento serializzato;
+    \item la firma digitale;
+    \item la chiave pubblica associata;
+    \item informazioni di supporto alla verifica e alla compliance.
+\end{itemize}
+
+Ogni bundle è persistito in forma append-only all’interno della directory
+\texttt{logs/forensic/} e identificato da un nome univoco che include
+timestamp e identificativo di simulazione.
+Una volta generato, il bundle non viene mai modificato,
+garantendo l’immutabilità dell’evidenza.
+
+\subsection{Firma digitale e verifica dell’integrità}
+
+La firma digitale Ed25519 consente di verificare in modo indipendente
+sia l’integrità sia l’autenticità del bundle.
+Il processo di verifica, implementato nello script
+\texttt{verify\_bundle.py}, ricostruisce l’evento in forma canonica,
+ricalcola l’hash SHA--256 e verifica la firma mediante la chiave pubblica
+inclusa nel bundle stesso.
+
+Questo meccanismo consente di rilevare qualsiasi alterazione,
+anche minima, dei dati registrati.
+Test di manomissione controllata, implementati nello script
+\texttt{tamper\_test.py}, mostrano che la modifica di un singolo campo
+dell’evento (ad esempio una coordinata GPS) invalida immediatamente
+sia il confronto degli hash sia la verifica della firma digitale.
+Tali test confermano la robustezza del meccanismo di protezione
+e la sua idoneità a contesti forensi.
+
+\subsection{Chain of custody digitale}
+
+L’insieme di versioning, logging strutturato, hashing e firma digitale
+implementato nel Layer~5 realizza una forma di \emph{chain of custody digitale}.
+Ogni evidenza prodotta dal sistema è:
+\begin{itemize}
+    \item temporalmente collocabile;
+    \item riconducibile a una specifica configurazione di modelli;
+    \item verificabile in modo indipendente;
+    \item resistente a manomissioni non autorizzate.
+\end{itemize}
+
+Dal punto di vista architetturale, il Layer~5 separa in modo esplicito
+le metriche di monitoring operativo (Layer~4) dalle evidenze forensi,
+evitando commistioni tra osservazione del comportamento del sistema
+e produzione di prove digitali.
+Questa separazione rafforza la chiarezza concettuale del sistema
+e facilita la validazione ex-post delle decisioni prese.
+
+\subsection{Collegamento con la validazione by construction}
+
+Il Layer~5 costituisce un elemento fondamentale della validazione
+\emph{by construction} di \textsc{PENTION-M}.
+La produzione sistematica di bundle forensi firmati garantisce che
+ogni iterazione dell’artefatto e ogni esecuzione della pipeline
+siano documentate in modo completo e verificabile.
+
+In questo senso, il logging forense non rappresenta un’aggiunta
+a posteriori, ma una componente strutturale dell’architettura.
+Le proprietà di auditabilità, riproducibilità e tracciabilità
+non sono valutate tramite un singolo esperimento finale,
+bensì emergono direttamente dal modo in cui il sistema è stato progettato
+e implementato.
+Il Capitolo~5 approfondirà questo aspetto, mostrando come tali meccanismi
+abbiano supportato la valutazione tecnica e il confronto con gli stakeholder
+nel corso delle iterazioni del progetto.
+
+\section{Layer 6 -- Interfaccia utente operativa e demo live}
+\label{sec:layer6_ui}
+
+Il Layer~6 fornisce il punto di contatto operativo tra l’analista e la pipeline
+end-to-end di \textsc{PENTION-M}.
+L’obiettivo dell’interfaccia non è soltanto ``mostrare un output'',
+ma \emph{rendere ispezionabile} l’intero ciclo di rilevazione:
+movimento del laboratorio mobile, attivazione della pipeline MLOps,
+visualizzazione delle metriche di monitoring e accesso immediato
+alle evidenze forensi prodotte dal sistema.
+
+Dal punto di vista implementativo, la UI è esposta come servizio web leggero
+(\texttt{PentionSystem\_M/ui\_pention\_m.py}) che:
+(i) serve asset statici (\texttt{index.html}, \texttt{script.js}, \texttt{style.css});
+(ii) mantiene uno stato di simulazione lato server (es. \emph{Idle}/\emph{Running});
+(iii) comunica aggiornamenti in tempo reale al browser tramite un canale WebSocket
+(\texttt{/ws}).
+Questa scelta progettuale consente di ottenere una visualizzazione reattiva
+senza introdurre dipendenze pesanti, mantenendo coerenza con lo scenario
+\emph{edge-only} e \emph{offline-capable} del laboratorio mobile.
+
+\subsection{Componenti visuali e logica di interazione}
+
+L’interfaccia è organizzata in due aree principali:
+
+\begin{itemize}
+    \item \textbf{Mappa operativa (sinistra)}: una mappa interattiva basata su Leaflet,
+    alimentata da OpenStreetMap, su cui viene renderizzato il van e la sua evoluzione
+    spaziale nello scenario urbano. La navigazione del veicolo è vincolata a una rete
+    stradale pre-caricata da cache (\texttt{osm\_cache/amsterdam\_drive.graphml}),
+    ottenendo un comportamento coerente con un pattugliamento urbano realistico.
+    \item \textbf{Pannello di controllo e telemetry (destra)}: un insieme di card che
+    sintetizzano lo stato della simulazione e i risultati della pipeline
+    (\emph{Simulation info}, \emph{EI Mass Spectrum}, \emph{Last forensic bundle}).
+\end{itemize}
+
+La UI espone tre comandi operativi che riflettono il workflow d’uso:
+
+\begin{itemize}
+    \item \textbf{Start simulation}: avvia una simulazione standard in cui il van si muove
+    secondo logica di patrolling; la pipeline MLOps viene attivata quando viene soddisfatta
+    la condizione di detection (cioè quando lo scenario simulato produce un evento coerente
+    con la presenza della sorgente).
+    \item \textbf{Reset}: reinizializza lo stato della simulazione e della visualizzazione.
+    \item \textbf{Debug: Start near source}: modalità di debug usata per validazioni rapide,
+    in cui il van viene inizializzato in prossimità della sorgente; la pipeline downstream
+    è identica alla modalità standard, ma con tempi di attivazione più rapidi.
+\end{itemize}
+
+\subsection{Aggiornamento real-time e integrazione con la pipeline}
+
+Durante l’esecuzione, il backend invia al client aggiornamenti incrementali tramite WebSocket.
+Il browser riceve tali messaggi e aggiorna in tempo reale:
+
+\begin{itemize}
+    \item \textbf{stato della simulazione} (es. \emph{Idle}/\emph{Running}) e identificativo
+    (\texttt{simulation\_id});
+    \item \textbf{model versioning} riportato dalla pipeline (es. \texttt{PIML\_v8});
+    \item \textbf{metriche di monitoring} prodotte dal Layer~4:
+    drift score, latenza, stability index e confidenza;
+    \item \textbf{spettro EI corrente} (card \emph{EI Mass Spectrum}), renderizzato come
+    grafico a barre/linea per supportare un controllo visivo immediato del segnale;
+    \item \textbf{riassunto dell’ultimo bundle forense} generato, con campi essenziali
+    per triage operativo (predizione del modello, confidenza, vento, coordinate GPS e hash).
+\end{itemize}
+
+Questa modalità di aggiornamento è progettata per essere \emph{operativamente leggibile}:
+le metriche non sono presentate come dettagli tecnici isolati, ma come indicatori di stato
+che consentono all’operatore di valutare rapidamente (i) l’affidabilità della predizione,
+(ii) l’eventuale presenza di condizioni anomale (drift elevato), e (iii) il costo temporale
+della pipeline (latenza end-to-end).
+
+\subsection{Report operativo e collegamento alle evidenze forensi}
+
+Un requisito centrale emerso in fase progettuale è la possibilità di passare
+dalla visualizzazione operativa alla verifica forense senza salti manuali.
+Per questo motivo la UI include una vista dedicata al \emph{Forensic Detection Report},
+accessibile dalla card \emph{Last forensic bundle} tramite il comando
+\emph{View full report}.
+
+Il report è costruito a partire dai metadati già presenti nel bundle generato dal Layer~7,
+e organizza in modo leggibile:
+(i) identificativi di simulazione e timestamp;
+(ii) output di classificazione (classe e confidenza);
+(iii) condizioni meteo e parametri di contesto rilevanti;
+(iv) riferimenti di integrità (hash e identificativo del bundle).
+In aggiunta, la UI include una funzione di esportazione in PDF (azione \emph{Download PDF})
+per produrre rapidamente un artefatto condivisibile e stampabile,
+senza compromettere la catena di tracciabilità: il PDF rappresenta una vista umana del contenuto,
+mentre la verifica crittografica resta ancorata al bundle firmato generato dal sistema.
+
+\subsection{Discussione: ruolo della UI nella validazione by-construction}
+
+Nel contesto di \textsc{PENTION-M}, l’interfaccia non è un componente accessorio,
+ma parte integrante del paradigma di validazione \emph{by construction}.
+La UI rende espliciti (e quindi discutibili e verificabili) gli elementi chiave del ciclo:
+la versione di modello effettivamente utilizzata, le metriche runtime prodotte dal monitoring,
+e l’esistenza di un’evidenza forense immediatamente ispezionabile.
+In questo modo, l’operatore (o un auditor) può osservare l’intero flusso
+Patrolling $\rightarrow$ Detection $\rightarrow$ Inference $\rightarrow$ Monitoring $\rightarrow$
+Forensic bundle, riducendo il rischio di ``black-boxing'' operativo e migliorando la
+riproducibilità complessiva degli esperimenti.
+
+\section{Layer 7 -- Forensic Export e reporting}
+\label{sec:layer7_forensic_export}
+
+Il Layer~7 rappresenta il livello di \emph{Forensic Export} di \textsc{PENTION-M} e ha
+l’obiettivo di trasformare l’esecuzione end-to-end della pipeline in un insieme di
+\textbf{evidenze digitali esportabili}, pensate per due scopi complementari:
+(i) \emph{preservazione} e \emph{verificabilità} (output machine-readable, orientato ad audit);
+(ii) \emph{comunicazione operativa} (output human-readable, orientato a consultazione e reporting).
+
+Coerentemente con i requisiti forensi emersi durante la progettazione dell’artefatto,
+l’export non è trattato come una semplice funzione di ``salvataggio risultati'',
+ma come una fase strutturata di \emph{chain of custody digitale}:
+l’output deve poter essere archiviato, trasferito e verificato ex-post da terze parti,
+senza dipendere dall’ambiente di esecuzione originale.
+
+\subsection{Export in formato JSON: bundle forense verificabile}
+
+Il formato primario di esportazione è un \textbf{bundle JSON} che incapsula in modo
+auto-consistente le informazioni necessarie a ricostruire l’esecuzione della pipeline.
+In particolare, il bundle include:
+(i) l’\emph{evento unificato} completo (sensori, feature PIML, output di inferenza, metadati);
+(ii) un digest crittografico calcolato sull’evento in forma canonica (SHA--256);
+(iii) una firma digitale del digest (Ed25519) e la chiave pubblica per la verifica.
+
+La presenza congiunta di hash e firma consente di verificare due proprietà fondamentali:
+\textbf{integrità} (nessuna modifica al contenuto) e \textbf{autenticità} (provenienza dal sistema che
+detiene la chiave privata).
+A livello implementativo, la verifica può essere eseguita in modo indipendente tramite uno script
+dedicato che:
+(i) ricalcola l’hash a partire dall’evento serializzato in forma canonica;
+(ii) confronta l’hash calcolato con quello contenuto nel bundle;
+(iii) verifica la firma Ed25519 usando la chiave pubblica inclusa nel bundle.
+Questo meccanismo rende l’evidenza \emph{self-verifying} e adatta a contesti in cui l’audit avviene
+al di fuori del perimetro del sistema.
+
+\subsection{Export in formato PDF: report human-readable}
+
+Accanto all’export JSON (orientato alla verifica), \textsc{PENTION-M} fornisce un output di tipo
+\textbf{report} pensato per l’operatore e per attività di consultazione rapida.
+Nel prototipo, la generazione del report è integrata nell’interfaccia utente: a partire dall’ultimo
+bundle disponibile, la UI costruisce una vista strutturata che riassume i principali elementi della
+simulazione, tra cui:
+(i) identificativi e timestamp;
+(ii) configurazione e versioning dei modelli utilizzati;
+(iii) predizione di classificazione e relativa confidenza;
+(iv) stima di localizzazione della sorgente;
+(v) condizioni meteo e contesto (vento, GPS);
+(vi) riferimenti di integrità (hash) utili a collegare il report al bundle JSON originale.
+
+Il PDF non sostituisce il bundle forense (che resta la \emph{fonte primaria} per verifica e
+riproducibilità), ma funge da \emph{derivato} human-readable: un ``verbale tecnico'' che facilita
+la comunicazione e l’archiviazione documentale, mantenendo un collegamento esplicito con l’evidenza
+crittograficamente verificabile.
+
+\subsection{Riproducibilità e audit esterno}
+
+Il Layer~7 è progettato per supportare \textbf{riproducibilità} e \textbf{audit esterno} senza
+dipendenze implicite dall’ambiente di esecuzione.
+In particolare, la riproducibilità è abilitata da tre scelte architetturali:
+
+\begin{itemize}
+    \item \textbf{Serializzazione canonica dell’evento}: l’hash viene calcolato su una
+    rappresentazione deterministica dell’evento, evitando ambiguità dovute a ordinamenti o formati.
+
+    \item \textbf{Bundle auto-consistente}: l’evidenza contiene sia il contenuto (evento) sia i
+    materiali minimi per verificarlo (hash, firma, chiave pubblica), riducendo la necessità di
+    dipendenze esterne per controlli di integrità.
+
+    \item \textbf{Separazione tra export e validazione}: le procedure di validazione e test (sviluppate
+    a fine progetto per controlli e regressione) non sono parte del runtime operativo della pipeline,
+    ma possono essere eseguite offline a supporto di audit e verifiche ex-post.
+\end{itemize}
+
+In sintesi, il Layer~7 completa l’architettura di \textsc{PENTION-M} rendendo esportabile l’intero
+processo decisionale: non soltanto i risultati finali, ma anche il \emph{contesto} e le \emph{prove di
+integrità} necessarie a sostenere un’analisi forense verificabile e una revisione indipendente.
+
+\section{Discussione architetturale e trade-off}
+\label{sec:arch_tradeoff}
+
+La progettazione di \textsc{PENTION-M} ha richiesto una serie di scelte
+architetturali e modellistiche che implicano inevitabili \emph{trade-off}.
+Tali scelte non sono riconducibili a un’unica dimensione di ottimizzazione,
+ma riflettono il tentativo di bilanciare esigenze spesso contrastanti:
+fedeltà fisica, accuratezza predittiva, robustezza operativa,
+auditabilità forense e riproducibilità.
+
+Questa sezione discute criticamente i principali trade-off emersi
+durante la progettazione e l’implementazione dell’artefatto,
+contestualizzandoli rispetto agli obiettivi del progetto
+e ai requisiti espressi dagli stakeholder.
+
+\subsection{Fisica vs fedeltà del modello}
+
+Un primo trade-off fondamentale riguarda il livello di fedeltà fisica
+della simulazione della dispersione.
+L’utilizzo di un modello di tipo \emph{Gaussian Puff} come baseline fisica
+comporta una semplificazione significativa dei fenomeni reali
+di trasporto e diffusione in ambiente urbano.
+
+Questa scelta è deliberata:
+l’obiettivo del modello fisico non è riprodurre con elevata accuratezza
+la dinamica atmosferica reale, bensì fornire una rappresentazione
+controllabile, interpretabile e coerente con le principali leggi fisiche.
+L’adozione di un modello fisico relativamente semplice consente:
+(i) di mantenere trasparenza sulle assunzioni effettuate;
+(ii) di preservare stabilità numerica e riproducibilità;
+(iii) di disporre di una baseline interpretabile per l’integrazione con modelli PIML.
+
+La perdita di fedeltà fisica viene compensata dall’introduzione
+di un livello di correzione basato su \emph{Physics-Informed Machine Learning},
+che apprende deviazioni sistematiche rispetto alla simulazione semplificata.
+In questo senso, \textsc{PENTION-M} non persegue la massima accuratezza fisica
+in un singolo modello, ma una combinazione modulare di fisica esplicita
+e apprendimento guidato dai dati.
+
+\subsection{PIML vs approcci puramente data-driven}
+
+Un secondo trade-off rilevante riguarda la scelta di adottare modelli
+\emph{Physics-Informed} invece di approcci puramente data-driven.
+I modelli data-driven offrono in genere un’elevata capacità di adattamento
+ai dati di training, ma soffrono di problemi di interpretabilità,
+generalizzazione e stabilità in contesti fisico-operativi complessi.
+
+Nel contesto di \textsc{PENTION-M}, tali limiti risultano particolarmente critici:
+il sistema opera in un dominio cyber--fisico,
+in cui le predizioni devono essere compatibili con vincoli ambientali
+e difendibili in sede di audit.
+L’integrazione di feature fisiche esplicite,
+di vincoli nella funzione di loss e di maschere urbane
+consente ai modelli PIML di ridurre lo spazio delle soluzioni ammissibili,
+favorendo predizioni fisicamente plausibili.
+
+Il trade-off consiste in una maggiore complessità progettuale
+e in una fase di training più articolata,
+a fronte di una maggiore robustezza e interpretabilità delle inferenze.
+Nel contesto applicativo considerato,
+questa scelta risulta coerente con i requisiti di affidabilità
+e tracciabilità del sistema.
+
+\subsection{Accuratezza vs robustezza operativa}
+
+Un ulteriore trade-off riguarda il rapporto tra accuratezza numerica
+e robustezza operativa.
+In \textsc{PENTION-M}, l’accuratezza delle predizioni non è l’unico
+criterio di qualità:
+la stabilità delle stime, la coerenza tra modelli,
+la confidenza associata agli output e il comportamento sotto rumore
+rivestono un ruolo altrettanto rilevante.
+
+L’introduzione di meccanismi di monitoring runtime,
+di drift fisicamente informato e di metriche di stabilità
+riflette una visione sistemica della qualità del modello.
+Piuttosto che massimizzare una singola metrica offline,
+l’architettura privilegia la capacità del sistema di:
+(i) segnalare condizioni anomale;
+(ii) degradare in modo controllato;
+(iii) mantenere tracciabilità delle decisioni.
+
+Questo approccio può portare a sacrificare marginalmente
+l’accuratezza puntuale in alcuni scenari,
+ma aumenta significativamente l’affidabilità complessiva
+in un contesto operativo e forense.
+
+\subsection{Simulazione vs dati reali}
+
+Infine, un trade-off strutturale riguarda l’utilizzo di dati simulati
+in luogo di dati reali.
+L’intero sistema opera in un contesto simulato,
+che consente un controllo completo sulla \emph{ground truth},
+sulla variabilità degli scenari e sulla riproducibilità degli esperimenti.
+
+La simulazione introduce inevitabilmente una distanza
+rispetto alle condizioni operative reali,
+ma offre vantaggi cruciali in fase di ricerca e progettazione:
+(i) esplorazione sistematica di scenari estremi;
+(ii) valutazione controllata dei modelli;
+(iii) possibilità di validazione by-construction.
+
+L’architettura di \textsc{PENTION-M} è progettata in modo tale
+che i confini tra simulazione e possibile deployment reale
+siano chiaramente identificabili.
+I layer di ingestion, inferenza, monitoring e logging
+non dipendono intrinsecamente dalla natura simulata dei dati,
+rendendo il sistema concettualmente estendibile
+a contesti reali con minime modifiche infrastrutturali.
+
+\section{Collegamento al Capitolo di Valutazione}
+\label{sec:arch_to_evaluation}
+
+Il presente capitolo ha descritto in modo dettagliato
+l’architettura e la realizzazione di \textsc{PENTION-M},
+mettendo in evidenza le scelte progettuali,
+i meccanismi di integrazione fisica e data-driven
+e le soluzioni adottate per garantire tracciabilità
+e auditabilità del sistema.
+
+Il Capitolo~\ref{chap:evaluation} si colloca come naturale prosecuzione
+di questa analisi architetturale.
+La valutazione dell’artefatto non viene infatti condotta
+come un’analisi isolata delle prestazioni di singoli modelli,
+ma come una verifica sistematica delle proprietà
+emerse \emph{by construction} lungo l’intero processo di progettazione.
+
+In particolare, il capitolo di valutazione analizzerà:
+(i) la stabilità e l’affidabilità dei modelli PIML;
+(ii) il comportamento del sistema in termini di monitoring e drift;
+(iii) la coerenza delle predizioni rispetto ai vincoli fisici;
+(iv) la robustezza dei meccanismi di logging e verifica forense.
+
+In questo modo, la valutazione non si limita a misurare risultati,
+ma verifica la coerenza tra obiettivi dichiarati,
+scelte architetturali e comportamento osservato del sistema,
+chiudendo il ciclo metodologico della \emph{Design Science Research}
+adottata per lo sviluppo di \textsc{PENTION-M}.
