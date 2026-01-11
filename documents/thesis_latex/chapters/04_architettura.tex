@@ -162,9 +162,42 @@ in tre macro-aree funzionali: \emph{Data Flow}, \emph{Inference} e \emph{Output}
   di pacchetti verificabili, conformi ai requisiti normativi e forensi.
 \end{itemize}
 
-Nei paragrafi successivi, ciascun layer viene analizzato in dettaglio,
-descrivendone il ruolo funzionale, le principali scelte progettuali e
-il contributo al comportamento complessivo di \textsc{PENTION-M}.
+\section{Flusso operativo end-to-end (vista runtime)}
+\label{sec:runtime_flow}
+
+Sebbene l’architettura di \textsc{PENTION-M} sia descritta attraverso una
+scomposizione a layer funzionali, il comportamento del sistema a runtime
+può essere compreso più efficacemente adottando una vista trasversale
+\emph{end-to-end}.
+Questa sezione descrive il flusso operativo della pipeline durante
+l’esecuzione, evidenziando la sequenza di trasformazioni che i dati
+subiscono dall’acquisizione iniziale fino alla produzione delle evidenze
+forensi esportabili.
+
+Dal punto di vista logico, il sistema implementa un workflow che attraversa
+più layer architetturali e può essere suddiviso nelle seguenti macro-fasi:
+
+\begin{enumerate}
+    \item \textbf{Patrolling e detection}: simulazione del movimento del
+    laboratorio mobile e verifica delle condizioni di attivazione della pipeline;
+    \item \textbf{Ingestion e normalizzazione}: ricezione del payload sensoriale,
+    validazione e costruzione dell’evento unificato;
+    \item \textbf{Modellazione fisica e correzione PIML}: generazione delle mappe
+    di dispersione e loro raffinamento fisicamente informato;
+    \item \textbf{Inferenza e supporto decisionale}: localizzazione della sorgente
+    e classificazione della sostanza;
+    \item \textbf{Monitoring e ModelOps}: raccolta delle metriche runtime e
+    tracciamento delle versioni di modello;
+    \item \textbf{Forensic export}: generazione del bundle forense e del report
+    operativo.
+\end{enumerate}
+
+Questa vista runtime consente di separare la logica operativa del sistema
+dalla sua organizzazione architetturale, chiarendo come i diversi layer
+cooperino nella realizzazione di un processo decisionale tracciabile e
+riproducibile.
+Nei paragrafi successivi, ciascun layer viene analizzato nel dettaglio,
+esplicitando il proprio contributo a una o più fasi del flusso end-to-end.
 
 \section{Layer 0 – Edge I/O e simulazione dei sensori}
 
@@ -210,6 +243,23 @@ La generazione dello spettro EI non si limita a una forma puramente sintetica,
 ma sfrutta spettri reali come base, garantendo una maggiore aderenza alle
 caratteristiche chimiche delle sostanze simulate e rendendo più significativo
 l’addestramento e la valutazione dei modelli di classificazione.
+
+\subsection*{Sensore mobile e punto di campionamento}
+
+Nel prototipo \textsc{PENTION-M} non viene simulata una rete di sensori
+distribuiti.
+Tutte le misurazioni ambientali e chimiche sono acquisite a bordo del laboratorio mobile simulato.
+
+Di conseguenza, il punto di campionamento coincide in ogni istante con la
+posizione del veicolo lungo la traiettoria di pattugliamento.
+Le osservazioni disponibili al sistema assumono quindi la forma di una
+serie temporale di misure spazialmente correlate, la cui copertura dipende
+dal percorso effettuato dal veicolo nello scenario urbano.
+
+Questa scelta progettuale riflette uno scenario operativo realistico e
+influenza direttamente la formulazione dei task di localizzazione e
+inferenza, che devono operare in condizioni di osservabilità parziale e
+dinamica.
 
 \subsection*{Generazione dello scenario e casualità controllata}
 
@@ -464,8 +514,21 @@ Nel prototipo implementato, il Layer~3 include tre principali classi di servizi:
 \begin{itemize}
     \item simulazione fisica e correzione della dispersione;
     \item localizzazione della sorgente di emissione;
-    \item classificazione della sostanza tramite spettrometria di massa.
+    \item classificazione della sostanza tramite spettrometria di massa (EI)
 \end{itemize}
+
+\paragraph{Nota sull’integrazione della classificazione NPS}
+
+Il servizio di classificazione delle sostanze NPS, sebbene basato su una
+pipeline modellistica distinta, è pienamente integrato nel Layer~3 di
+inferenza.
+L’output del classificatore (classe predetta, confidenza calibrata e
+candidati alternativi) viene propagato nell’evento unificato e utilizzato
+sia per il supporto decisionale operativo (Layer~6) sia per la produzione
+delle evidenze forensi (Layer~7).
+I dettagli relativi al modello, alla calibrazione delle probabilità e alla
+valutazione delle prestazioni sono approfonditi nella sezione dedicata
+alla classificazione NPS.
 
 Questa separazione riflette una precisa scelta progettuale: ogni servizio
 incapsula una specifica competenza modellistica, riducendo l’accoppiamento tra
@@ -482,6 +545,33 @@ della dispersione della sostanza rilasciata nello scenario.
 Questo servizio implementa un modello di dispersione di tipo \emph{Gaussian Puff},
 utilizzato come baseline fisica per descrivere la propagazione spaziale e temporale
 della concentrazione in atmosfera.
+
+\paragraph{Scelta del modello: plume vs puff}
+
+Nel contesto di \textsc{PENTION-M} è stato adottato un modello di tipo
+\emph{Gaussian Puff} in luogo del più tradizionale \emph{Gaussian Plume}.
+Questa scelta è motivata dalla natura dinamica dello scenario simulato:
+il punto di campionamento è mobile e le condizioni ambientali possono
+variare nel tempo.
+Il paradigma a puff consente di modellare rilasci non stazionari come
+una sequenza di contributi discreti, risultando più adatto a contesti
+di pattugliamento urbano.
+
+\paragraph{Forma del contributo gaussiano}
+
+La concentrazione associata a un singolo puff può essere espressa come:
+\[
+C(x,y,z,t)=\frac{Q}{(2\pi)^{3/2}\sigma_x\sigma_y\sigma_z}
+\exp\!\left(
+-\frac{(x-x_p(t))^2}{2\sigma_x^2}
+-\frac{(y-y_p(t))^2}{2\sigma_y^2}
+-\frac{(z-z_p(t))^2}{2\sigma_z^2}
+\right),
+\]
+e la concentrazione totale come somma dei puff attivi
+$C_{\text{tot}}=\sum_i C_i(x,y,z,t)$.
+Nel sistema, tale formulazione fornisce una baseline fisicamente
+interpretabile per l’integrazione con i modelli PIML successivi.
 
 Il modello riceve in ingresso le feature fisiche prodotte dal Layer~2, tra cui
 i parametri del vento, la classe di stabilità atmosferica e i coefficienti di
@@ -981,6 +1071,22 @@ Il processo di verifica, implementato nello script
 ricalcola l’hash SHA--256 e verifica la firma mediante la chiave pubblica
 inclusa nel bundle stesso.
 
+\paragraph{Verifica zero-trust e inclusione dei compliance tag}
+
+Il processo di verifica adotta un approccio \emph{zero trust}:
+l’hash non viene considerato affidabile in quanto dichiarato nel bundle,
+ma viene ricalcolato ex-novo a partire dall’evento serializzato in forma
+canonica.
+La firma digitale è quindi verificata utilizzando l’hash ricalcolato e la
+chiave pubblica inclusa, rendendo immediatamente rilevabile qualsiasi
+alterazione del contenuto.
+
+I tag di compliance e di audit vengono inseriti nell’evento prima della
+fase di hashing e firma.
+In questo modo, tali informazioni diventano parte integrante del contenuto
+firmato e non possono essere modificate a posteriori senza invalidare
+l’intera evidenza forense.
+
 Questo meccanismo consente di rilevare qualsiasi alterazione,
 anche minima, dei dati registrati.
 Test di manomissione controllata, implementati nello script
@@ -1075,6 +1181,20 @@ La UI espone tre comandi operativi che riflettono il workflow d’uso:
     in cui il van viene inizializzato in prossimità della sorgente; la pipeline downstream
     è identica alla modalità standard, ma con tempi di attivazione più rapidi.
 \end{itemize}
+
+\paragraph{Logica di detection e stabilizzazione}
+
+L’attivazione della pipeline downstream non è continua, ma vincolata a una
+condizione di detection basata sulla prossimità spaziale del veicolo rispetto
+all’area di interesse.
+La detection viene valutata tramite distanza geodetica e costituisce il
+trigger operativo per l’invocazione della pipeline MLOps.
+
+Per evitare oscillazioni spurie dovute a micro-variazioni della posizione
+(GPS jitter), è introdotto un meccanismo di isteresi spaziale che stabilizza
+la condizione di ingresso e uscita dall’area di detection.
+Questa soluzione migliora la riproducibilità della demo e rende il
+comportamento del sistema più coerente con uno scenario operativo reale.
 
 \subsection{Aggiornamento real-time e integrazione con la pipeline}
 
@@ -1203,6 +1323,21 @@ In particolare, la riproducibilità è abilitata da tre scelte architetturali:
     ma possono essere eseguite offline a supporto di audit e verifiche ex-post.
 \end{itemize}
 
+\paragraph{Autenticità dei dati e natura simulata}
+
+Sebbene \textsc{PENTION-M} operi in un contesto simulato, è importante
+distinguere tra diverse tipologie di dati prodotte dal sistema.
+I meccanismi crittografici, le metriche di monitoring e gli output dei
+modelli di inferenza sono generati dinamicamente durante l’esecuzione
+reale della pipeline containerizzata.
+
+Le variabili ambientali e di scenario, pur essendo simulate, sono prodotte
+secondo dinamiche controllate e tracciate, senza ricorso a valori statici
+hard-coded.
+Questa distinzione consente di qualificare il sistema come
+\emph{data-authentic}: ogni informazione è giustificata, tracciabile e
+contestualizzata rispetto al suo ruolo operativo.
+
 In sintesi, il Layer~7 completa l’architettura di \textsc{PENTION-M} rendendo esportabile l’intero
 processo decisionale: non soltanto i risultati finali, ma anche il \emph{contesto} e le \emph{prove di
 integrità} necessarie a sostenere un’analisi forense verificabile e una revisione indipendente.
@@ -1229,6 +1364,8 @@ della simulazione della dispersione.
 L’utilizzo di un modello di tipo \emph{Gaussian Puff} come baseline fisica
 comporta una semplificazione significativa dei fenomeni reali
 di trasporto e diffusione in ambiente urbano.
+Come discusso nel Layer~3, la scelta del modello Gaussian Puff privilegia
+controllabilità e interpretabilità rispetto alla fedeltà aerodinamica fine.
 
 Questa scelta è deliberata:
 l’obiettivo del modello fisico non è riprodurre con elevata accuratezza
