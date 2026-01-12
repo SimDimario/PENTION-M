@@ -1297,6 +1297,17 @@ Questa scelta progettuale consente di ottenere una visualizzazione reattiva
 senza introdurre dipendenze pesanti, mantenendo coerenza con lo scenario
 \emph{edge-only} e \emph{offline-capable} del laboratorio mobile.
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{img/UI0.png}
+\caption{Interfaccia operativa di \textsc{PENTION-M} durante la fase di
+\emph{patrolling}. Il laboratorio mobile simula un’attività di
+perlustrazione urbana, muovendosi lungo la rete stradale dello scenario
+e monitorando passivamente le condizioni ambientali.}
+\label{fig:ui_patrolling}
+\end{figure}
+
+
 \subsection{Componenti visuali e logica di interazione}
 
 L’interfaccia è organizzata in due aree principali:
@@ -1362,6 +1373,17 @@ che consentono all’operatore di valutare rapidamente (i) l’affidabilità del
 (ii) l’eventuale presenza di condizioni anomale (drift elevato), e (iii) il costo temporale
 della pipeline (latenza end-to-end).
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{img/UI1.png}
+\caption{Stato operativo del sistema a seguito della detection.
+Il laboratorio mobile interrompe il patrolling ed entra in stato
+\emph{Idle}, mentre la barra laterale mostra i risultati sintetici
+prodotti dalla pipeline end-to-end, incluse metriche di monitoring,
+output di inferenza e riferimenti al bundle forense.}
+\label{fig:ui_detected_idle}
+\end{figure}
+
 \subsection{Report operativo e collegamento alle evidenze forensi}
 
 Un requisito centrale emerso in fase progettuale è la possibilità di passare
@@ -1381,6 +1403,27 @@ per produrre rapidamente un artefatto condivisibile e stampabile,
 senza compromettere la catena di tracciabilità: il PDF rappresenta una vista umana del contenuto,
 mentre la verifica crittografica resta ancorata al bundle firmato generato dal sistema.
 
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{img/UI2.png}
+    \caption{Sezione iniziale del report forense visualizzato nella UI,
+    con spettro EI, feature PIML e parametri fisici di scenario.}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{img/UI3.png}
+    \caption{Sezione di inferenza e monitoring del report,
+    comprendente predizione del modello, confidenza,
+    latenza e stato delle componenti.}
+\end{subfigure}
+\caption{Vista completa del \emph{Forensic Detection Report} accessibile
+dall’interfaccia operativa di \textsc{PENTION-M}.}
+\label{fig:ui_full_report}
+\end{figure}
+
 \subsection{Discussione: ruolo della UI nella validazione by-construction}
 
 Nel contesto di \textsc{PENTION-M}, l’interfaccia non è un componente accessorio,
@@ -1392,6 +1435,27 @@ In questo modo, l’operatore (o un auditor) può osservare l’intero flusso
 Patrolling $\rightarrow$ Detection $\rightarrow$ Inference $\rightarrow$ Monitoring $\rightarrow$
 Forensic bundle, riducendo il rischio di ``black-boxing'' operativo e migliorando la
 riproducibilità complessiva degli esperimenti.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{img/PDF1.png}
+    \caption{Prima sezione del report forense esportato in formato PDF,
+    con mappa operativa e contesto dell’evento.}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{img/PDF2.png}
+    \caption{Sezione del report PDF dedicata ai metadati ModelOps,
+    agli hash degli artefatti e ai tag di compliance.}
+\end{subfigure}
+\caption{Esempio di report forense esportato da \textsc{PENTION-M} in formato PDF,
+derivato dal bundle JSON firmato e progettato per consultazione
+umana e archiviazione documentale.}
+\label{fig:pdf_report}
+\end{figure}
 
 \section{Layer 7 -- Forensic Export e reporting}
 \label{sec:layer7_forensic_export}
