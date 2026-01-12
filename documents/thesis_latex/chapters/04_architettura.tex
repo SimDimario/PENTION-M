@@ -457,6 +457,82 @@ che costituiscono parametri fisici espliciti del modello di dispersione gaussian
 Tali quantità vengono propagate come feature interpretabili e direttamente collegate
 alla fisica del fenomeno.
 
+La Tabella~\ref{tab:piml_dataset_features} riassume in modo concettuale
+la struttura del dataset PIML utilizzato per l’addestramento e la validazione
+dei modelli fisicamente informati, evidenziando l’origine e il ruolo
+di ciascuna categoria di feature all’interno dell’architettura.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\caption{Struttura concettuale del dataset PIML e origine delle feature utilizzate nei modelli di inferenza.}
+\label{tab:piml_dataset_features}
+\begin{tabular}{p{2.4cm} p{3.2cm} p{5.2cm} p{2.4cm}}
+\toprule
+\textbf{Categoria} & \textbf{Feature} & \textbf{Descrizione} & \textbf{Origine} \\
+\midrule
+Meteorologia &
+\texttt{wind\_speed} &
+Velocità del vento nello scenario simulato &
+Simulatore (Layer~0) \\
+
+Meteorologia &
+\texttt{wind\_dir}, $\cos(\theta)$, $\sin(\theta)$ &
+Direzione del vento e codifica vettoriale continua &
+Layer~2 \\
+
+Stabilità atmosferica &
+\texttt{stability\_class}, \texttt{stability\_index} &
+Classe di stabilità secondo Pasquill--Gifford e indice numerico &
+Simulatore / Layer~2 \\
+
+Ambiente &
+\texttt{RH}, \texttt{humidify} &
+Umidità relativa e flag di umidificazione &
+Simulatore \\
+
+Sorgente &
+\texttt{source\_x}, \texttt{source\_y}, \texttt{source\_h} &
+Coordinate e altezza della sorgente di emissione &
+Scenario simulato \\
+
+Dispersione &
+\texttt{emission\_rate}, $(\sigma_y, \sigma_z)$ &
+Intensità di rilascio e parametri fisici di dispersione &
+Modello fisico \\
+
+Spazio &
+\texttt{gps\_x}, \texttt{gps\_y} &
+Coordinate normalizzate del laboratorio mobile &
+Layer~0 \\
+
+Target &
+\texttt{concentration\_map} &
+Campo di concentrazione di riferimento (ground truth simulata) &
+Simulazione fisica \\
+
+Contesto urbano &
+\texttt{building\_map} &
+Maschera binaria degli edifici nell’area di interesse &
+Preprocessing urbano \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+La distribuzione statistica delle principali variabili fisiche utilizzate
+nel dataset PIML è mostrata in Figura~\ref{fig:piml_physical_distributions},
+a conferma della coerenza degli intervalli di simulazione con condizioni
+atmosferiche realistiche.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{img/distribuzioni_variabili_continue.png}
+    \caption{Distribuzione delle principali variabili fisiche utilizzate nel dataset PIML, incluse velocità del vento, indice di stabilità atmosferica e umidità relativa. Gli intervalli mostrati riflettono condizioni atmosferiche realistiche coerenti con lo scenario simulato.}
+    \label{fig:piml_physical_distributions}
+\end{figure}
+
 \subsection{Maschere urbane e contesto geometrico (building map)}
 
 Oltre ai parametri atmosferici, \textsc{PENTION-M} integra informazione di contesto urbano
@@ -492,6 +568,17 @@ rappresentano un’esplicitazione di conoscenza fisica e relazionale che miglior
 l’apprendimento del modello di localizzazione, implementato nel Layer~3.
 La corrispondenza tra feature utilizzate in fase di training e feature calcolate a runtime
 è garantita a livello implementativo nel servizio di localizzazione dedicato.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{img/piml_feature_correlation.png}
+    \caption{Matrice di correlazione tra le feature fisiche e le feature di interazione
+    utilizzate dal modello PIML per la localizzazione della sorgente.
+    Le correlazioni osservate riflettono relazioni coerenti con i meccanismi
+    fisici di dispersione atmosferica e con la struttura delle feature derivate.}
+    \label{fig:piml_feature_correlation}
+\end{figure}
+
 
 \section{Layer 3 -- Inference Services}
 \label{sec:layer3_inference}
@@ -536,6 +623,62 @@ componenti e facilitando l’evoluzione indipendente dei modelli.
 Il Layer~3 non gestisce direttamente aspetti di monitoraggio, versionamento o
 logging forense, che sono delegati ai layer successivi, ma si concentra
 esclusivamente sull’esecuzione dell’inferenza.
+
+\subsection{Servizio di classificazione NPS (EI)}
+\label{sec:layer3_nps_classification}
+
+Il task di classificazione NPS è implementato come servizio di inferenza dedicato
+all’interno del Layer~3. Il servizio riceve in input uno spettro EI vettorizzato
+e restituisce (i) la classe predetta, (ii) le probabilità associate alle classi
+e (iii) metadati necessari a monitoring e logging forense.
+
+\paragraph{Selezione del modello}
+Durante la fase iniziale di sviluppo è stata condotta un’analisi comparativa tra
+diversi algoritmi di classificazione supervisionata, con l’obiettivo di selezionare
+un modello robusto e adatto al dominio spettrale EI. La Figura~\ref{fig:nps_model_accuracies}
+riassume le accuratezze ottenute sul dataset \texttt{PENTION\_EI\_Complete}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{img/model_accuracies.png}
+\caption{Accuratezza dei modelli valutati nella fase di selezione del classificatore NPS sul dataset \texttt{PENTION\_EI\_Complete}.}
+\label{fig:nps_model_accuracies}
+\end{figure}
+
+In base al confronto, è stato selezionato un modello \textbf{XGBoost}, in quanto
+combina buone prestazioni predittive con stabilità e facilità di integrazione come
+servizio containerizzato.
+
+Oltre alla scelta dell’algoritmo, è stata posta particolare attenzione
+all’interpretabilità del classificatore NPS.
+Al fine di ridurre la dimensionalità del problema e limitare la presenza
+di feature ridondanti o poco informative, è stata applicata una procedura
+di \emph{Recursive Feature Elimination} (RFE) basata su Random Forest.
+
+L’analisi delle feature selezionate consente di verificare che il modello
+fondi le proprie decisioni su contributi spettrali fisicamente e
+chimicamente significativi, aspetto rilevante in un contesto forense.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.75\textwidth]{img/rfe_feature_importance.png}
+    \caption{Importanza relativa delle feature spettrali selezionate tramite Recursive Feature Elimination (RFE) per il classificatore NPS. Le feature evidenziate risultano coerenti con contributi EI fisicamente e chimicamente interpretabili.}
+    \label{fig:nps_rfe_features}
+\end{figure}
+
+
+\paragraph{Comportamento del classificatore sul set di test}
+La Figura~\ref{fig:nps_xgb_confusion_arch} mostra la matrice di confusione del modello
+XGBoost sul set di test multi-classe, evidenziando anche la capacità di separare la
+classe negativa \emph{Other compounds} dalle classi NPS.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.70\textwidth]{img/confusion_matrix_xgb.png}
+\caption{Matrice di confusione del classificatore XGBoost (fase di selezione e integrazione del servizio).}
+\label{fig:nps_xgb_confusion_arch}
+\end{figure}
+
 
 \subsection{Simulazione fisica della dispersione}
 \label{sec:layer3_dispersion}

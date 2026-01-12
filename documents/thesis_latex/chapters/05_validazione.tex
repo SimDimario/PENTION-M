@@ -469,6 +469,62 @@ In particolare, sono state adottate metriche standard e direttamente interpretab
 \end{itemize}
 Tali metriche consentono di quantificare sia l’errore medio di localizzazione sia la presenza di deviazioni più marcate, fornendo una misura sintetica dell’affidabilità del sistema.
 
+\begin{table}[H]
+\centering
+\caption{Prestazioni del modello di localizzazione della sorgente ottenute tramite
+validazione incrociata Repeated K-Fold (5 fold, 2 ripetizioni).}
+\label{tab:source_localization_metrics}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Metrica} & \textbf{Coordinata X} & \textbf{Coordinata Y} \\
+\midrule
+RMSE (media $\pm$ std) & $18.34 \pm 1.59$ & $18.48 \pm 1.24$ \\
+$R^2$ (media $\pm$ std) & $0.987 \pm 0.002$ & $0.986 \pm 0.002$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Per analizzare in modo più approfondito il comportamento del modello di
+localizzazione, i risultati aggregati vengono affiancati da una
+rappresentazione grafica delle predizioni, al fine di valutare sia la
+correlazione globale tra valori reali e stimati sia la distribuzione
+degli errori nello spazio.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{img/source_localization_scatter_xy.png}
+\caption{Confronto tra coordinate reali e coordinate predette dal modello
+di localizzazione della sorgente. La linea tratteggiata rappresenta
+la predizione ideale ($y = x$).}
+\label{fig:source_localization_scatter}
+\end{figure}
+
+Il confronto diretto tra coordinate reali e predette evidenzia una forte
+correlazione lineare lungo entrambe le dimensioni spaziali.
+Tuttavia, tale rappresentazione non consente di cogliere la distribuzione
+geometrica degli errori all’interno dello scenario urbano simulato.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{img/source_localization_map.png}
+\caption{Confronto spaziale tra la posizione reale della sorgente e la
+posizione stimata dal modello PIML in scenari simulati.
+I segmenti rappresentano visivamente l’errore di localizzazione.}
+\label{fig:source_localization_map}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{img/source_localization_error_distribution.png}
+\caption{Distribuzione dell’errore euclideo di localizzazione della sorgente
+ottenuto durante la validazione del modello.}
+\label{fig:source_localization_error_distribution}
+\end{figure}
+
+La distribuzione mostra una mediana dell’errore di localizzazione pari a
+circa 16.5 metri, con il 95\% degli errori inferiori a circa 51 metri,
+indicando una buona stabilità delle stime spaziali nello scenario simulato.
+
 \paragraph{Stabilità delle stime spaziali.}
 I risultati aggregati della validazione, calcolati su un insieme di scenari simulati, mostrano una buona stabilità delle stime spaziali.
 L’errore medio assoluto si colloca nell’ordine di alcune decine di metri, mentre l’RMSE evidenzia una dispersione contenuta degli errori attorno al valore medio.
@@ -491,6 +547,15 @@ Errori nell’ordine delle decine di metri risultano compatibili con:
     \item l’uso di dati simulati affetti da rumore e incompletezza;
     \item l’obiettivo di fornire un’indicazione spaziale utile al supporto decisionale, piuttosto che una localizzazione metrica assoluta.
 \end{itemize}
+
+È stata condotta un’analisi di ablazione per valutare l’impatto delle feature
+di localizzazione GPS sulle prestazioni del modello.
+La rimozione delle coordinate GPS dall’input ha comportato un drastico
+peggioramento delle prestazioni, con un errore euclideo medio superiore a
+160 metri.
+Questo risultato conferma il ruolo cruciale dell’informazione spaziale
+nel contesto di localizzazione mobile della sorgente e rafforza la coerenza
+fisica dell’approccio adottato.
 
 In un contesto investigativo reale, tali stime sono destinate a essere integrate con ulteriori informazioni (osservazioni sul campo, dati contestuali, esperienza degli operatori), rafforzando il ruolo della localizzazione come strumento di \emph{decision support}.
 
@@ -536,6 +601,55 @@ La Figura~\ref{fig:nps_confidence_distribution} evidenzia come la maggior parte 
 \end{figure}
 
 Questo comportamento è coerente con uno scenario operativo in cui il sistema è chiamato a fornire indicazioni affidabili principalmente in presenza di segnali informativi sufficientemente forti, lasciando all’operatore la gestione dei casi ambigui o a bassa confidenza.
+
+\paragraph{Controllo del False Alarm Rate (FAR) tramite soglie operative}
+In un contesto operativo LEA, un requisito chiave è contenere i falsi allarmi,
+ovvero i casi in cui campioni non-NPS (\emph{Other compounds}) vengono classificati come NPS.
+Per questo motivo, oltre alla predizione di classe, il sistema utilizza una soglia
+sulla probabilità complessiva di appartenenza alle classi NPS.
+La Tabella~\ref{tab:nps_far_thresholds} mostra l’andamento del FAR al variare della soglia.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{cccc}
+\toprule
+\textbf{Soglia} & \textbf{FAR (\%)} & \textbf{FP} & \textbf{TN} \\
+\midrule
+0.90 & 5.88 & 15 & 240 \\
+0.95 & 5.10 & 13 & 242 \\
+0.97 & 4.31 & 11 & 244 \\
+0.98 & 3.53 & 9  & 246 \\
+0.99 & 3.14 & 8  & 247 \\
+\bottomrule
+\end{tabular}
+\caption{False Alarm Rate (FAR) al variare della soglia operativa sulla probabilità complessiva di appartenenza a classi NPS.}
+\label{tab:nps_far_thresholds}
+\end{table}
+
+\paragraph{Opzione di astensione (reject option) e copertura}
+Per gestire i casi ambigui, il classificatore può astenersi quando la confidenza massima
+risulta inferiore a una soglia definita. La Tabella~\ref{tab:nps_reject_coverage}
+riporta la copertura (percentuale di campioni classificati senza astensione) al variare
+della soglia di confidenza.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{cc}
+\toprule
+\textbf{Soglia di confidenza} & \textbf{Coverage (\%)} \\
+\midrule
+0.60 & 93.6 \\
+0.70 & 88.5 \\
+0.75 & 87.6 \\
+0.80 & 85.4 \\
+\bottomrule
+\end{tabular}
+\caption{Copertura del classificatore al variare della soglia di astensione (reject option).}
+\label{tab:nps_reject_coverage}
+\end{table}
+
 
 \paragraph{Robustezza rispetto al rumore spettrale}
 Un ulteriore aspetto di validazione riguarda la robustezza del classificatore rispetto a perturbazioni realistiche degli spettri di massa.
@@ -597,3 +711,138 @@ Il valore di temperatura risultante è vincolato a rimanere all’interno dell�
 L’introduzione del Temperature Scaling adattivo ha consentito di superare in modo definitivo il problema della sovrastima probabilistica, producendo confidenze più realistiche e sensibili al contesto fisico e computazionale della pipeline. Inoltre, il valore della temperatura utilizzata in ogni inferenza viene registrato dal Monitoring Service e incluso nel bundle forense generato dal sistema, garantendo la completa tracciabilità del processo di calibrazione. Ciò consente, in fase di audit, di ricostruire non solo la predizione finale, ma anche il livello di incertezza che ha accompagnato l’analisi, soddisfacendo i requisiti di trasparenza e verificabilità richiesti in ambito investigativo.
 
 Nel complesso, questa fase ha trasformato il classificatore NPS da un modello affetto da overconfidence strutturale ad un componente pienamente integrato in una pipeline PIML+MLOps, dotato di un meccanismo di calibrazione probabilistica scientificamente fondato, validato sperimentalmente e coerente con le esigenze forensi di \textsc{PENTION-M}.
+
+\section{Experience Report}
+\label{sec:experience_report}
+
+Questa sezione presenta un \emph{experience report} focalizzato sul processo di
+progettazione e sviluppo dell’artefatto \textsc{PENTION-M}, con l’obiettivo di
+esplicitare come le iterazioni progettuali abbiano costituito una forma di
+\emph{validazione by construction}. In coerenza con il paradigma del Design Science
+Research, l’esperienza non viene intesa come un resoconto cronologico dello sviluppo,
+bensì come un’analisi riflessiva delle decisioni progettuali che hanno guidato
+l’evoluzione dell’artefatto verso la configurazione finale validata.
+
+\subsection{Contesto dell’esperienza di sviluppo}
+\label{sec:exp_context}
+
+Lo sviluppo di \textsc{PENTION-M} si è svolto all’interno del progetto europeo
+PENTION, con l’obiettivo di realizzare un sistema di supporto investigativo per la
+rilevazione e l’identificazione di sostanze, incluse le New Psychoactive Substances
+(NPS), in scenari operativi delle Law Enforcement Agencies (LEAs).
+A differenza di un progetto puramente accademico, il contesto ha imposto vincoli
+realistici legati alla plausibilità operativa, alla tracciabilità forense e alla
+necessità di produrre un artefatto dimostrabile.
+
+Un elemento strutturale del contesto è stato il passaggio concettuale da
+\textsc{PENTION-S}, sistema stazionario sviluppato in precedenza, a
+\textsc{PENTION-M}, concepito come laboratorio mobile installato su van.
+Questo cambiamento non è stato affrontato come una semplice estensione funzionale,
+ma come una riprogettazione dell’intera pipeline end-to-end, includendo simulazione
+fisica, modelli PIML, servizi di inferenza, MLOps, interfaccia operativa e produzione
+di evidenze forensi.
+
+Dal punto di vista progettuale, lo sviluppo è stato caratterizzato da:
+(i) requisiti progressivamente raffinati tramite attività di Requirements Engineering
+con stakeholder reali;
+(ii) necessità di bilanciare rigore metodologico (DSR, auditabilità, riproducibilità)
+e concretezza implementativa;
+(iii) vincoli temporali tipici di un progetto di tesi integrato in un contesto di
+ricerca applicata.
+Questi elementi hanno reso necessario un approccio iterativo, in cui l’evoluzione
+dell’artefatto e la sua validazione procedessero in modo congiunto.
+
+\subsection{Problemi emersi durante la costruzione dell’artefatto}
+\label{sec:exp_problems}
+
+Nel corso dello sviluppo sono emerse criticità che non possono essere interpretate
+come semplici difetti implementativi, ma come indicatori di fragilità strutturale
+dell’artefatto rispetto ai requisiti operativi e forensi.
+
+Un primo insieme di problemi ha riguardato la coerenza fisica e operativa degli
+output generati dalla pipeline. Le prime versioni del sistema, basate su modelli
+fisici e data-driven non integrati, mostravano comportamenti instabili o poco
+plausibili in condizioni degradate (rumore, osservabilità parziale, variabilità
+ambientale), evidenziando la necessità di un’integrazione più profonda tra conoscenza
+fisica e apprendimento automatico.
+
+Una seconda criticità ha riguardato l’affidabilità delle inferenze probabilistiche,
+in particolare per la classificazione NPS. L’emergere di fenomeni di
+\emph{overconfidence} ha reso evidente che l’accuratezza del modello non fosse
+sufficiente a garantire l’utilizzabilità investigativa del risultato, richiedendo
+meccanismi espliciti di calibrazione e controllo dell’incertezza.
+
+Infine, sono emersi problemi legati alla verificabilità e alla ricostruibilità delle
+decisioni del sistema. In assenza di un logging strutturato e di un audit trail
+completo, l’artefatto rischiava di rimanere una “demo tecnica”, non idonea a contesti
+forensi in cui esiti e confidenze devono poter essere giustificati a posteriori.
+
+\subsection{Iterazioni progettuali come forma di validazione}
+\label{sec:exp_iterations}
+
+Le soluzioni adottate a fronte delle criticità emerse non sono state introdotte come
+aggiunte isolate, ma come iterazioni progettuali mirate, ciascuna delle quali ha
+contribuito alla validazione dell’artefatto per costruzione.
+
+L’introduzione dell’approccio PIML ha rappresentato una prima iterazione strutturale,
+finalizzata a stabilizzare le inferenze fisiche e a ridurre la produzione di output
+non plausibili. L’integrazione di feature fisiche, vincoli e controlli di coerenza ha
+consentito di migliorare la robustezza del sistema senza sacrificare la capacità
+predittiva dei modelli.
+
+Una successiva iterazione ha riguardato la calibrazione delle confidenze del
+classificatore NPS, culminata nell’introduzione di un meccanismo di Temperature
+Scaling adattivo. Questa scelta ha trasformato la stima probabilistica da output
+statico a misura contestualizzata della qualità dell’inferenza, rendendo la
+confidenza parte integrante dell’evidenza prodotta.
+
+Parallelamente, l’introduzione sistematica di servizi di monitoring e logging
+forense ha rappresentato un ulteriore passo di validazione. La registrazione di
+parametri di contesto, segnali diagnostici e metadati di inferenza ha reso possibile
+ricostruire il comportamento del sistema end-to-end, soddisfacendo requisiti di
+auditabilità e tracciabilità tipici dei domini investigativi.
+
+In questo senso, ogni iterazione non ha solo migliorato una componente tecnica, ma
+ha ridotto un rischio specifico rispetto ai requisiti operativi e forensi,
+rafforzando progressivamente la validità complessiva dell’artefatto.
+
+\subsection{Lezioni metodologiche apprese}
+\label{sec:exp_lessons}
+
+L’esperienza di sviluppo di \textsc{PENTION-M} consente di trarre alcune lezioni
+metodologiche rilevanti per la progettazione di sistemi PIML integrati in pipeline
+cyber-fisiche e forensi.
+
+In primo luogo, la validazione in contesti investigativi non può essere confinata a
+una fase finale di test, ma deve essere incorporata nelle scelte architetturali e nei
+meccanismi di esecuzione del sistema. Logging, tracciabilità e riproducibilità non
+sono requisiti accessori, ma condizioni necessarie affinché l’artefatto sia
+valutabile.
+
+In secondo luogo, l’efficacia del PIML non deriva dall’aumento della complessità
+teorica, ma dalla collocazione mirata della conoscenza fisica nei punti di maggiore
+fragilità del modello. L’integrazione selettiva di vincoli e feature fisiche si è
+dimostrata più efficace di approcci puramente data-driven o rigidamente fisici.
+
+Infine, l’esperienza conferma che in pipeline operative complesse il monitoring e la
+gestione dell’incertezza costituiscono parte integrante del comportamento atteso del
+sistema. La capacità di osservare drift, degradazione e qualità dell’inferenza è un
+requisito fondamentale per garantire affidabilità nel tempo.
+
+Nel complesso, il processo di sviluppo di \textsc{PENTION-M} mostra come un approccio
+DSR, supportato da iterazioni progettuali consapevoli, possa condurre alla
+realizzazione di un artefatto non solo funzionante, ma progettato per essere
+validabile, interpretabile e coerente con i requisiti di un dominio forense.
+
+\section{Discussione complessiva dei risultati}
+\label{sec:discussion_results}
+
+La validazione dell’artefatto \textsc{PENTION-M}, condotta secondo il paradigma del Design Science Research, ha evidenziato un quadro complessivamente coerente e positivo rispetto agli obiettivi definiti nei capitoli precedenti. I risultati presentati nelle Sezioni~5.2 e~5.3 mostrano come la pipeline end-to-end sia in grado di operare in modo stabile, tracciabile e plausibile all’interno dello scenario simulato di riferimento, integrando modelli fisici, componenti PIML e servizi MLOps in un unico artefatto funzionale.
+
+Dal punto di vista tecnico, la validazione ha confermato la correttezza dell’integrazione architetturale: la simulazione fisica fornisce input coerenti ai moduli di inferenza, i modelli PIML contribuiscono a migliorare la stabilità e la plausibilità degli output, e i servizi di monitoring e logging garantiscono osservabilità, auditabilità e riproducibilità delle inferenze. La pipeline risulta quindi non solo “funzionante”, ma progettata esplicitamente per essere verificabile, in linea con i requisiti di contesti investigativi e forensi.
+
+È importante sottolineare che \textsc{PENTION-M} non rappresenta un’evoluzione incrementale di \textsc{PENTION-S}, bensì un artefatto distinto, concepito per operare in scenari dinamici e mobili, complementari a quelli statici affrontati dalla versione precedente. Di conseguenza, i risultati ottenuti non vengono interpretati in termini di confronto diretto tra i due sistemi, ma come dimostrazione della fattibilità e coerenza di una soluzione specificamente progettata per il contesto operativo del “mobile lab”.
+
+Nel complesso, la validazione by construction supporta l’ipotesi che l’architettura proposta sia adeguata allo scopo, che le scelte progettuali siano giustificate dai requisiti raccolti e che il sistema mostri un comportamento robusto e interpretabile nelle condizioni simulate. Al tempo stesso, l’analisi dei risultati ha reso espliciti alcuni limiti strutturali, legati principalmente alla natura simulata dei dati e all’assenza di sperimentazione sul campo, che non compromettono la validità dell’artefatto ma ne delimitano il perimetro applicativo.
+
+Queste considerazioni costituiscono il naturale punto di transizione verso il Capitolo~6, in cui tali limitazioni vengono analizzate in modo sistematico e utilizzate come base per delineare possibili sviluppi futuri del sistema.
