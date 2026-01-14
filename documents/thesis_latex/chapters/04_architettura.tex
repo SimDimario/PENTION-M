@@ -1006,7 +1006,7 @@ In particolare, per ogni simulazione vengono monitorate:
 	\item un indice sintetico di drift (\texttt{drift\_score}).
 \end{itemize}
 
-Tali informazioni vengono serializzate in formato JSON Lines
+Tali informazioni vengono serializzate in formato JSON Lines\footnote{\url{https://jsonlines.org/}}
 all’interno del file \texttt{monitoring\_log.jsonl},
 costituendo una traccia temporale ordinata degli eventi
 di esecuzione del sistema.
@@ -1330,7 +1330,7 @@ senza introdurre dipendenze pesanti, mantenendo coerenza con lo scenario
 L’interfaccia è organizzata in due aree principali:
 
 \begin{itemize}
-	\item \textbf{Mappa operativa (sinistra)}: una mappa interattiva basata su Leaflet,
+	\item \textbf{Mappa operativa (sinistra)}: una mappa interattiva basata su Leaflet\footnote{\url{https://leafletjs.com/}},
 	      alimentata da OpenStreetMap, su cui viene renderizzato il van e la sua evoluzione
 	      spaziale nello scenario urbano. La navigazione del veicolo è vincolata a una rete
 	      stradale pre-caricata da cache (\texttt{osm\_cache/amsterdam\_drive.graphml}),

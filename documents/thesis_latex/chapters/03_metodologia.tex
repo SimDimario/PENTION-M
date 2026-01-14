@@ -168,52 +168,52 @@ L'elenco \`e stato pensato per essere usato anche come \emph{traceability matrix
 
 \begin{longtable}{>{\bfseries}p{1cm} p{4cm} p{7cm}}
 	\caption{Sintesi consolidata dei requisiti emersi dalla campagna di Requirements Engineering (questionari e workshop LEAs) e loro mapping su PENTION-M.}
-	\label{tab:requirements}                                                                                                                                                                                      \\
+	\label{tab:requirements}                                                                                                                                                                                                                                               \\
 	\toprule
-	ID  & Requisito                                         & Implicazioni progettuali in PENTION-M                                                                                                               \\
+	ID  & Requisito                                         & Implicazioni progettuali in PENTION-M                                                                                                                                                                        \\
 	\midrule
 	\endfirsthead
 
 	\toprule
-	ID  & Requisito                                         & Implicazioni progettuali in PENTION-M                                                                                                               \\
+	ID  & Requisito                                         & Implicazioni progettuali in PENTION-M                                                                                                                                                                        \\
 	\midrule
 	\endhead
 
 	R1  & Rilevamento proattivo e rapido sul campo          &
-	Pipeline end-to-end real-time con esecuzione automatizzata e interfaccia operativa (patrolling $\rightarrow$ detection $\rightarrow$ output).                                                                 \\
+	Pipeline end-to-end real-time con esecuzione automatizzata e interfaccia operativa (patrolling $\rightarrow$ detection $\rightarrow$ output).                                                                                                                          \\
 
 	R2  & Facilit\`a d’uso per operatori non specialisti    &
-	Interfaccia minimale con output chiaro (Hit / No Hit + confidenza), ispirata agli strumenti attualmente in uso (es.\ TruNarc, MX908).                                                                         \\
+	Interfaccia minimale con output chiaro (Hit / No Hit + confidenza), ispirata agli strumenti attualmente in uso (es. TruNarc\footnote{\url{https://www.thermofisher.com/order/catalog/product/TRUNARC}}, MX908\footnote{\url{https://908devices.com/products/mx908/}}). \\
 
 	R3  & Portabilit\`a (mobile lab su van)                 &
-	Architettura containerizzata e modulare; modello operativo ``Ghostbusters van'' per supportare interventi mobili sul territorio.                                                                              \\
+	Architettura containerizzata e modulare; modello operativo ``Ghostbusters van'' per supportare interventi mobili sul territorio.                                                                                                                                       \\
 
 	R4  & Supporto a configurazioni ibride (handheld + van) &
-	Separazione tra unit\`a di campionamento portatile e unit\`a di analisi installata nel van; supporto a scenari ibridi di ispezione.                                                                           \\
+	Separazione tra unit\`a di campionamento portatile e unit\`a di analisi installata nel van; supporto a scenari ibridi di ispezione.                                                                                                                                    \\
 
 	R5  & Accuratezza di rilevamento controllabile          &
-	Introduzione di soglie operative realistiche emerse dal confronto con le LEA (basso FAR, DR elevato) e calibrazione delle confidenze per distinguere segnali operativamente rilevanti da tracce trascurabili. \\
+	Introduzione di soglie operative realistiche emerse dal confronto con le LEA (basso FAR, DR elevato) e calibrazione delle confidenze per distinguere segnali operativamente rilevanti da tracce trascurabili.                                                          \\
 
 	R6  & Gestione di \emph{old positives} e contaminazioni &
-	Parametrizzazione del contesto operativo e delle soglie di rilevamento per ridurre l’impatto di residui storici o contaminazioni ambientali.                                                                  \\
+	Parametrizzazione del contesto operativo e delle soglie di rilevamento per ridurre l’impatto di residui storici o contaminazioni ambientali.                                                                                                                           \\
 
 	R7  & AI come \emph{decision support tool}              &
-	Utilizzo dell’AI come supporto all’analisi e all’interpretazione, mantenendo la decisione finale in capo all’operatore umano.                                                                                 \\
+	Utilizzo dell’AI come supporto all’analisi e all’interpretazione, mantenendo la decisione finale in capo all’operatore umano.                                                                                                                                          \\
 
 	R8  & Explainability e audit trail completa             &
-	Logging dei parametri rilevanti (meteo, configurazione, versione del modello) e tracciabilit\`a end-to-end delle inferenze per supporto investigativo.                                                        \\
+	Logging dei parametri rilevanti (meteo, configurazione, versione del modello) e tracciabilit\`a end-to-end delle inferenze per supporto investigativo.                                                                                                                 \\
 
 	R9  & Modalit\`a operative differenziate                &
-	Supporto a diversi scenari operativi (urbano, hub postali, checkpoint) tramite profili di configurazione adattivi.                                                                                            \\
+	Supporto a diversi scenari operativi (urbano, hub postali, checkpoint) tramite profili di configurazione adattivi.                                                                                                                                                     \\
 
 	R10 & Banca dati dinamica per NPS e precursori          &
-	Integrazione di una base dati aggiornabile per la gestione di NPS emergenti e precursori, con supporto a identificazione parziale e \emph{unknown matching}.                                                  \\
+	Integrazione di una base dati aggiornabile per la gestione di NPS emergenti e precursori, con supporto a identificazione parziale e \emph{unknown matching}.                                                                                                           \\
 
 	R11 & Gestione delle evidenze e interoperabilit\`a      &
-	Esportazione dei risultati in formati standard e interoperabili, compatibili con i sistemi informativi di polizia e dogane.                                                                                   \\
+	Esportazione dei risultati in formati standard e interoperabili, compatibili con i sistemi informativi di polizia e dogane.                                                                                                                                            \\
 
 	R12 & Integrit\`a, non ripudio e chain of custody       &
-	Meccanismi di logging forense con firma digitale, timestamp e propriet\`a \emph{tamper-evident} a supporto della catena di custodia.                                                                          \\
+	Meccanismi di logging forense con firma digitale, timestamp e propriet\`a \emph{tamper-evident} a supporto della catena di custodia.                                                                                                                                   \\
 	\bottomrule
 \end{longtable}
 
