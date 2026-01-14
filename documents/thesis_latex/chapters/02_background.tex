@@ -136,54 +136,54 @@ In particolare, le classi incluse nel dataset sono:
 La distribuzione delle classi nel dataset risulta sbilanciata, in particolare a favore della classe \emph{Other compounds}, rendendo necessaria l’adozione di tecniche di bilanciamento durante l’addestramento.
 
 \begin{table}[H]
-\centering
-\small
-\begin{tabular}{lc}
-\toprule
-\textbf{Classe chimica} & \textbf{Numero di campioni} \\
-\midrule
-Cathinone analogues      & 620 \\
-Cannabinoid analogues    & 300 \\
-Phenethylamine analogues & 402 \\
-Piperazine analogues     & 111 \\
-Tryptamine analogues     & 159 \\
-Fentanyl analogues       & 525 \\
-Other compounds          & 1225 \\
-\bottomrule
-\end{tabular}
-\caption{Distribuzione delle classi chimiche nel dataset \texttt{PENTION\_EI\_Complete}.}
-\label{tab:dataset_class_distribution}
+	\centering
+	\small
+	\begin{tabular}{lc}
+		\toprule
+		\textbf{Classe chimica}  & \textbf{Numero di campioni} \\
+		\midrule
+		Cathinone analogues      & 620                         \\
+		Cannabinoid analogues    & 300                         \\
+		Phenethylamine analogues & 402                         \\
+		Piperazine analogues     & 111                         \\
+		Tryptamine analogues     & 159                         \\
+		Fentanyl analogues       & 525                         \\
+		Other compounds          & 1225                        \\
+		\bottomrule
+	\end{tabular}
+	\caption{Distribuzione delle classi chimiche nel dataset \texttt{PENTION\_EI\_Complete}.}
+	\label{tab:dataset_class_distribution}
 \end{table}
 
 
 Per chiarire la struttura del dataset finale, la Tabella~\ref{tab:pention_ei_example} riporta un estratto rappresentativo della codifica vettoriale degli spettri EI.
 
 \begin{table}[H]
-\centering
-\footnotesize
+	\centering
+	\footnotesize
 
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{lcccccccccccccc}
-\toprule
-\textbf{Sostanza} &
-\textbf{m/z 41} & \textbf{43} & \textbf{55} & \textbf{57} &
-\textbf{69} & \textbf{77} & \textbf{91} & \textbf{105} &
-\textbf{119} & \textbf{133} & \textbf{147} & \textbf{161} &
-\textbf{Classe} \\
-\midrule
-1-(2-Chlorophenyl)piperazine
-& 0.4 & 2.7 & 1.2 & 0.3 & 0.4 & 10.9 & 2.8 & 0.4 & 1.4 & 0.2 & 0.0 & 0.0 & 3 \\
+	\resizebox{\textwidth}{!}{%
+		\begin{tabular}{lcccccccccccccc}
+			\toprule
+			\textbf{Sostanza} &
+			\textbf{m/z 41}   & \textbf{43}  & \textbf{55}  & \textbf{57}  &
+			\textbf{69}       & \textbf{77}  & \textbf{91}  & \textbf{105} &
+			\textbf{119}      & \textbf{133} & \textbf{147} & \textbf{161} &
+			\textbf{Classe}                                                                                                                  \\
+			\midrule
+			1-(2-Chlorophenyl)piperazine
+			                  & 0.4          & 2.7          & 1.2          & 0.3  & 0.4 & 10.9  & 2.8  & 0.4 & 1.4 & 0.2  & 0.0  & 0.0   & 3 \\
 
-1-(2-Methoxyphenyl)piperazine
-& 15.0 & 46.0 & 25.0 & 10.0 & 8.0 & 135.1 & 50.0 & 8.0 & 1.0 & 5.0 & 4.0 & 0.0 & 3 \\
+			1-(2-Methoxyphenyl)piperazine
+			                  & 15.0         & 46.0         & 25.0         & 10.0 & 8.0 & 135.1 & 50.0 & 8.0 & 1.0 & 5.0  & 4.0  & 0.0   & 3 \\
 
-1-(2-Cyclopropylethyl)-1H-indole-3-carbonitrile
-& 6.0 & 30.0 & 34.0 & 2.0 & 6.0 & 116.0 & 12.0 & 9.0 & 3.0 & 39.0 & 24.0 & 116.0 & 6 \\
-\bottomrule
-\end{tabular}%
-}
-\caption{Esempio di rappresentazione vettoriale degli spettri EI nel dataset \texttt{PENTION\_EI\_Complete}.}
-\label{tab:pention_ei_example}
+			1-(2-Cyclopropylethyl)-1H-indole-3-carbonitrile
+			                  & 6.0          & 30.0         & 34.0         & 2.0  & 6.0 & 116.0 & 12.0 & 9.0 & 3.0 & 39.0 & 24.0 & 116.0 & 6 \\
+			\bottomrule
+		\end{tabular}%
+	}
+	\caption{Esempio di rappresentazione vettoriale degli spettri EI nel dataset \texttt{PENTION\_EI\_Complete}.}
+	\label{tab:pention_ei_example}
 \end{table}
 
 

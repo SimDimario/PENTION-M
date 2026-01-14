@@ -64,14 +64,14 @@ alla decisione.
 
 Nel progetto \textsc{PENTION-M}, la validazione by construction si manifesta attraverso:
 \begin{itemize}
-  \item l’integrazione esplicita di conoscenza fisica nei modelli di inferenza,
-  al fine di limitare soluzioni numericamente corrette ma fisicamente implausibili;
-  \item la separazione architetturale delle responsabilità tra simulazione,
-  inferenza, monitoring e logging forense;
-  \item la produzione nativa di metadati, metriche runtime ed evidenze verificabili
-  come parte integrante dell’esecuzione della pipeline;
-  \item l’allineamento continuo tra requisiti emersi dalla campagna di
-  Requirements Engineering e le iterazioni dell’artefatto.
+	\item l’integrazione esplicita di conoscenza fisica nei modelli di inferenza,
+	      al fine di limitare soluzioni numericamente corrette ma fisicamente implausibili;
+	\item la separazione architetturale delle responsabilità tra simulazione,
+	      inferenza, monitoring e logging forense;
+	\item la produzione nativa di metadati, metriche runtime ed evidenze verificabili
+	      come parte integrante dell’esecuzione della pipeline;
+	\item l’allineamento continuo tra requisiti emersi dalla campagna di
+	      Requirements Engineering e le iterazioni dell’artefatto.
 \end{itemize}
 
 In questo quadro, la validazione non è un’attività aggiuntiva o retrospettiva,
@@ -306,11 +306,11 @@ I test end-to-end verificano innanzitutto
 la corretta esecuzione della pipeline,
 controllando che:
 \begin{itemize}
-  \item l’ingestion dei dati venga completata senza errori;
-  \item i servizi di simulazione fisica, correzione PIML,
-        localizzazione e classificazione producano output validi;
-  \item il bundle forense venga generato correttamente;
-  \item le metriche di monitoring siano disponibili a valle dell’esecuzione.
+	\item l’ingestion dei dati venga completata senza errori;
+	\item i servizi di simulazione fisica, correzione PIML,
+	      localizzazione e classificazione producano output validi;
+	\item il bundle forense venga generato correttamente;
+	\item le metriche di monitoring siano disponibili a valle dell’esecuzione.
 \end{itemize}
 
 Dal punto di vista temporale,
@@ -371,11 +371,11 @@ In coerenza con l’impostazione \emph{by construction} della tesi, la validazio
 La validazione è stata eseguita tramite lo script/notebook \texttt{validation/PIML/PIML\_Validation\_All.ipynb}, che implementa un ciclo di test ripetuto su un insieme di scenari simulati.
 Per ogni simulazione:
 \begin{itemize}
-    \item viene caricata una mappa di riferimento della dispersione ``reale'' (ground truth) dal repository dei dati simulati (\texttt{real\_dispersion});
-    \item viene generata o recuperata la mappa di dispersione di baseline (gaussiana) e inviata al servizio di correzione PIML tramite una chiamata API (funzione helper in \texttt{validation/PIML/utils\_piml.py});
-    \item si ottiene in output una mappa di concentrazione corretta, della stessa dimensionalità della mappa di input;
-    \item si calcola un set di metriche fisicamente motivate (definite in \texttt{validation/PIML/metrics.py});
-    \item i risultati vengono aggregati e salvati in un file strutturato (\texttt{validation/PIML/validation\_results\_piml.csv}).
+	\item viene caricata una mappa di riferimento della dispersione ``reale'' (ground truth) dal repository dei dati simulati (\texttt{real\_dispersion});
+	\item viene generata o recuperata la mappa di dispersione di baseline (gaussiana) e inviata al servizio di correzione PIML tramite una chiamata API (funzione helper in \texttt{validation/PIML/utils\_piml.py});
+	\item si ottiene in output una mappa di concentrazione corretta, della stessa dimensionalità della mappa di input;
+	\item si calcola un set di metriche fisicamente motivate (definite in \texttt{validation/PIML/metrics.py});
+	\item i risultati vengono aggregati e salvati in un file strutturato (\texttt{validation/PIML/validation\_results\_piml.csv}).
 \end{itemize}
 
 L’obiettivo del processo è quindi valutare la qualità delle mappe corrette rispetto alla ground truth e rispetto a vincoli geometrici e direzionali (vento + maschera edifici), \emph{senza} introdurre assunzioni ulteriori non presenti nella pipeline di progetto.
@@ -389,8 +389,8 @@ La valutazione utilizza quattro metriche, scelte per catturare aspetti complemen
 La metrica misura l’errore quadratico medio tra mappa predetta e mappa di riferimento, calcolato esclusivamente sulle celle non edificate (\emph{free space}), utilizzando la maschera urbana.
 Formalmente, indicando con $M$ la maschera binaria degli edifici e con $\Omega=\{(i,j): M_{ij}=0\}$ l’insieme delle celle libere:
 \[
-\mathrm{RMSE}_{\mathrm{free}} =
-\sqrt{\frac{1}{|\Omega|}\sum_{(i,j)\in\Omega}\left(\hat{C}_{ij}-C_{ij}\right)^2}.
+	\mathrm{RMSE}_{\mathrm{free}} =
+	\sqrt{\frac{1}{|\Omega|}\sum_{(i,j)\in\Omega}\left(\hat{C}_{ij}-C_{ij}\right)^2}.
 \]
 Questa scelta evita che l’errore sia dominato da regioni in cui (per costruzione) la concentrazione dovrebbe risultare nulla o fortemente penalizzata.
 
@@ -402,8 +402,8 @@ In pratica, la metrica implementa un proxy di \emph{total variation} basato sull
 Questa metrica valuta la coerenza direzionale del campo rispetto al vento dominante.
 A partire dal gradiente $\nabla \hat{C}$ e dal vettore del vento $\mathbf{v}=[\cos(\theta),\sin(\theta)]$, viene calcolato un punteggio medio normalizzato basato sul prodotto scalare tra gradiente e direzione del vento (con normalizzazione per evitare dipendenze dalla scala del gradiente):
 \[
-s = \mathbb{E}\left[\frac{\nabla \hat{C}\cdot \mathbf{v}}{\|\nabla \hat{C}\|\cdot\|\mathbf{v}\|+\varepsilon}\right],
-\qquad s\in[-1,1].
+	s = \mathbb{E}\left[\frac{\nabla \hat{C}\cdot \mathbf{v}}{\|\nabla \hat{C}\|\cdot\|\mathbf{v}\|+\varepsilon}\right],
+	\qquad s\in[-1,1].
 \]
 Valori prossimi a $1$ indicano una maggiore coerenza direzionale tra variazione spaziale del campo e direzione imposta dal vento, mentre valori bassi (o negativi) suggeriscono campi meno compatibili con la direzionalità attesa.
 
@@ -411,7 +411,7 @@ Valori prossimi a $1$ indicano una maggiore coerenza direzionale tra variazione 
 La metrica stima quanta ``massa'' di concentrazione (in senso relativo) ricade in area edificata.
 È implementata come rapporto tra concentrazione cumulata sulle celle edificate e concentrazione totale della mappa:
 \[
-\mathrm{BV}=\frac{\sum_{i,j}\hat{C}_{ij}\,M_{ij}}{\sum_{i,j}\hat{C}_{ij}+\varepsilon}.
+	\mathrm{BV}=\frac{\sum_{i,j}\hat{C}_{ij}\,M_{ij}}{\sum_{i,j}\hat{C}_{ij}+\varepsilon}.
 \]
 Un valore vicino a zero indica un’uscita compatibile con il vincolo geometrico (assenza di concentrazione nelle regioni edificate).
 
@@ -422,20 +422,20 @@ I risultati della campagna sono salvati nel file \texttt{validation\_results\_pi
 La Tabella~\ref{tab:piml_validation_summary} riporta le statistiche principali (media, deviazione standard, minimo e massimo) calcolate sull’intero set di simulazioni.
 
 \begin{table}[H]
-\centering
-\renewcommand{\arraystretch}{1.15}
-\begin{tabular}{lcccc}
-\toprule
-\textbf{Metrica} & \textbf{Media} & \textbf{Std} & \textbf{Min} & \textbf{Max} \\
-\midrule
-\texttt{rmse\_free}        & 0.0575 & 0.0318 & 0.0067 & 0.2079 \\
-\texttt{smoothness}        & 0.0075 & 0.0030 & 0.0006 & 0.0183 \\
-\texttt{wind\_alignment}   & 0.4287 & 0.1467 & 0.1132 & 0.7759 \\
-\texttt{building\_violation} & 0.0000 & 0.0003 & 0.0000 & 0.0031 \\
-\bottomrule
-\end{tabular}
-\caption{Sintesi delle metriche di validazione PIML calcolate sulle simulazioni della campagna (\texttt{validation/PIML/validation\_results\_piml.csv}).}
-\label{tab:piml_validation_summary}
+	\centering
+	\renewcommand{\arraystretch}{1.15}
+	\begin{tabular}{lcccc}
+		\toprule
+		\textbf{Metrica}             & \textbf{Media} & \textbf{Std} & \textbf{Min} & \textbf{Max} \\
+		\midrule
+		\texttt{rmse\_free}          & 0.0575         & 0.0318       & 0.0067       & 0.2079       \\
+		\texttt{smoothness}          & 0.0075         & 0.0030       & 0.0006       & 0.0183       \\
+		\texttt{wind\_alignment}     & 0.4287         & 0.1467       & 0.1132       & 0.7759       \\
+		\texttt{building\_violation} & 0.0000         & 0.0003       & 0.0000       & 0.0031       \\
+		\bottomrule
+	\end{tabular}
+	\caption{Sintesi delle metriche di validazione PIML calcolate sulle simulazioni della campagna (\texttt{validation/PIML/validation\_results\_piml.csv}).}
+	\label{tab:piml_validation_summary}
 \end{table}
 
 Nel complesso, la metrica \texttt{building\_violation} risulta prossima a zero nella quasi totalità delle simulazioni, evidenziando un comportamento coerente con il vincolo geometrico imposto dalla maschera urbana.
@@ -464,24 +464,24 @@ La validazione è stata condotta utilizzando il modulo \texttt{EmissionSourceLoc
 La qualità della localizzazione è stata valutata in termini di errore spaziale tra la posizione stimata e la posizione reale della sorgente.
 In particolare, sono state adottate metriche standard e direttamente interpretabili in ambito operativo:
 \begin{itemize}
-    \item \textbf{Mean Absolute Error (MAE)} spaziale, espresso in metri;
-    \item \textbf{Root Mean Square Error (RMSE)} spaziale, espresso in metri.
+	\item \textbf{Mean Absolute Error (MAE)} spaziale, espresso in metri;
+	\item \textbf{Root Mean Square Error (RMSE)} spaziale, espresso in metri.
 \end{itemize}
 Tali metriche consentono di quantificare sia l’errore medio di localizzazione sia la presenza di deviazioni più marcate, fornendo una misura sintetica dell’affidabilità del sistema.
 
 \begin{table}[H]
-\centering
-\caption{Prestazioni del modello di localizzazione della sorgente ottenute tramite
-validazione incrociata Repeated K-Fold (5 fold, 2 ripetizioni).}
-\label{tab:source_localization_metrics}
-\begin{tabular}{lcc}
-\toprule
-\textbf{Metrica} & \textbf{Coordinata X} & \textbf{Coordinata Y} \\
-\midrule
-RMSE (media $\pm$ std) & $18.34 \pm 1.59$ & $18.48 \pm 1.24$ \\
-$R^2$ (media $\pm$ std) & $0.987 \pm 0.002$ & $0.986 \pm 0.002$ \\
-\bottomrule
-\end{tabular}
+	\centering
+	\caption{Prestazioni del modello di localizzazione della sorgente ottenute tramite
+		validazione incrociata Repeated K-Fold (5 fold, 2 ripetizioni).}
+	\label{tab:source_localization_metrics}
+	\begin{tabular}{lcc}
+		\toprule
+		\textbf{Metrica}        & \textbf{Coordinata X} & \textbf{Coordinata Y} \\
+		\midrule
+		RMSE (media $\pm$ std)  & $18.34 \pm 1.59$      & $18.48 \pm 1.24$      \\
+		$R^2$ (media $\pm$ std) & $0.987 \pm 0.002$     & $0.986 \pm 0.002$     \\
+		\bottomrule
+	\end{tabular}
 \end{table}
 
 Per analizzare in modo più approfondito il comportamento del modello di
@@ -491,12 +491,12 @@ correlazione globale tra valori reali e stimati sia la distribuzione
 degli errori nello spazio.
 
 \begin{figure}[H]
-\centering
-\includegraphics[width=0.95\textwidth]{img/source_localization_scatter_xy.png}
-\caption{Confronto tra coordinate reali e coordinate predette dal modello
-di localizzazione della sorgente. La linea tratteggiata rappresenta
-la predizione ideale ($y = x$).}
-\label{fig:source_localization_scatter}
+	\centering
+	\includegraphics[width=0.95\textwidth]{img/source_localization_scatter_xy.png}
+	\caption{Confronto tra coordinate reali e coordinate predette dal modello
+		di localizzazione della sorgente. La linea tratteggiata rappresenta
+		la predizione ideale ($y = x$).}
+	\label{fig:source_localization_scatter}
 \end{figure}
 
 Il confronto diretto tra coordinate reali e predette evidenzia una forte
@@ -505,20 +505,20 @@ Tuttavia, tale rappresentazione non consente di cogliere la distribuzione
 geometrica degli errori all’interno dello scenario urbano simulato.
 
 \begin{figure}[H]
-\centering
-\includegraphics[width=0.9\textwidth]{img/source_localization_map.png}
-\caption{Confronto spaziale tra la posizione reale della sorgente e la
-posizione stimata dal modello PIML in scenari simulati.
-I segmenti rappresentano visivamente l’errore di localizzazione.}
-\label{fig:source_localization_map}
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/source_localization_map.png}
+	\caption{Confronto spaziale tra la posizione reale della sorgente e la
+		posizione stimata dal modello PIML in scenari simulati.
+		I segmenti rappresentano visivamente l’errore di localizzazione.}
+	\label{fig:source_localization_map}
 \end{figure}
 
 \begin{figure}[H]
-\centering
-\includegraphics[width=0.7\textwidth]{img/source_localization_error_distribution.png}
-\caption{Distribuzione dell’errore euclideo di localizzazione della sorgente
-ottenuto durante la validazione del modello.}
-\label{fig:source_localization_error_distribution}
+	\centering
+	\includegraphics[width=0.7\textwidth]{img/source_localization_error_distribution.png}
+	\caption{Distribuzione dell’errore euclideo di localizzazione della sorgente
+		ottenuto durante la validazione del modello.}
+	\label{fig:source_localization_error_distribution}
 \end{figure}
 
 La distribuzione mostra una mediana dell’errore di localizzazione pari a
@@ -543,9 +543,9 @@ Ciò suggerisce che l’approccio fisicamente informato contribuisce a vincolare
 L’ordine di grandezza degli errori di localizzazione osservati è coerente con le aspettative per un sistema di rilevamento mobile operante in ambiente urbano.
 Errori nell’ordine delle decine di metri risultano compatibili con:
 \begin{itemize}
-    \item la natura indiretta del problema di localizzazione;
-    \item l’uso di dati simulati affetti da rumore e incompletezza;
-    \item l’obiettivo di fornire un’indicazione spaziale utile al supporto decisionale, piuttosto che una localizzazione metrica assoluta.
+	\item la natura indiretta del problema di localizzazione;
+	\item l’uso di dati simulati affetti da rumore e incompletezza;
+	\item l’obiettivo di fornire un’indicazione spaziale utile al supporto decisionale, piuttosto che una localizzazione metrica assoluta.
 \end{itemize}
 
 È stata condotta un’analisi di ablazione per valutare l’impatto delle feature
@@ -580,24 +580,24 @@ La Figura~\ref{fig:nps_calibration_curve} mostra la curva di calibrazione ottenu
 La curva mette in relazione la confidenza predetta dal modello con l’accuratezza empirica osservata, consentendo di valutare lo scostamento rispetto al comportamento ideale di perfetta calibrazione.
 
 \begin{figure}[H]
-\centering
-\includegraphics[width=0.6\textwidth]{calibration_curve.png}
-\caption{Curva di calibrazione del classificatore XGBoost dopo Temperature Scaling ($T=1.8$).}
-\label{fig:nps_calibration_curve}
+	\centering
+	\includegraphics[width=0.6\textwidth]{calibration_curve.png}
+	\caption{Curva di calibrazione del classificatore XGBoost dopo Temperature Scaling ($T=1.8$).}
+	\label{fig:nps_calibration_curve}
 \end{figure}
 
 I risultati mostrano un buon allineamento tra confidenza predetta e accuratezza reale, in particolare nella regione di alta confidenza, che rappresenta la zona di maggiore rilevanza operativa.
-Il valore di \emph{Brier score} ottenuto ($\approx 0.02$) conferma quantitativamente la buona qualità della calibrazione, indicando una ridotta discrepanza media tra probabilità predette ed esito corretto.
+Il valore di \emph{Brier score}~\cite{brier1950verification} ottenuto ($\approx 0.02$) conferma quantitativamente la buona qualità della calibrazione, indicando una ridotta discrepanza media tra probabilità predette ed esito corretto.
 
 \paragraph{Distribuzione delle confidenze}
 Per valutare il comportamento globale del classificatore, è stata analizzata la distribuzione delle confidenze associate alle predizioni.
 La Figura~\ref{fig:nps_confidence_distribution} evidenzia come la maggior parte delle inferenze si collochi in una regione di confidenza elevata, con una progressiva rarefazione verso valori intermedi e bassi.
 
 \begin{figure}[H]
-\centering
-\includegraphics[width=0.6\textwidth]{confidence_histogram.png}
-\caption{Distribuzione delle confidenze prodotte dal classificatore XGBoost dopo Temperature Scaling.}
-\label{fig:nps_confidence_distribution}
+	\centering
+	\includegraphics[width=0.6\textwidth]{confidence_histogram.png}
+	\caption{Distribuzione delle confidenze prodotte dal classificatore XGBoost dopo Temperature Scaling.}
+	\label{fig:nps_confidence_distribution}
 \end{figure}
 
 Questo comportamento è coerente con uno scenario operativo in cui il sistema è chiamato a fornire indicazioni affidabili principalmente in presenza di segnali informativi sufficientemente forti, lasciando all’operatore la gestione dei casi ambigui o a bassa confidenza.
@@ -610,21 +610,21 @@ sulla probabilità complessiva di appartenenza alle classi NPS.
 La Tabella~\ref{tab:nps_far_thresholds} mostra l’andamento del FAR al variare della soglia.
 
 \begin{table}[H]
-\centering
-\small
-\begin{tabular}{cccc}
-\toprule
-\textbf{Soglia} & \textbf{FAR (\%)} & \textbf{FP} & \textbf{TN} \\
-\midrule
-0.90 & 5.88 & 15 & 240 \\
-0.95 & 5.10 & 13 & 242 \\
-0.97 & 4.31 & 11 & 244 \\
-0.98 & 3.53 & 9  & 246 \\
-0.99 & 3.14 & 8  & 247 \\
-\bottomrule
-\end{tabular}
-\caption{False Alarm Rate (FAR) al variare della soglia operativa sulla probabilità complessiva di appartenenza a classi NPS.}
-\label{tab:nps_far_thresholds}
+	\centering
+	\small
+	\begin{tabular}{cccc}
+		\toprule
+		\textbf{Soglia} & \textbf{FAR (\%)} & \textbf{FP} & \textbf{TN} \\
+		\midrule
+		0.90            & 5.88              & 15          & 240         \\
+		0.95            & 5.10              & 13          & 242         \\
+		0.97            & 4.31              & 11          & 244         \\
+		0.98            & 3.53              & 9           & 246         \\
+		0.99            & 3.14              & 8           & 247         \\
+		\bottomrule
+	\end{tabular}
+	\caption{False Alarm Rate (FAR) al variare della soglia operativa sulla probabilità complessiva di appartenenza a classi NPS.}
+	\label{tab:nps_far_thresholds}
 \end{table}
 
 \paragraph{Opzione di astensione (reject option) e copertura}
@@ -634,20 +634,20 @@ riporta la copertura (percentuale di campioni classificati senza astensione) al 
 della soglia di confidenza.
 
 \begin{table}[H]
-\centering
-\small
-\begin{tabular}{cc}
-\toprule
-\textbf{Soglia di confidenza} & \textbf{Coverage (\%)} \\
-\midrule
-0.60 & 93.6 \\
-0.70 & 88.5 \\
-0.75 & 87.6 \\
-0.80 & 85.4 \\
-\bottomrule
-\end{tabular}
-\caption{Copertura del classificatore al variare della soglia di astensione (reject option).}
-\label{tab:nps_reject_coverage}
+	\centering
+	\small
+	\begin{tabular}{cc}
+		\toprule
+		\textbf{Soglia di confidenza} & \textbf{Coverage (\%)} \\
+		\midrule
+		0.60                          & 93.6                   \\
+		0.70                          & 88.5                   \\
+		0.75                          & 87.6                   \\
+		0.80                          & 85.4                   \\
+		\bottomrule
+	\end{tabular}
+	\caption{Copertura del classificatore al variare della soglia di astensione (reject option).}
+	\label{tab:nps_reject_coverage}
 \end{table}
 
 
@@ -659,10 +659,10 @@ La Figura~\ref{fig:nps_noise_robustness} mostra l’andamento della confidenza m
 I risultati indicano una degradazione graduale e controllata delle confidenze, senza collassi improvvisi del comportamento del modello.
 
 \begin{figure}[H]
-\centering
-\includegraphics[width=0.6\textwidth]{noise_robustness.png}
-\caption{Robustezza del classificatore NPS rispetto a rumore spettrale crescente.}
-\label{fig:nps_noise_robustness}
+	\centering
+	\includegraphics[width=0.6\textwidth]{noise_robustness.png}
+	\caption{Robustezza del classificatore NPS rispetto a rumore spettrale crescente.}
+	\label{fig:nps_noise_robustness}
 \end{figure}
 
 Anche in presenza di livelli di rumore significativi, il modello mantiene confidenze elevate e stabili, suggerendo una buona tolleranza a condizioni di acquisizione non ideali, tipiche di scenari operativi sul campo.
@@ -670,9 +670,9 @@ Anche in presenza di livelli di rumore significativi, il modello mantiene confid
 \paragraph{Discussione qualitativa degli errori}
 L’analisi qualitativa delle predizioni errate evidenzia come gli errori residui siano principalmente associati a:
 \begin{itemize}
-  \item spettri fortemente degradati o incompleti;
-  \item composti appartenenti a classi chimiche strutturalmente affini;
-  \item segnali con intensità prossime alla soglia di rilevamento.
+	\item spettri fortemente degradati o incompleti;
+	\item composti appartenenti a classi chimiche strutturalmente affini;
+	\item segnali con intensità prossime alla soglia di rilevamento.
 \end{itemize}
 
 Tali casi rappresentano situazioni intrinsecamente ambigue anche per un analista umano, e risultano coerenti con l’impostazione del sistema come \emph{decision support tool} piuttosto che come sostituto del giudizio esperto.
@@ -699,11 +699,11 @@ Tuttavia, l’integrazione del classificatore all’interno della pipeline end-t
 
 Alla luce di queste considerazioni, è stato progettato un meccanismo di \emph{Temperature Scaling adattivo}, concepito come una meta-euristica ibrida in grado di modulare il valore della temperatura in funzione di diverse fonti di incertezza. Il punto di partenza è rappresentato da una temperatura di base pari a $T=1.2$, alla quale vengono applicati incrementi controllati derivanti da:
 \begin{itemize}
-    \item il livello di rumore stimato nello spettro EI;
-    \item la classe di stabilità atmosferica secondo Pasquill;
-    \item indicatori di coerenza fisica provenienti dal modulo PIML di correzione della dispersione;
-    \item il drift score calcolato dal servizio di monitoring MLOps;
-    \item la latenza end-to-end della pipeline, utilizzata come proxy della congestione computazionale e della qualità del dato.
+	\item il livello di rumore stimato nello spettro EI;
+	\item la classe di stabilità atmosferica secondo Pasquill;
+	\item indicatori di coerenza fisica provenienti dal modulo PIML di correzione della dispersione;
+	\item il drift score calcolato dal servizio di monitoring MLOps;
+	\item la latenza end-to-end della pipeline, utilizzata come proxy della congestione computazionale e della qualità del dato.
 \end{itemize}
 
 Il valore di temperatura risultante è vincolato a rimanere all’interno dell’intervallo $[1.0, 3.0]$ ed evolve in modo continuo e stabile nel tempo, evitando oscillazioni brusche e garantendo una progressione coerente rispetto alle condizioni operative. Durante le simulazioni integrate, la temperatura adattiva ha assunto valori tipicamente compresi tra $1.2$ e $2.6$, dimostrando un comportamento robusto e interpretabile.
