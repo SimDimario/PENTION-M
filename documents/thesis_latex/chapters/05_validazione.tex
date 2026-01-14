@@ -9,186 +9,94 @@ La validazione non è intesa come un singolo test finale, ma come un processo in
 \section{Inquadramento della validazione secondo il Design Science Research}
 \label{sec:validation_dsr}
 
-Nel paradigma della \emph{Design Science Research} (DSR), la validazione dell’artefatto
-non è concepita come una fase finale isolata, ma come una componente intrinseca
-dell’intero processo di progettazione e sviluppo.
-A differenza di approcci sperimentali tradizionali, in cui la valutazione è spesso
-limitata alla misurazione delle prestazioni di singoli modelli o algoritmi,
-il DSR pone l’accento sulla capacità dell’artefatto di rispondere in modo coerente
-e verificabile a un problema reale, tenendo conto del contesto applicativo,
-dei vincoli operativi e delle esigenze degli stakeholder.
+Nel paradigma della \emph{Design Science Research} (DSR), la validazione dell’artefatto non è concepita come una fase finale isolata, ma come una componente intrinseca dell’intero processo di progettazione e sviluppo.
+A differenza di approcci sperimentali tradizionali, in cui la valutazione è spesso limitata alla misurazione delle prestazioni di singoli modelli o algoritmi, il DSR pone l’accento sulla capacità dell’artefatto di rispondere in modo coerente e verificabile a un problema reale, tenendo conto del contesto applicativo, dei vincoli operativi e delle esigenze degli stakeholder.
 
-Nel caso di \textsc{PENTION-M}, la validazione è stata affrontata secondo un approccio
-di \emph{validation by construction}, già delineato nel Capitolo~\ref{chap:dsr}.
-Tale approccio implica che le proprietà di qualità dell’artefatto
-— robustezza, coerenza fisica, auditabilità e usabilità operativa —
-non vengano valutate esclusivamente attraverso un esperimento finale,
-ma emergano progressivamente dalle scelte metodologiche,
-dalle iterazioni progettuali e dalla struttura stessa dell’architettura implementata.
+Nel caso di \textsc{PENTION-M}, la validazione è stata affrontata secondo un approccio di \emph{validation by construction}, già delineato nel Capitolo~\ref{chap:dsr}.
+Tale approccio implica che le proprietà di qualità dell’artefatto — robustezza, coerenza fisica, auditabilità e usabilità operativa — non vengano valutate esclusivamente attraverso un esperimento finale, ma emergano progressivamente dalle scelte metodologiche, dalle iterazioni progettuali e dalla struttura stessa dell’architettura implementata.
 
 \subsection*{Validazione dell’artefatto vs valutazione di singoli modelli}
 
-Un elemento centrale per l’inquadramento della validazione riguarda la distinzione
-tra la valutazione di singoli modelli e la validazione dell’artefatto nel suo complesso.
-Nel contesto di questa tesi, l’artefatto non coincide con un singolo modello di
-Machine Learning, bensì con un sistema cyber--fisico simulato che integra
-modellazione fisica, modelli di \emph{Physics-Informed Machine Learning},
-pipeline MLOps e meccanismi di logging forense in un flusso end-to-end coerente.
+Un elemento centrale per l’inquadramento della validazione riguarda la distinzione tra la valutazione di singoli modelli e la validazione dell’artefatto nel suo complesso.
+Nel contesto di questa tesi, l’artefatto non coincide con un singolo modello di Machine Learning, bensì con un sistema cyber--fisico simulato che integra modellazione fisica, modelli di \emph{Physics-Informed Machine Learning}, pipeline MLOps e meccanismi di logging forense in un flusso end-to-end coerente.
 
-La valutazione di un modello isolato (ad esempio in termini di accuratezza,
-RMSE o F1-score) fornisce informazioni utili ma parziali,
-insufficienti a caratterizzare il comportamento del sistema in uno scenario
-operativo reale.
-Al contrario, la validazione dell’artefatto richiede di verificare proprietà
-sistemiche, quali:
+La valutazione di un modello isolato (ad esempio in termini di accuratezza, RMSE o F1-score) fornisce informazioni utili ma parziali, insufficienti a caratterizzare il comportamento del sistema in uno scenario operativo reale.
+Al contrario, la validazione dell’artefatto richiede di verificare proprietà sistemiche, quali:
 (i) la coerenza tra input fisici, inferenze e output prodotti;
 (ii) la stabilità del comportamento a runtime;
 (iii) la tracciabilità e riproducibilità delle decisioni;
 (iv) l’aderenza ai workflow investigativi e ai requisiti forensi.
 
-In \textsc{PENTION-M}, tali proprietà non sono demandate a un singolo componente,
-ma distribuite lungo l’architettura a layer descritta nel
-Capitolo~\ref{chap:architecture}.
-La validazione assume quindi una dimensione trasversale,
-che attraversa l’intera pipeline e coinvolge simultaneamente
-scelte modellistiche, architetturali e operative.
+In \textsc{PENTION-M}, tali proprietà non sono demandate a un singolo componente, ma distribuite lungo l’architettura a layer descritta nel Capitolo~\ref{chap:architecture}.
+La validazione assume quindi una dimensione trasversale, che attraversa l’intera pipeline e coinvolge simultaneamente scelte modellistiche, architetturali e operative.
 
 \subsection*{Concetto di \emph{validation by construction} in sistemi cyber--fisici}
 
-Il concetto di \emph{validation by construction} risulta particolarmente appropriato
-nel contesto dei sistemi cyber--fisici e, in particolare, di quelli destinati
-a impieghi forensi e investigativi.
-In tali sistemi, la correttezza non può essere valutata unicamente sulla base
-dell’output finale, ma deve essere garantita anche rispetto al processo che conduce
-alla decisione.
+Il concetto di \emph{validation by construction} risulta particolarmente appropriato nel contesto dei sistemi cyber--fisici e, in particolare, di quelli destinati a impieghi forensi e investigativi.
+In tali sistemi, la correttezza non può essere valutata unicamente sulla base dell’output finale, ma deve essere garantita anche rispetto al processo che conduce alla decisione.
 
 Nel progetto \textsc{PENTION-M}, la validazione by construction si manifesta attraverso:
 \begin{itemize}
-	\item l’integrazione esplicita di conoscenza fisica nei modelli di inferenza,
-	      al fine di limitare soluzioni numericamente corrette ma fisicamente implausibili;
-	\item la separazione architetturale delle responsabilità tra simulazione,
-	      inferenza, monitoring e logging forense;
-	\item la produzione nativa di metadati, metriche runtime ed evidenze verificabili
-	      come parte integrante dell’esecuzione della pipeline;
-	\item l’allineamento continuo tra requisiti emersi dalla campagna di
-	      Requirements Engineering e le iterazioni dell’artefatto.
+	\item l’integrazione esplicita di conoscenza fisica nei modelli di inferenza, al fine di limitare soluzioni numericamente corrette ma fisicamente implausibili;
+	\item la separazione architetturale delle responsabilità tra simulazione, inferenza, monitoring e logging forense;
+	\item la produzione nativa di metadati, metriche runtime ed evidenze verificabili come parte integrante dell’esecuzione della pipeline;
+	\item l’allineamento continuo tra requisiti emersi dalla campagna di Requirements Engineering e le iterazioni dell’artefatto.
 \end{itemize}
 
-In questo quadro, la validazione non è un’attività aggiuntiva o retrospettiva,
-ma una proprietà emergente del modo in cui il sistema è stato progettato e realizzato.
-Le scelte architetturali illustrate nel Capitolo~\ref{chap:architecture}
-— in particolare l’introduzione di layer dedicati al monitoring,
-al ModelOps e al logging forense —
-rappresentano esempi concreti di come i criteri di validazione siano stati
-incorporati direttamente nella struttura dell’artefatto.
+In questo quadro, la validazione non è un’attività aggiuntiva o retrospettiva, ma una proprietà emergente del modo in cui il sistema è stato progettato e realizzato.
+Le scelte architetturali illustrate nel Capitolo~\ref{chap:architecture} — in particolare l’introduzione di layer dedicati al monitoring, al ModelOps e al logging forense — rappresentano esempi concreti di come i criteri di validazione siano stati incorporati direttamente nella struttura dell’artefatto.
 
 \subsection*{Collegamento tra requisiti, architettura e criteri di validazione}
 
-Un aspetto distintivo dell’approccio adottato è il collegamento esplicito
-tra requisiti, architettura e criteri di validazione.
-I requisiti emersi dalla campagna di Requirements Engineering
-(Sezione~\ref{sec:requirements_engineering})
-non sono stati trattati come semplici vincoli iniziali,
-ma come riferimenti costanti per guidare e valutare l’evoluzione dell’artefatto.
+Un aspetto distintivo dell’approccio adottato è il collegamento esplicito tra requisiti, architettura e criteri di validazione.
+I requisiti emersi dalla campagna di Requirements Engineering (Sezione~\ref{sec:requirements_engineering}) non sono stati trattati come semplici vincoli iniziali, ma come riferimenti costanti per guidare e valutare l’evoluzione dell’artefatto.
 
-Ogni iterazione di \textsc{PENTION-M} ha tradotto specifici requisiti
-— operativi, tecnici, fisici e forensi —
-in scelte progettuali verificabili,
-come descritto nella Sezione~\ref{sec:artifact_iterations}.
-Di conseguenza, la validazione dell’artefatto consiste nel verificare
-la coerenza tra:
+Ogni iterazione di \textsc{PENTION-M} ha tradotto specifici requisiti — operativi, tecnici, fisici e forensi — in scelte progettuali verificabili, come descritto nella Sezione~\ref{sec:artifact_iterations}.
+Di conseguenza, la validazione dell’artefatto consiste nel verificare la coerenza tra:
 (i) i requisiti dichiarati;
 (ii) le soluzioni architetturali adottate;
 (iii) il comportamento osservato del sistema durante l’esecuzione end-to-end.
 
-Il presente capitolo si colloca quindi come naturale prosecuzione
-del percorso metodologico e architetturale già delineato.
-Le sezioni successive presenteranno la validazione dell’artefatto
-attraverso il confronto con gli stakeholder e l’analisi tecnica
-del comportamento del sistema,
-mostrando come le proprietà dichiarate emergano in modo coerente
-dal processo di progettazione seguito.
+Il presente capitolo si colloca quindi come naturale prosecuzione del percorso metodologico e architetturale già delineato.
+Le sezioni successive presenteranno la validazione dell’artefatto attraverso il confronto con gli stakeholder e l’analisi tecnica del comportamento del sistema, mostrando come le proprietà dichiarate emergano in modo coerente dal processo di progettazione seguito.
 
 \section{Validazione tramite stakeholder}
 \label{sec:validation_stakeholders}
 
-Nel contesto della \emph{Design Science Research}, la validazione tramite stakeholder
-non coincide con una nuova fase di elicitazione dei requisiti,
-già descritta nel Capitolo~\ref{chap:dsr},
-ma rappresenta una forma di \emph{valutazione ex post} dell’artefatto sviluppato.
-In questa prospettiva, gli stakeholder non sono considerati come fonte di input progettuali,
-bensì come riferimento esterno per verificare la coerenza, la credibilità e
-la rilevanza operativa del sistema risultante.
+Nel contesto della \emph{Design Science Research}, la validazione tramite stakeholder non coincide con una nuova fase di elicitazione dei requisiti, già descritta nel Capitolo~\ref{chap:dsr}, ma rappresenta una forma di \emph{valutazione ex post} dell’artefatto sviluppato.
+In questa prospettiva, gli stakeholder non sono considerati come fonte di input progettuali, bensì come riferimento esterno per verificare la coerenza, la credibilità e la rilevanza operativa del sistema risultante.
 
-Per il progetto \textsc{PENTION-M}, il confronto con stakeholder operativi,
-industriali e accademici è stato utilizzato come strumento di validazione qualitativa
-dell’artefatto nel suo complesso.
-L’obiettivo non è stato quello di misurare prestazioni puntuali,
-ma di verificare se le scelte architetturali e metodologiche adottate
-risultassero plausibili, utili e giustificabili rispetto al contesto
-forense-investigativo di riferimento.
+Per il progetto \textsc{PENTION-M}, il confronto con stakeholder operativi, industriali e accademici è stato utilizzato come strumento di validazione qualitativa dell’artefatto nel suo complesso.
+L’obiettivo non è stato quello di misurare prestazioni puntuali, ma di verificare se le scelte architetturali e metodologiche adottate risultassero plausibili, utili e giustificabili rispetto al contesto forense-investigativo di riferimento.
 
-Questa forma di validazione è coerente con l’approccio di
-\emph{validation by construction} discusso nella Sezione~\ref{sec:validation_dsr}:
-le proprietà del sistema vengono valutate non come risultati isolati,
-ma come conseguenza diretta del modo in cui l’artefatto è stato progettato,
-implementato e integrato.
+Questa forma di validazione è coerente con l’approccio di \emph{validation by construction} discusso nella Sezione~\ref{sec:validation_dsr}: le proprietà del sistema vengono valutate non come risultati isolati, ma come conseguenza diretta del modo in cui l’artefatto è stato progettato, implementato e integrato.
 
 \subsection{Feedback delle Law Enforcement Agencies}
 \label{subsec:validation_lea}
 
-Il primo livello di validazione tramite stakeholder riguarda il confronto
-con le \emph{Law Enforcement Agencies} (LEA),
-che rappresentano il principale contesto applicativo di riferimento per PENTION-M.
-In questa fase, l’artefatto sviluppato è stato valutato in termini di
-coerenza con i workflow investigativi reali,
-utilità percepita delle funzionalità offerte
-e adeguatezza delle modalità di presentazione degli output.
+Il primo livello di validazione tramite stakeholder riguarda il confronto con le \emph{Law Enforcement Agencies} (LEA), che rappresentano il principale contesto applicativo di riferimento per PENTION-M.
+In questa fase, l’artefatto sviluppato è stato valutato in termini di coerenza con i workflow investigativi reali, utilità percepita delle funzionalità offerte e adeguatezza delle modalità di presentazione degli output.
 
-Dal punto di vista operativo, PENTION-M risulta coerente con le modalità
-di intervento tipiche delle LEA,
-in particolare negli scenari di pattugliamento urbano,
-controllo di aree logistiche e ispezione di ambienti chiusi.
-La pipeline end-to-end, descritta nel Capitolo~\ref{chap:architecture},
-supporta un flusso di lavoro in cui l’analisi automatizzata
-fornisce indicazioni rapide e interpretabili,
-senza richiedere competenze specialistiche in chimica o modellazione fisica.
+Dal punto di vista operativo, PENTION-M risulta coerente con le modalità di intervento tipiche delle LEA, in particolare negli scenari di pattugliamento urbano, controllo di aree logistiche e ispezione di ambienti chiusi.
+La pipeline end-to-end, descritta nel Capitolo~\ref{chap:architecture}, supporta un flusso di lavoro in cui l’analisi automatizzata fornisce indicazioni rapide e interpretabili, senza richiedere competenze specialistiche in chimica o modellazione fisica.
 
-Un aspetto rilevante emerso dal confronto con il dominio LEA riguarda
-l’utilità percepita della localizzazione della sorgente e della classificazione NPS
-come strumenti di supporto decisionale.
+Un aspetto rilevante emerso dal confronto con il dominio LEA riguarda l’utilità percepita della localizzazione della sorgente e della classificazione NPS come strumenti di supporto decisionale.
 In particolare, la combinazione tra:
 (i) indicazione di presenza/assenza del segnale,
 (ii) stima spaziale della possibile origine,
 e (iii) livello di confidenza associato all’output,
-risulta allineata con le pratiche operative attuali,
-in cui l’AI è utilizzata come ausilio all’interpretazione
-e non come sostituto della decisione umana.
+risulta allineata con le pratiche operative attuali, in cui l’AI è utilizzata come ausilio all’interpretazione e non come sostituto della decisione umana.
 
-Infine, un elemento di forte rilevanza per la validazione da parte delle LEA
-è rappresentato dalla tracciabilità forense del processo decisionale.
-La possibilità di ricostruire a posteriori
-input, parametri di contesto, versioni dei modelli e output prodotti
-contribuisce a rendere il sistema compatibile
-con esigenze di auditabilità, catena di custodia e accountability,
-aspetti fondamentali in ambito investigativo.
+Infine, un elemento di forte rilevanza per la validazione da parte delle LEA è rappresentato dalla tracciabilità forense del processo decisionale.
+La possibilità di ricostruire a posteriori input, parametri di contesto, versioni dei modelli e output prodotti contribuisce a rendere il sistema compatibile con esigenze di auditabilità, catena di custodia e accountability, aspetti fondamentali in ambito investigativo.
 
 \subsection{Feedback dei partner industriali e di progetto}
 \label{subsec:validation_industry}
 
-Il secondo livello di validazione tramite stakeholder riguarda
-il confronto con partner industriali e di progetto,
-il cui interesse principale è rivolto alla robustezza architetturale,
-alla modularità del sistema e al potenziale di integrazione futura.
+Il secondo livello di validazione tramite stakeholder riguarda il confronto con partner industriali e di progetto, il cui interesse principale è rivolto alla robustezza architetturale, alla modularità del sistema e al potenziale di integrazione futura.
 
-Dal punto di vista architetturale, PENTION-M è stato valutato positivamente
-per la separazione esplicita delle responsabilità tra i diversi componenti:
-ingestion, simulazione fisica, modelli PIML, classificazione,
-monitoring e logging forense.
-Questa organizzazione a microservizi containerizzati,
-descritta nel Capitolo~\ref{chap:architecture},
-favorisce sia la manutenibilità del sistema
-sia l’adattabilità a contesti operativi differenti.
+Dal punto di vista architetturale, PENTION-M è stato valutato positivamente per la separazione esplicita delle responsabilità tra i diversi componenti: ingestion, simulazione fisica, modelli PIML, classificazione, monitoring e logging forense.
+Questa organizzazione a microservizi containerizzati, descritta nel Capitolo~\ref{chap:architecture}, favorisce sia la manutenibilità del sistema sia l’adattabilità a contesti operativi differenti.
 
 Un ulteriore elemento di validazione riguarda la neutralità tecnologica
 dell’architettura.
