@@ -4,15 +4,15 @@
 \label{chap:conclusions}
 
 Questa tesi ha affrontato il problema del rilevamento e dell’analisi di \textit{New Psychoactive Substances} in contesti operativi complessi e dinamici, proponendo una soluzione orientata al supporto investigativo sul campo attraverso la progettazione e la validazione di un laboratorio mobile simulato.
-Il lavoro si inserisce nel contesto del progetto \textsc{PENTION} e si concentra in particolare sulla definizione, realizzazione e valutazione dell’artefatto \textsc{PENTION-M}, concepito come sistema cyber–fisico basato su simulazione fisica, \textit{Physics-Informed Machine Learning} e pipeline \textit{MLOps} orientate alla tracciabilità forense.
+Il lavoro si inserisce nel contesto del progetto \textsc{PENTION} e si concentra in particolare sulla definizione, realizzazione e valutazione dell’artefatto \textsc{PENTION-M}, concepito come sistema \textit{cyber-fisico} basato su simulazione fisica, \textit{Physics-Informed Machine Learning} e pipeline \textit{MLOps} orientate alla tracciabilità forense.
 
-L’obiettivo principale della tesi non è stato quello di sviluppare un singolo modello predittivo, ma di progettare un’architettura coerente e verificabile capace di integrare modelli fisici, algoritmi di apprendimento automatico e requisiti operativi reali all’interno di un unico flusso end-to-end.
+L’obiettivo principale della tesi non è stato quello di sviluppare un singolo modello predittivo, ma di progettare un’architettura coerente e verificabile capace di integrare modelli fisici, algoritmi di apprendimento automatico e requisiti operativi reali all’interno di un unico flusso \textit{end-to-end}.
 In questo senso, il contributo del lavoro va oltre la dimensione puramente tecnica, collocandosi all’intersezione tra ricerca applicata, ingegneria del software e supporto alle attività investigative.
 
 \section{Sintesi dei contributi}
 
-Il primo contributo della tesi riguarda la progettazione di un’architettura cyber–fisica modulare per il rilevamento mobile di sostanze chimiche, strutturata in otto layer funzionali.
-Tale architettura consente di orchestrare la simulazione dei sensori, l’ingestion e la validazione dei dati, l’inferenza dei modelli fisici e PIML, il monitoring operativo e la generazione di evidenze forensi verificabili.
+Il primo contributo della tesi riguarda la progettazione di un’architettura \textit{cyber-fisica} modulare per il rilevamento mobile di sostanze chimiche, strutturata in otto layer funzionali.
+Tale architettura consente di orchestrare la simulazione dei sensori, l’\textit{ingestion} e la validazione dei dati, l’inferenza dei modelli fisici e PIML, il \textit{monitoring} operativo e la generazione di evidenze forensi verificabili.
 La scelta di una struttura a microservizi containerizzati ha permesso di garantire modularità, estendibilità e isolamento delle componenti, aspetti fondamentali in un contesto operativo reale.
 
 Un secondo contributo rilevante è rappresentato dall’integrazione di modelli di \textit{Physics-Informed Machine Learning} all’interno della pipeline.
@@ -20,15 +20,15 @@ In particolare, il lavoro ha mostrato come l’introduzione di vincoli fisici es
 Questo approccio dimostra il valore del PIML come strumento di compromesso tra fedeltà fisica e capacità predittiva in contesti caratterizzati da dati incompleti o rumorosi.
 
 Un ulteriore contributo è rappresentato dallo sviluppo e dalla validazione di un modulo di classificazione delle NPS basato su un dataset EI esteso e integrato da più fonti.
-La costruzione del dataset \textit{PENTION\_EI\_Complete} e il successivo retraining dei modelli hanno consentito di ottenere un classificatore più robusto e generalizzabile rispetto alle versioni precedenti, introducendo al contempo meccanismi di calibrazione probabilistica adattiva per il controllo dell’overconfidence, in linea con i requisiti operativi delle forze dell’ordine.
+La costruzione del dataset \textit{PENTION\_EI\_Complete} e il successivo \textit{retraining} dei modelli hanno consentito di ottenere un classificatore più robusto e generalizzabile rispetto alle versioni precedenti, introducendo al contempo meccanismi di calibrazione probabilistica adattiva per il controllo dell’\textit{overconfidence}, in linea con i requisiti operativi delle forze dell’ordine.
 
 Infine, la progettazione di una pipeline \textit{MLOps} orientata alla tracciabilità forense costituisce un contributo metodologico significativo.
-L’introduzione di logging strutturato, versioning dei modelli, monitoring delle metriche runtime e generazione di bundle forensi firmati consente di garantire riproducibilità, auditabilità e trasparenza del processo decisionale, aspetti fondamentali per l’utilizzo di sistemi basati su intelligenza artificiale in ambito investigativo.
+L’introduzione di \textit{logging} strutturato, \textit{versioning} dei modelli, \textit{monitoring} delle metriche \textit{runtime} e generazione di \textit{bundle} forensi firmati consente di garantire riproducibilità, auditabilità e trasparenza del processo decisionale, aspetti fondamentali per l’utilizzo di sistemi basati su intelligenza artificiale in ambito investigativo.
 
 \section{Impatto scientifico}
 
-Dal punto di vista scientifico, la tesi contribuisce alla letteratura sui sistemi cyber–fisici e sul \textit{Physics-Informed Machine Learning} mostrando un’applicazione concreta di tali paradigmi in un dominio forense.
-Il lavoro evidenzia come la combinazione di modelli fisici e apprendimento automatico possa essere utilizzata non solo per migliorare l’accuratezza predittiva, ma anche per aumentare la spiegabilità e la coerenza dei risultati, elementi spesso trascurati nei modelli puramente data-driven.
+Dal punto di vista scientifico, la tesi contribuisce alla letteratura sui sistemi \textit{cyber-fisici} e sul \textit{Physics-Informed Machine Learning} mostrando un’applicazione concreta di tali paradigmi in un dominio forense.
+Il lavoro evidenzia come la combinazione di modelli fisici e apprendimento automatico possa essere utilizzata non solo per migliorare l’accuratezza predittiva, ma anche per aumentare la spiegabilità e la coerenza dei risultati, elementi spesso trascurati nei modelli puramente \textit{data-driven}.
 
 Inoltre, l’adozione del paradigma \textit{Design Science Research} ha permesso di strutturare il lavoro come un processo di ricerca iterativo, guidato dai requisiti degli stakeholder e validato attraverso feedback progressivi.
 Questo approccio rafforza il valore metodologico della tesi, dimostrando come la DSR possa essere efficacemente applicata allo sviluppo di sistemi complessi in ambiti ad alta criticità come quello forense.
@@ -36,10 +36,10 @@ Questo approccio rafforza il valore metodologico della tesi, dimostrando come la
 \section{Impatto operativo}
 
 Dal punto di vista operativo, \textsc{PENTION-M} rappresenta un prototipo realistico di laboratorio mobile capace di supportare le attività di perlustrazione e rilevamento precoce delle forze dell’ordine.
-Pur operando in un contesto simulato, il sistema riflette in modo fedele i workflow investigativi reali, integrando misurazioni ambientali, modelli di dispersione, analisi predittive e strumenti di visualizzazione in tempo reale.
+Pur operando in un contesto simulato, il sistema riflette in modo fedele i \textit{workflow} investigativi reali, integrando misurazioni ambientali, modelli di dispersione, analisi predittive e strumenti di visualizzazione in tempo reale.
 
-L’attenzione alla tracciabilità, alla riproducibilità e alla spiegabilità dei risultati risponde direttamente alle esigenze espresse dagli stakeholder coinvolti nelle attività di Requirements Engineering.
-In questo senso, il lavoro fornisce una base solida per futuri sviluppi orientati all’adozione operativa, riducendo il gap tra prototipazione accademica e utilizzo reale sul campo.
+L’attenzione alla tracciabilità, alla riproducibilità e alla spiegabilità dei risultati risponde direttamente alle esigenze espresse dagli stakeholder coinvolti nelle attività di \textit{Requirements Engineering}.
+In questo senso, il lavoro fornisce una base solida per futuri sviluppi orientati all’adozione operativa, riducendo il divario tra prototipazione accademica e utilizzo reale sul campo.
 
 \section{Considerazioni finali}
 

@@ -37,7 +37,7 @@ Il modulo di classificazione delle sostanze NPS, basato su un modello XGBoost ad
 Tuttavia, anche in questo caso permangono alcune limitazioni legate alla generalizzazione del modello.
 
 In particolare, il classificatore opera su spettri EI di sostanze pure o ben caratterizzate, mentre in contesti reali gli spettri acquisiti sul campo possono essere affetti da rumore, interferenze, miscele di composti o condizioni di ionizzazione non ideali.
-Sebbene siano state introdotte tecniche di calibrazione probabilistica e strategie di riduzione dell’overconfidence, il sistema non è ancora in grado di gestire in modo completo scenari di contaminazione multipla o di sostanze completamente sconosciute non rappresentate nel dataset di addestramento.
+Sebbene siano state introdotte tecniche di calibrazione probabilistica e strategie di riduzione dell’\textit{overconfidence}, il sistema non è ancora in grado di gestire in modo completo scenari di contaminazione multipla o di sostanze completamente sconosciute non rappresentate nel dataset di addestramento.
 
 \section{Limitazioni operative}
 
@@ -46,7 +46,7 @@ Sebbene siano state introdotte tecniche di calibrazione probabilistica e strateg
 Dal punto di vista operativo, la limitazione più rilevante è l’assenza di una validazione sul campo con hardware reale e operatori delle forze dell’ordine.
 Il sistema è stato concepito, progettato e validato come prototipo simulato, in linea con gli obiettivi della tesi e con i vincoli temporali e logistici del progetto.
 
-Sebbene il coinvolgimento degli stakeholder abbia permesso di valutare la coerenza del workflow operativo, l’usabilità dell’interfaccia e la plausibilità dei risultati, una vera validazione empirica richiederebbe l’impiego del sistema in scenari reali, con dati acquisiti durante operazioni di perlustrazione effettive.
+Sebbene il coinvolgimento degli stakeholder abbia permesso di valutare la coerenza del \textit{workflow} operativo, l’usabilità dell’interfaccia e la plausibilità dei risultati, una vera validazione empirica richiederebbe l’impiego del sistema in scenari reali, con dati acquisiti durante operazioni di perlustrazione effettive.
 
 \subsection{Mancata integrazione con hardware reale}
 
@@ -57,7 +57,7 @@ Questa scelta è coerente con l’obiettivo di sviluppare una piattaforma archit
 
 \subsection{Vincoli di deployment reale}
 
-Infine, il deployment reale di un sistema come \textsc{PENTION-M} comporterebbe una serie di vincoli non affrontati direttamente in questa tesi, tra cui requisiti di certificazione, conformità normativa, sicurezza informatica avanzata e integrazione con i sistemi informativi esistenti delle forze dell’ordine.
+Infine, il \textit{deployment} reale di un sistema come \textsc{PENTION-M} comporterebbe una serie di vincoli non affrontati direttamente in questa tesi, tra cui requisiti di certificazione, conformità normativa, sicurezza informatica avanzata e integrazione con i sistemi informativi esistenti delle forze dell’ordine.
 
 In particolare, l’utilizzo di modelli di intelligenza artificiale in contesti forensi richiede procedure di validazione legale, audit indipendenti e un coinvolgimento attivo delle autorità giudiziarie, aspetti che esulano dal perimetro del lavoro presentato ma che risultano fondamentali per un’adozione operativa su larga scala.
 
@@ -65,15 +65,15 @@ In particolare, l’utilizzo di modelli di intelligenza artificiale in contesti 
 
 \subsection{Field study con le Law Enforcement Agencies}
 
-Il principale sviluppo futuro del progetto consiste nella conduzione di un \textit{field study} strutturato in collaborazione con le Law Enforcement Agencies.
+Il principale sviluppo futuro del progetto consiste nella conduzione di un \textit{field study} strutturato in collaborazione con le \emph{Law Enforcement Agencies}.
 Tale studio permetterebbe di valutare il sistema in condizioni reali, misurando parametri quali l’accuratezza operativa, i tempi di risposta, l’usabilità dell’interfaccia e l’efficacia del supporto decisionale fornito agli operatori.
 
-Un field study consentirebbe inoltre di raccogliere dati empirici utili per il retraining dei modelli e per la calibrazione fine delle soglie operative, colmando il divario tra simulazione e realtà.
+Un \textit{field study} consentirebbe inoltre di raccogliere dati empirici utili per il retraining dei modelli e per la calibrazione fine delle soglie operative, colmando il divario tra simulazione e realtà.
 
 \subsection{Integrazione con spettrometri e sensori reali}
 
 Un ulteriore passo evolutivo riguarda l’integrazione del sistema con spettrometri portatili e sensori chimici reali.
-Questa estensione permetterebbe di validare l’intera pipeline end-to-end, dall’acquisizione del dato grezzo alla generazione del bundle forense, e di valutare l’impatto delle condizioni ambientali reali sulle prestazioni dei modelli.
+Questa estensione permetterebbe di validare l’intera pipeline \textit{end-to-end}, dall’acquisizione del dato grezzo alla generazione del \textit{bundle} forense, e di valutare l’impatto delle condizioni ambientali reali sulle prestazioni dei modelli.
 
 \subsection{Dataset sperimentali e apprendimento incrementale}
 
@@ -87,6 +87,6 @@ L’integrazione di strumenti di interpretazione più avanzati faciliterebbe l�
 
 \subsection{Ottimizzazione per il deployment operativo}
 
-Infine, futuri lavori potrebbero concentrarsi sull’ottimizzazione del sistema per un deployment operativo reale, includendo la riduzione del carico computazionale, l’ottimizzazione delle risorse hardware disponibili su veicoli mobili e il rafforzamento delle misure di sicurezza e resilienza informatica.
+Infine, futuri lavori potrebbero concentrarsi sull’ottimizzazione del sistema per un \textit{deployment} operativo reale, includendo la riduzione del carico computazionale, l’ottimizzazione delle risorse hardware disponibili su veicoli mobili e il rafforzamento delle misure di sicurezza e resilienza informatica.
 
 Nel loro insieme, questi sviluppi delineano un percorso evolutivo chiaro per \textsc{PENTION-M}, che parte da un prototipo simulato validato secondo il paradigma DSR e si proietta verso una possibile adozione operativa in contesti reali, mantenendo come obiettivo centrale il supporto affidabile, tracciabile e spiegabile alle attività investigative.
