@@ -52,6 +52,11 @@ Il sistema integra componenti di simulazione fisica, modelli di apprendimento au
 servizi MLOps e meccanismi di logging forense all’interno di una pipeline coerente,
 tracciabile e riproducibile.
 
+L’integrazione tra modelli fisici e apprendimento automatico si colloca
+nel filone del \emph{Physics-Informed Machine Learning},
+ampiamente discusso in letteratura per sistemi fisici complessi,
+inclusi domini atmosferici e ambientali~\cite{kashinath2021piml}.
+
 Dal punto di vista concettuale, \textsc{PENTION-M} è concepito come un
 \emph{cyber--physical system} simulato, in cui una componente fisica virtuale
 (rappresentazione dell’ambiente urbano, della dispersione chimica e del movimento
@@ -70,7 +75,7 @@ controllato; tuttavia, l’architettura è progettata per riflettere uno scenari
 \emph{edge-only} e \emph{offline-capable}, in cui tutte le operazioni di inferenza,
 monitoraggio e logging avvengono localmente a bordo del laboratorio mobile.
 
-Dal punto di vista funzionale, \textsc{PENTION-M} implementa una pipeline sequenziale
+Operativamente, \textsc{PENTION-M} implementa una pipeline sequenziale
 che inizia con la generazione e acquisizione dei dati di scenario, prosegue con
 l’elaborazione fisica e data-driven delle informazioni, e si conclude con la
 produzione di output operativi e di evidenze forensi verificabili.
@@ -85,6 +90,10 @@ In particolare, l’architettura privilegia:
 (ii) l’integrazione esplicita di conoscenza fisica nei modelli di apprendimento;
 (iii) il monitoraggio continuo del comportamento dei modelli in esecuzione;
 (iv) la produzione nativa di evidenze digitali forensi.
+
+Questa impostazione è coerente con le principali tassonomie del PIML,
+che distinguono modalità di integrazione della fisica
+a livello di feature, architettura e funzione obiettivo~\cite{meng2025piml}.
 
 Sulla base di questi principi, l’architettura di \textsc{PENTION-M} è organizzata in
 un insieme di livelli architetturali funzionali, ciascuno dei quali incapsula una
@@ -862,6 +871,12 @@ e di valutazione operativa del rischio.
 \subsection{Modello di localizzazione della sorgente}
 \label{sec:layer3_source_localization}
 
+Il problema di localizzazione della sorgente di emissione
+può essere formulato come un \emph{inverse advection--diffusion problem};
+in tale classe di problemi, approcci basati su
+\emph{Physics-Informed Neural Networks} sono stati recentemente impiegati
+per stimare parametri o condizioni iniziali a partire da osservazioni parziali~\cite{chuprov2025inverse}.
+
 Il terzo servizio di inferenza del Layer~3 è dedicato alla
 \emph{localizzazione della sorgente di emissione} della sostanza rilevata,
 ovvero alla stima delle coordinate spaziali della sorgente responsabile
@@ -1134,6 +1149,11 @@ automatico dei modelli, bensì la possibilità di ricostruire in modo completo
 e indipendente il processo decisionale seguito dal sistema in un determinato
 istante temporale.
 
+Questa interpretazione estesa del ModelOps è coerente con gli approcci
+proposti per sistemi cyber--fisici e safety-critical,
+in cui la gestione del ciclo di vita dei modelli deve integrare
+monitoring, tracciabilità e requisiti di affidabilità operativa~\cite{faubel2025mlops_cps}.
+
 \subsection{Versioning dei modelli e audit trail}
 
 Il versionamento dei modelli è gestito tramite un registro persistente
@@ -1250,6 +1270,10 @@ Ogni evidenza prodotta dal sistema è:
     \item verificabile in modo indipendente;
     \item resistente a manomissioni non autorizzate.
 \end{itemize}
+
+Questi requisiti sono in linea con le raccomandazioni discusse in ambito
+\emph{SecMLOps} per garantire auditabilità e integrità degli artefatti
+in pipeline di ML in produzione~\cite{calefato_secmlops}.
 
 Dal punto di vista architetturale, il Layer~5 separa in modo esplicito
 le metriche di monitoring operativo (Layer~4) dalle evidenze forensi,
@@ -1424,7 +1448,7 @@ dall’interfaccia operativa di \textsc{PENTION-M}.}
 \label{fig:ui_full_report}
 \end{figure}
 
-\subsection{Discussione: ruolo della UI nella validazione by-construction}
+\subsection[Ruolo della UI nella validazione by-construction]{Discussione: ruolo della UI nella validazione by-construction}
 
 Nel contesto di \textsc{PENTION-M}, l’interfaccia non è un componente accessorio,
 ma parte integrante del paradigma di validazione \emph{by construction}.

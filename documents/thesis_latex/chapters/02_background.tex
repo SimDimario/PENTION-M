@@ -11,7 +11,7 @@ Il capitolo si conclude con una panoramica sullo stato dell’arte relativo al \
 \label{sec:nps}
 
 Le \emph{New Psychoactive Substances} (NPS) rappresentano una classe eterogenea di composti chimici progettati per imitare gli effetti di sostanze stupefacenti tradizionali, eludendo al contempo i controlli normativi e le liste delle sostanze proibite.
-Secondo le definizioni fornite dagli organismi internazionali di riferimento, quali EMCDDA ed UNODC, una NPS è una sostanza non controllata o recentemente controllata che può rappresentare un rischio per la salute pubblica \cite{emcdda_nps, unodc_nps}.
+Secondo le definizioni fornite dagli organismi internazionali di riferimento, quali EMCDDA ed UNODC, una NPS è una sostanza non controllata o recentemente controllata che può rappresentare un rischio per la salute pubblica~\cite{emcdda_nps, unodc_nps}.
 
 Dal punto di vista operativo, le NPS pongono sfide significative alle forze dell’ordine (LEAs) e ai laboratori forensi:
 \begin{itemize}
@@ -27,7 +27,7 @@ Queste caratteristiche rendono particolarmente complessa l’identificazione aff
 \label{sec:ei}
 
 La spettrometria di massa a ionizzazione elettronica (Electron Ionization, EI) è una delle tecniche analitiche più consolidate in ambito forense per l’identificazione di sostanze chimiche.
-Nel processo EI, le molecole vengono ionizzate mediante impatto elettronico ad alta energia (tipicamente 70 eV), generando una serie di frammenti caratteristici che producono uno spettro di massa discreto \cite{gross_mass_spec}.
+Nel processo EI, le molecole vengono ionizzate mediante impatto elettronico ad alta energia (tipicamente 70 eV), generando una serie di frammenti caratteristici che producono uno spettro di massa discreto~\cite{gross_mass_spec}.
 
 Uno spettro EI può essere rappresentato come una funzione discreta:
 \[
@@ -81,7 +81,7 @@ L’uso combinato di tali fonti consente di ottenere una copertura ampia delle c
 \label{subsec:swgdrug}
 
 La libreria SWGDRUG (\emph{Scientific Working Group for the Analysis of Seized Drugs}) rappresenta uno degli standard de facto per la spettrometria di massa forense.
-Essa fornisce spettri EI di elevata qualità, generalmente accompagnati da metadati affidabili e coerenti \cite{swgdrug}.
+Essa fornisce spettri EI di elevata qualità, generalmente accompagnati da metadati affidabili e coerenti~\cite{swgdrug}.
 
 I principali limiti di SWGDRUG riguardano:
 \begin{itemize}
@@ -92,13 +92,13 @@ I principali limiti di SWGDRUG riguardano:
 \subsection{MoNA -- MassBank of North America}
 \label{subsec:mona}
 
-MoNA è una piattaforma open access che aggrega spettri di massa provenienti da numerose fonti \cite{mona}.
+MoNA è una piattaforma open access che aggrega spettri di massa provenienti da numerose fonti~\cite{mona}.
 Pur offrendo un’elevata quantità di dati, MoNA presenta una maggiore eterogeneità nella qualità degli spettri e nella completezza dei metadati, rendendo necessaria una selezione mirata dei record EI.
 
 \subsection{SDBS}
 \label{subsec:sdbs}
 
-Il database SDBS (\emph{Spectral Database for Organic Compounds}) fornisce spettri di riferimento per numerosi composti organici \cite{sdbs}.
+Il database SDBS (\emph{Spectral Database for Organic Compounds}) fornisce spettri di riferimento per numerosi composti organici~\cite{sdbs}.
 Nel contesto di questa tesi, SDBS è stato utilizzato per il recupero mirato di spettri EI relativi a specifiche sostanze NPS, in particolare nei casi di assenza di dati in altre librerie.
 
 \subsection{Problemi di Merging e Normalizzazione}
@@ -193,15 +193,15 @@ Per chiarire la struttura del dataset finale, la Tabella~\ref{tab:pention_ei_exa
 La modellazione della dispersione di sostanze chimiche in atmosfera è un problema classico della fisica ambientale.
 In contesti urbani, tale problema è ulteriormente complicato dalla presenza di edifici, dalla variabilità meteorologica e dalla complessità geometrica dello spazio.
 
-I modelli gaussiani di dispersione, in particolare i modelli \emph{Gaussian Puff} e \emph{Gaussian Plume}, rappresentano una soluzione consolidata per la simulazione di rilasci puntuali \cite{turner_gaussian}.
+I modelli gaussiani di dispersione, in particolare i modelli \emph{Gaussian Puff} e \emph{Gaussian Plume}, rappresentano una soluzione consolidata per la simulazione di rilasci puntuali~\cite{turner_gaussian}.
 Nel lavoro presentato, tali modelli sono utilizzati come base fisica per la generazione di mappe di concentrazione coerenti, successivamente corrette mediante tecniche di apprendimento automatico informate dalla fisica.
 
 \section{Physics-Informed Machine Learning}
 \label{sec:piml}
 
-Il \emph{Physics-Informed Machine Learning} (PIML) rappresenta un paradigma che integra conoscenza fisica nei modelli di apprendimento automatico al fine di migliorarne robustezza, interpretabilità e capacità di generalizzazione \cite{karniadakis_piml, meng_piml}.
+Il \emph{Physics-Informed Machine Learning} (PIML) rappresenta un paradigma che integra conoscenza fisica nei modelli di apprendimento automatico al fine di migliorarne robustezza, interpretabilità e capacità di generalizzazione~\cite{karniadakis_piml, meng_piml}.
 
-Una sistematizzazione completa del paradigma PIML è fornita dalla survey di \cite{meng_piml_survey}, che rappresenta uno dei riferimenti più ampi e recenti sul tema. Gli autori propongono una tassonomia unificata distinguendo tra approcci \emph{physics-for-machine-learning} e \emph{machine-learning-for-physics}, e classificano le modalità di integrazione della conoscenza fisica in tre categorie principali: livello dei dati, livello delle feature e livello della funzione di perdita. La survey introduce inoltre una terminologia condivisa per concetti chiave quali \emph{inductive bias}, \emph{prior physical knowledge} e vincoli fisici \emph{soft} o \emph{hard}, fornendo il quadro concettuale di riferimento utilizzato in questa tesi per l’inquadramento metodologico del PIML.
+Una sistematizzazione completa del paradigma PIML è fornita dalla survey di~\cite{meng2025piml}, che rappresenta uno dei riferimenti più ampi e recenti sul tema. Gli autori propongono una tassonomia unificata distinguendo tra approcci \emph{physics-for-machine-learning} e \emph{machine-learning-for-physics}, e classificano le modalità di integrazione della conoscenza fisica in tre categorie principali: livello dei dati, livello delle feature e livello della funzione di perdita. La survey introduce inoltre una terminologia condivisa per concetti chiave quali \emph{inductive bias}, \emph{prior physical knowledge} e vincoli fisici \emph{soft} o \emph{hard}, fornendo il quadro concettuale di riferimento utilizzato in questa tesi per l’inquadramento metodologico del PIML.
 
 Nel PIML, la conoscenza fisica può essere incorporata a diversi livelli:
 \begin{itemize}
@@ -211,10 +211,10 @@ Nel PIML, la conoscenza fisica può essere incorporata a diversi livelli:
 \end{itemize}
 
 La letteratura recente mostra come il PIML sia particolarmente efficace nei domini governati da equazioni differenziali parziali e caratterizzati da dati scarsi o rumorosi.
-In particolare, Kashinath et al. analizzano l’impiego del PIML in contesti atmosferici e climatici, evidenziando come l’integrazione di vincoli fisici migliori stabilità e generalizzazione dei modelli in presenza di fenomeni complessi \cite{kashinath_piml}.
-Studi successivi hanno approfondito l’utilizzo delle \emph{Physics-Informed Neural Networks} (PINNs) in fluidodinamica, mostrando come tali approcci siano adatti a problemi di trasporto, diffusione e dispersione in condizioni di osservabilità limitata \cite{elhassan_pinns_review}.
+In particolare, Kashinath et al. analizzano l’impiego del PIML in contesti atmosferici e climatici, evidenziando come l’integrazione di vincoli fisici migliori stabilità e generalizzazione dei modelli in presenza di fenomeni complessi~\cite{kashinath2021piml}.
+Studi successivi hanno approfondito l’utilizzo delle \emph{Physics-Informed Neural Networks} (PINNs) in fluidodinamica, mostrando come tali approcci siano adatti a problemi di trasporto, diffusione e dispersione in condizioni di osservabilità limitata~\cite{elhassan2025pinnsparse}.
 
-Tali approcci sono stati inoltre applicati a sistemi fisici complessi in ambito geofisico ed energetico, dimostrando la capacità del PIML di sostituire o affiancare simulazioni numeriche tradizionali ad elevato costo computazionale \cite{geoenergy_piml_review}.
+Tali approcci sono stati inoltre applicati a sistemi fisici complessi in ambito geofisico ed energetico, dimostrando la capacità del PIML di sostituire o affiancare simulazioni numeriche tradizionali ad elevato costo computazionale~\cite{geoenergy_piml_review}.
 
 Nel contesto di PENTION-M, il PIML è utilizzato per correggere la dispersione gaussiana e per migliorare la localizzazione della sorgente, garantendo coerenza con i principi fisici del fenomeno simulato.
 
@@ -240,7 +240,7 @@ le procedure di identificazione forense consolidate.
 \section{MLOps in Sistemi Cyber-Fisici e Contesti Forensi}
 \label{sec:mlops}
 
-L’adozione di modelli di Machine Learning in sistemi operativi richiede pipeline MLOps in grado di gestire versionamento, monitoraggio, drift dei dati e auditabilità \cite{faubel_mlops, calefato_secmlops}.
+L’adozione di modelli di Machine Learning in sistemi operativi richiede pipeline MLOps in grado di gestire versionamento, monitoraggio, drift dei dati e auditabilità~\cite{faubel2023mlops_industry, calefato_secmlops}.
 
 In contesti forensi e investigativi, tali requisiti sono ulteriormente rafforzati dalla necessità di:
 \begin{itemize}

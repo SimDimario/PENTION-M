@@ -5,7 +5,37 @@
 \begin{document}
 
 \input{frontespizio}
-\input{impostazioni_tesi}
+
+\begin{dedication}
+Dedicata a ... %coloro che\\ ci provano ogni giorno.
+\end{dedication}
+
+% ===== ABSTRACT =====
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+La diffusione delle \textit{New Psychoactive Substances} (NPS) rappresenta una sfida crescente per le forze dell’ordine europee, a causa della rapidità con cui nuove molecole vengono introdotte sul mercato e della difficoltà di rilevarle tempestivamente mediante tecniche tradizionali. In particolare, la produzione di NPS avviene spesso in laboratori di piccole dimensioni, potenzialmente mobili, che rilasciano nell’ambiente tracce chimiche a basse concentrazioni, difficili da individuare ma rilevanti dal punto di vista investigativo. In questo contesto emerge la necessità di sistemi operativi mobili, capaci di supportare il rilevamento precoce, l’analisi contestuale e la generazione di evidenze forensi verificabili direttamente sul campo.
+
+Questa tesi si colloca all’interno del progetto europeo \textsc{PENTION} e presenta la progettazione, realizzazione e validazione di \textsc{PENTION-M}, un prototipo di laboratorio mobile simulato per il rilevamento e l’analisi di sostanze psicoattive emergenti. Il sistema è concepito come un artefatto cyber--fisico che integra modelli di simulazione della dispersione atmosferica, tecniche di \textit{Physics-Informed Machine Learning}, modelli di classificazione basati su spettrometria di massa a ionizzazione elettronica e una pipeline \textit{MLOps} orientata alla tracciabilità e all’audit forense.
+
+Il lavoro adotta il paradigma della \textit{Design Science Research}, strutturando la tesi come un processo di ricerca orientato alla costruzione di un artefatto innovativo guidato dai requisiti degli stakeholder. Una campagna di \textit{Requirements Engineering} condotta con partner industriali, ricercatori e rappresentanti delle Law Enforcement Agencies ha permesso di identificare esigenze operative, tecniche e forensi che hanno guidato le iterazioni progettuali del sistema. La validazione dell’artefatto è stata realizzata secondo un approccio \textit{by construction}, integrando feedback degli stakeholder, verifiche tecniche e analisi dei risultati direttamente nel ciclo di sviluppo.
+
+Dal punto di vista architetturale, \textsc{PENTION-M} è strutturato come una pipeline modulare a microservizi, organizzata in layer funzionali che coprono l’intero flusso operativo: dalla simulazione dei sensori e dall’ingestion dei dati, alla generazione di feature fisiche, all’inferenza dei modelli PIML, fino al monitoring runtime e alla produzione di un bundle forense firmato e riproducibile. Particolare attenzione è dedicata all’integrazione tra modelli fisici e apprendimento automatico, al fine di garantire coerenza fisica degli output, robustezza operativa e riduzione di risultati non plausibili.
+
+La tesi include inoltre la costruzione di un dataset esteso di spettri EI per la classificazione delle NPS, ottenuto mediante l’integrazione e la normalizzazione di più fonti pubbliche, e l’addestramento di un classificatore basato su XGBoost, arricchito da meccanismi di calibrazione probabilistica adattiva per il controllo dell’overconfidence. La pipeline \textit{MLOps} progettata consente il versioning dei modelli, il monitoring delle prestazioni e la gestione della chain of custody digitale, rispondendo ai requisiti di trasparenza e verificabilità tipici dei contesti forensi.
+
+I risultati ottenuti mostrano che il sistema è in grado di operare in modo coerente e stabile in scenari simulati complessi, fornendo un supporto operativo credibile alle attività di perlustrazione e rilevamento precoce. Pur in assenza di una validazione sul campo con hardware reale, \textsc{PENTION-M} dimostra la fattibilità di un approccio integrato basato su simulazione fisica, intelligenza artificiale e ingegneria del software per il supporto investigativo.
+
+Il lavoro si conclude discutendo le limitazioni dell’approccio adottato e delineando possibili sviluppi futuri, tra cui la conduzione di field study con le forze dell’ordine, l’integrazione con sensori reali e l’estensione delle tecniche di explainability. Nel complesso, la tesi contribuisce allo sviluppo di sistemi cyber--fisici affidabili, tracciabili e metodologicamente rigorosi per l’applicazione dell’intelligenza artificiale in ambito forense.
+\clearpage
+% ====================
+
+\tableofcontents
+\clearpage
+
+\sloppy
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
 
 \include{chapters/01_introduzione}
 \include{chapters/02_background}
@@ -15,14 +45,10 @@
 \include{chapters/06_limitazioni}
 \include{chapters/07_conclusioni}
 
-\chapter*{Acknowledgements}
-\addcontentsline{toc}{chapter}{Acknowledgements}
-
 \printbibliography[
     heading=bibintoc,
-    title={References}
+    title={Bibliografia}
 ]
-
 
 \listoffigures
 \addcontentsline{toc}{chapter}{\listfigurename}
