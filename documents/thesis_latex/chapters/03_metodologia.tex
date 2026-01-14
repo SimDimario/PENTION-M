@@ -15,7 +15,7 @@ Il problema affrontato in questa tesi presenta caratteristiche che rendono poco 
 Da un lato, PENTION-M deve rispondere a vincoli operativi reali (tempi, robustezza, semplicit\`a d'uso, interoperabilit\`a tra enti, auditabilit\`a e catena di custodia).
 Dall'altro, la soluzione richiede l'integrazione di componenti eterogenei (simulazione fisica, modelli PIML, pipeline MLOps e meccanismi di logging forense) che devono coesistere in un unico sistema coerente.
 
-Il DSR \`e un paradigma di ricerca applicata che mira a generare conoscenza attraverso la progettazione e la valutazione di un artefatto in grado di risolvere un problema rilevante.
+Il DSR \`e un paradigma di ricerca applicata che mira a generare conoscenza attraverso la progettazione e la valutazione di un artefatto in grado di risolvere un problema rilevante, seguendo le linee guida fondamentali stabilite da Hevner et al.~\cite{hevner2004dsr}.
 In questo lavoro, l'artefatto non \`e un singolo modello di Machine Learning, ma un prototipo cyber-fisico mobile che implementa un flusso end-to-end: acquisizione di segnali, simulazione fisica, correzione PIML, localizzazione, classificazione, monitoraggio e produzione di evidenze verificabili.
 
 Infine, l'adozione del DSR consente di strutturare in modo rigoroso la collaborazione con stakeholder (LEAs, partner industriali, coordinamento di progetto e supervisori accademici), formalizzando una campagna di RE e rendendo esplicito come i requisiti abbiano guidato le decisioni architetturali e algoritmiche.
@@ -23,7 +23,7 @@ Infine, l'adozione del DSR consente di strutturare in modo rigoroso la collabora
 \section{Fasi del Design Science Research}
 \label{sec:dsr_phases}
 
-Il processo DSR adottato in questa tesi \`e organizzato in sei fasi, presentate di seguito in forma generica e successivamente istanziate sul caso PENTION-M:
+Il processo DSR adottato in questa tesi segue il modello metodologico proposto da Peffers et al.~\cite{peffers2007dsr_process} ed \`e organizzato in sei fasi, presentate di seguito in forma generica e successivamente istanziate sul caso PENTION-M:
 
 \begin{enumerate}
   \item \textbf{Identificazione del problema e motivazione} (\emph{Problem Identification}): definizione del problema e dei vincoli del dominio, con evidenza della rilevanza pratica.

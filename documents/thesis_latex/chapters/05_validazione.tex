@@ -569,7 +569,7 @@ La coerenza delle stime, la stabilità degli errori e l’ordine di grandezza de
 La validazione del modulo di classificazione delle \emph{New Psychoactive Substances} (NPS) è stata condotta con l’obiettivo di verificare l’affidabilità operativa del classificatore impiegato in \textsc{PENTION-M}, piuttosto che di massimizzarne le prestazioni su metriche puramente accademiche.
 In linea con il paradigma di \emph{validation by construction}, l’analisi si concentra sulla qualità delle confidenze prodotte, sulla loro calibrazione e sulla robustezza del modello rispetto a perturbazioni realistiche dei dati di ingresso.
 
-Il classificatore validato è un modello \textbf{XGBoost} addestrato su spettri EI vettorizzati, utilizzato come componente principale della pipeline decisionale.
+Il classificatore validato è un modello \textbf{XGBoost}~\cite{xgboost} addestrato su spettri EI vettorizzati, utilizzato come componente principale della pipeline decisionale.
 L’output del modello consiste in una predizione di classe accompagnata da una stima di confidenza, successivamente utilizzata per supportare la decisione dell’operatore umano.
 
 \paragraph{Calibrazione delle confidenze}

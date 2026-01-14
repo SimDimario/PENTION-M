@@ -654,9 +654,7 @@ riassume le accuratezze ottenute sul dataset \texttt{PENTION\_EI\_Complete}.
 \label{fig:nps_model_accuracies}
 \end{figure}
 
-In base al confronto, è stato selezionato un modello \textbf{XGBoost}, in quanto
-combina buone prestazioni predittive con stabilità e facilità di integrazione come
-servizio containerizzato.
+In base al confronto, è stato selezionato un modello basato su \textbf{XGBoost}~\cite{xgboost}, in quanto combina buone prestazioni predittive con stabilità e facilità di integrazione come servizio containerizzato.
 
 Oltre alla scelta dell’algoritmo, è stata posta particolare attenzione
 all’interpretabilità del classificatore NPS.
@@ -773,9 +771,7 @@ dei flussi locali.
 Il modello adottato è una rete neurale convoluzionale bidimensionale,
 implementata nel modulo \texttt{MCxM\_PIML.py},
 progettata per operare su mappe spaziali di concentrazione.
-L’architettura segue uno schema encoder--decoder di tipo \emph{U-Net--like},
-in cui le operazioni convoluzionali consentono di catturare pattern spaziali
-sia locali sia globali rilevanti per il fenomeno di dispersione.
+L’architettura segue uno schema encoder--decoder di tipo \emph{U-Net--like}~\cite{ronneberger_unet}, in cui le operazioni convoluzionali consentono di catturare pattern spaziali sia locali sia globali rilevanti per il fenomeno di dispersione.
 
 L’input del modello è multi-canale e comprende:
 (i) la mappa di concentrazione prodotta dal modello gaussiano;
@@ -1042,10 +1038,7 @@ e di contestualizzarle correttamente.
 
 \subsection{Drift fisicamente informato}
 
-Un elemento distintivo del Layer~4 è l’introduzione di un
-\emph{drift fisicamente informato}, progettato per catturare
-variazioni anomale nel comportamento del sistema rispetto
-a una baseline operativa.
+Un elemento distintivo del Layer~4 è l’introduzione di un \emph{drift fisicamente informato}. A differenza del classico \emph{concept drift} statistico descritto in letteratura~\cite{gama_drift}, questo indicatore è progettato per catturare variazioni anomale nel comportamento del sistema rispetto a una baseline operativa
 
 Il drift non è calcolato esclusivamente sulle feature di input,
 ma su un vettore fisico composito che include:
