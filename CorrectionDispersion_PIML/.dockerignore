@@ -20,7 +20,7 @@ data/
 **/datasetNPS/
 **/example/
 
-# Models (gestiti tramite volume esterno)
+# Models
 models/
 **/models/
 

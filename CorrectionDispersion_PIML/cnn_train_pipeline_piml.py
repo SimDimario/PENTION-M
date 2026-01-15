@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 from torch.utils.data import random_split, DataLoader
 from windrose import WindroseAxes
 
-# === FIX PATHS ===
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(ROOT_DIR)
 sys.path.append(os.path.join(ROOT_DIR, "CorrectionDispersion_PIML"))
@@ -18,7 +17,6 @@ from MCxM_PIML import MCxM_PIML
 from loss_function_piml import physics_masked_loss_piml
 from CNNDataset import CNNDataset2
 
-# === UTILS ===
 def rotate_map(cm, k): 
     return np.rot90(cm, k)
 
@@ -46,7 +44,6 @@ def plot_training_curves(train_losses, val_losses, save_path=None):
     else:
         plt.show()
 
-# === PATHS ===
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BINARY_MAP_PATH = os.path.join(SCRIPT_DIR, "binary_maps_data", "amsterdam_netherlands_bbox.npy")
 METADATA_MAP_PATH = os.path.join(SCRIPT_DIR, "binary_maps_data", "amsterdam_netherlands_metadata_bbox.json")
@@ -101,7 +98,6 @@ if __name__ == "__main__":
         wind_speeds.append(wind_speed)
         gps_features.append((gps_x, gps_y))
 
-    # augmentation
     aug_maps, aug_dirs, aug_speeds, aug_gps = [], [], [], []
     for (cm, wd, ws, gps) in zip(concentration_maps, wind_dirs, wind_speeds, gps_features):
         for k in range(4):
@@ -150,22 +146,20 @@ if __name__ == "__main__":
         running_loss = 0.0
 
         for conc_map, wind_dir, wind_speed, global_feat in train_loader:
-            conc_map = conc_map.to(device)          # [B,1,m,m]
-            wind_dir = wind_dir.to(device)          # [B]
-            wind_speed = wind_speed.to(device)      # [B]
+            conc_map = conc_map.to(device)
+            wind_dir = wind_dir.to(device)
+            wind_speed = wind_speed.to(device)
 
             optimizer.zero_grad()
-
-            wind_in = torch.stack([wind_speed, wind_dir], dim=1)  # [B,2]
-
-            output = model(conc_map, wind_in)       # [B,m,m]
+            wind_in = torch.stack([wind_speed, wind_dir], dim=1)
+            output = model(conc_map, wind_in)
 
             wind_vec = (
                 torch.cos(torch.deg2rad(wind_dir)).mean().item(),
                 torch.sin(torch.deg2rad(wind_dir)).mean().item()
             )
 
-            target = conc_map.squeeze(1)            # [B,m,m]
+            target = conc_map.squeeze(1)
             loss, comps = physics_masked_loss_piml(output, target, binary_map, wind_vector=wind_vec)
             loss.backward()
             optimizer.step()
@@ -174,8 +168,6 @@ if __name__ == "__main__":
 
         avg_train_loss = running_loss / len(train_loader)
         train_losses.append(avg_train_loss)
-
-        # validation
         model.eval()
         val_running = 0.0
         with torch.no_grad():
@@ -183,10 +175,8 @@ if __name__ == "__main__":
                 conc_map = conc_map.to(device)
                 wind_dir = wind_dir.to(device)
                 wind_speed = wind_speed.to(device)
-
                 wind_in = torch.stack([wind_speed, wind_dir], dim=1)
                 output = model(conc_map, wind_in)
-
                 wind_vec = (
                     torch.cos(torch.deg2rad(wind_dir)).mean().item(),
                     torch.sin(torch.deg2rad(wind_dir)).mean().item()

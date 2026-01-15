@@ -14,12 +14,12 @@ def physics_masked_loss_piml(
     sim,
     mask,
     wind_vector=None,
-    alpha=1.0,   # mse free
-    beta=0.2,    # building penalty
-    gamma=1e-3,  # smoothness
-    delta=0.1,   # non-negativity
-    eps=0.05,    # wind alignment
-    zeta=0.3     # geomask
+    alpha=1.0,
+    beta=0.2,
+    gamma=1e-3,
+    delta=0.1,
+    eps=0.05,
+    zeta=0.3
 ):
     """
     output: [B,m,m]
@@ -31,39 +31,24 @@ def physics_masked_loss_piml(
         mask = torch.tensor(mask, dtype=torch.float32, device=output.device)
     else:
         mask = mask.to(output.device).float()
-
     if mask.dim() == 2:
-        mask = mask.unsqueeze(0)  # [1,m,m]
-
-    # broadcast su batch
+        mask = mask.unsqueeze(0)
     while mask.dim() < output.dim():
-        mask = mask.unsqueeze(0)  # [1,1,m,m] se serve
-
-    # 1) MSE solo su free space
+        mask = mask.unsqueeze(0)
     mse_free = torch.mean(((output - sim) ** 2) * mask)
-
-    # 2) penalità su edifici
     building_penalty = torch.mean((output ** 2) * (1.0 - mask))
-
-    # 3) non negatività
     nonneg = torch.mean(torch.relu(-output) ** 2)
-
-    # 4) smoothness
     dx, dy = grad(output)
     smoothness = torch.mean(dx ** 2 + dy ** 2)
-
-    # 5) allineamento vento / gradiente
     if wind_vector is not None:
         wx, wy = wind_vector
         wx = torch.tensor(wx, dtype=torch.float32, device=output.device)
         wy = torch.tensor(wy, dtype=torch.float32, device=output.device)
         norm = torch.sqrt(dx ** 2 + dy ** 2 + 1e-8)
-        alignment = (dx * wx + dy * wy) / norm  # cos(theta)
+        alignment = (dx * wx + dy * wy) / norm
         physics = torch.mean((1.0 - alignment) ** 2 * mask)
     else:
         physics = torch.tensor(0.0, device=output.device)
-
-    # 6) geomask (output positivo su edifici)
     geomask = torch.mean(torch.relu(output) * (1.0 - mask))
 
     loss = (

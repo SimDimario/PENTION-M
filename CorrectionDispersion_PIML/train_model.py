@@ -9,12 +9,7 @@ def train(epochs, model, train_loader, val_loader, binary_map, device):
     train_losses  = []
     val_losses = []
     val_maes     = []
-
-    #loss_fn = torch.nn.MSELoss()
-    #optimizer=torch.optim.RMSprop(model.parameters(), lr=1e-4, alpha=0.9)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
-    #decay_rate = 0.95
-    #scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=decay_rate)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='min', factor=0.5, patience=10)
     early_stopper = EarlyStopping(patience=5)
@@ -31,20 +26,14 @@ def train(epochs, model, train_loader, val_loader, binary_map, device):
             wind_dir = batch.wind_dir.view(-1, 1)     
             wind_features = torch.cat([wind_speed, wind_dir], dim=1)  
             global_features = batch.global_features if hasattr(batch, 'global_features') else None
-
             optimizer.zero_grad()
             output = model(mc, wind_features, global_features)
-
             loss = physics_masked_loss(output, mc[:, 0], binary_map, alpha=1.0, beta=1000.0, gamma=0.1, delta=5.0)            
             mae  = torch.mean(torch.abs((output - mc[:, 0]) * torch.tensor(binary_map, dtype=torch.float32, device=device)))
-
             loss.backward()
             optimizer.step()
-
             running_loss += loss.item()
             running_mae  += mae.item()
-
-        ##scheduler.step()
 
         avg_train_loss = running_loss / len(train_loader)
         avg_train_mae  = running_mae / len(train_loader)
@@ -52,7 +41,6 @@ def train(epochs, model, train_loader, val_loader, binary_map, device):
 
         print(f"[INFO] Epoch {epoch+1}: Train Loss={avg_train_loss:.6f}, Train MAE={avg_train_mae:.6f}")
 
-        # --- Validation
         val_loss, val_mae = validate(model, val_loader, binary_map, device)
         val_losses.append(val_loss)
         val_maes.append(val_mae)
@@ -66,7 +54,7 @@ def train(epochs, model, train_loader, val_loader, binary_map, device):
                 model.load_state_dict(early_stopper.best_model_state)
             break
 
-    return model, output, train_losses, val_losses, val_maes # type: ignore
+    return model, output, train_losses, val_losses, val_maes
 
 def validate(model, val_loader, binary_mask, device):
     model.eval()
@@ -83,12 +71,9 @@ def validate(model, val_loader, binary_mask, device):
             wind_dir = batch.wind_dir.view(-1, 1)     
             wind_features = torch.cat([wind_speed, wind_dir], dim=1) 
             global_features = batch.global_features if hasattr(batch, 'global_features') else None
-
             output = model(mc, wind_features, global_features)
- 
             loss = physics_masked_loss(output, mc[:, 0], mask, alpha=1.0, beta=1000.0, gamma=0.1, delta=5.0)
             mae  = torch.mean(torch.abs((output - mc[:, 0]) * mask))
-
             total_loss += loss.item()
             total_mae  += mae.item()
             n_batches  += 1
@@ -98,4 +83,3 @@ def validate(model, val_loader, binary_mask, device):
 
     print(f"[Validation] Loss: {avg_loss:.6f}, MAE: {avg_mae:.6f}")
     return avg_loss, avg_mae
-    

@@ -6,14 +6,12 @@ import json
 import os
 import sys
 
-# Percorso locale corretto
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from service_correction_piml import correct_dispersion_piml
 from binary_map_gen import generate_binary_map, convert_np
 import uvicorn
 
-# === CARICAMENTO BINARY MAP DI DEFAULT (per allineare il modello) ===
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_MAP_PATH = os.path.join(SCRIPT_DIR, "binary_maps_data", "amsterdam_netherlands_bbox.npy")
 
@@ -80,7 +78,7 @@ def predict_endpoint(payload: DispersionInput):
         else DEFAULT_BUILDING_MAP
     )
 
-    glob_feat = None  # le global features non sono usate nella versione attuale del modello
+    glob_feat = None
 
     C_tensor = None
     if payload.concentration_tensor_3d is not None:
@@ -90,9 +88,9 @@ def predict_endpoint(payload: DispersionInput):
                 print(f"[WARN] concentration_tensor_3d shape inattesa: {C_tensor.shape}")
                 C_tensor = None
             else:
-                print(f"[INFO] Tensor 3D ricevuto dal ingestion: shape={C_tensor.shape}")
+                print(f"[INFO] 3D tensor received from ingestion: shape={C_tensor.shape}")
         except Exception as e:
-            print(f"[WARN] Errore nel parsing del tensor 3D: {e}")
+            print(f"[WARN] Error parsing 3D tensor: {e}")
             C_tensor = None
 
     correction_result = correct_dispersion_piml(
@@ -106,7 +104,7 @@ def predict_endpoint(payload: DispersionInput):
 
     return {
         "status": "ok",
-        **correction_result   # contiene corrected_map + model_version
+        **correction_result
     }
 
 """

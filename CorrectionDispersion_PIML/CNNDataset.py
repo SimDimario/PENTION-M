@@ -7,7 +7,7 @@ class CNNDataset2(Dataset):
         self.concentration_maps = concentration_maps
         self.wind_dir = wind_dir
         self.wind_speed = wind_speed
-        self.global_features = global_features  # es. [[gps_x, gps_y], ...]
+        self.global_features = global_features
         self.m = m
 
     def __len__(self):
@@ -20,7 +20,7 @@ class CNNDataset2(Dataset):
 
         global_feat = np.zeros(0, dtype=np.float32)
 
-        conc_map_tensor = torch.tensor(conc_map, dtype=torch.float32).unsqueeze(0)  # [1, m, m]
+        conc_map_tensor = torch.tensor(conc_map, dtype=torch.float32).unsqueeze(0)
         wind_dir_tensor = torch.tensor(wind_dir, dtype=torch.float32)
         wind_speed_tensor = torch.tensor(wind_speed, dtype=torch.float32)
         global_feat_tensor = torch.tensor(global_feat, dtype=torch.float32)

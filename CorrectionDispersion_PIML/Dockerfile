@@ -13,7 +13,6 @@ RUN apt-get update && apt-get install -y \
 
 COPY requirements.txt .
 
-# Usa pip stabile
 RUN pip install --no-cache-dir pip==23.2.1 && \
     pip install --no-cache-dir -r requirements.txt
 
