@@ -7,4 +7,3 @@ scipy
 joblib
 fastapi
 uvicorn
-

@@ -33,12 +33,11 @@ app = FastAPI()
 
 @app.post("/predict_source_raw")
 def predict_source_raw(request: PredictRequest):
-    logger.info(f"Ricevuta richiesta /predict_source_raw con {len(request.payload_sensors)} record")
+    logger.info(f"Received request /predict_source_raw with {len(request.payload_sensors)} records")
 
     try:
         x, y = predict_source(request.payload_sensors, request.n_sensor_operating)
-        logger.info("Predizione sorgente completata")
-
+        logger.info("Source prediction completed")
         return  {
                 "status": 200,
                 "x": x,
@@ -46,7 +45,7 @@ def predict_source_raw(request: PredictRequest):
         }
 
     except Exception as e:
-        logger.exception("Errore durante la predizione della sorgente")
+        logger.exception("Error during source prediction")
         raise e
 
 """if __name__ == "__main__":
