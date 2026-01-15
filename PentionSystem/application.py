@@ -90,7 +90,7 @@ def run_application(payload):
     mean_h_fmt = f"{float(mean_h):.1f}" if mean_h is not None else "N/A"
 
     metadata_section.markdown(f"""
-    ### ℹ️ Grid Information
+    ### Grid Information
     - **Grid**: {metadata.get('grid_size','N/A')}×{metadata.get('grid_size','N/A')}
     - **Total buildings**: {metadata.get('total_buildings','N/A')}
     - **Building cells**: {int(building_cells):,}
@@ -104,23 +104,19 @@ def run_application(payload):
 
     st.session_state["metadata_text"] = metadata
     status_text.text("Binary map generated successfully ✅")
-
-    # --- Meteo condition
     status_text.text("Sample meteo condition...")
     sensor_air = SensorAir(sensor_id=00, x=0.0, y=0.0, z=2.0)
     progress = advance_progress(progress_bar, progress, 25)
-
     wind_speed, wind_type, stability_type, stability_value, humidify, dry_size, RH = sensor_air.sample_meteorology()
 
     if weather_section is not None:
         safe_markdown(weather_placeholder,
-            f"💨 **Wind speed (m/s):** {wind_speed}  \n"
-            f"💨 **Wind type:** {wind_type}  \n"
-            f"📈 **Stability:** {stability_type}  \n"
-            f"♒︎ **Relative Humidity (%):** {RH}"
+            f"**Wind speed (m/s):** {wind_speed}  \n"
+            f"**Wind type:** {wind_type}  \n"
+            f"**Stability:** {stability_type}  \n"
+            f"**Relative Humidity (%):** {RH}"
         ) 
 
-    # --- Sensor substance
     status_text.text("Air sampling...")
     sensors_substance = []
     for i in range(n_sensors):
@@ -142,7 +138,6 @@ def run_application(payload):
                        for s in sensors_substance]
         sensors_placeholder.table(sensor_info)
 
-    # --- NPS classification
     status_text.text("NPS classification...")
     substance_nps = []
 
@@ -170,12 +165,10 @@ def run_application(payload):
             nps_placeholder.warning("No NPS identified.")
 
     progress = advance_progress(progress_bar, progress, 45)
-
     x_src, y_src = random_position(free_cells)
     h_src = round(np.random.uniform(1, 10), 2)
     Q = round(np.random.uniform(0.0001, 0.01), 4)
     stacks = [(x_src, y_src, Q, h_src)]
-
     print(stability_value)
     print(wind_speed)
     print(wind_type)
@@ -201,7 +194,7 @@ def run_application(payload):
     status_text.text("Running Gaussian dispersion model...")
     progress = advance_progress(progress_bar, progress, 60)
 
-    print("risposta ottenuta")
+    print("response obtained")
     print(f"code: {response_gauss.status_code}")
     print(response_gauss)
 
@@ -231,14 +224,10 @@ def run_application(payload):
     print(x.shape)
     print(type(y))
     print(y.shape)
-
     status_text.text("Dispersion map generation...")
     plot_plan_view(C1, x, y, dispersion_placeholder, dark=dark_mode)
     plot_wind_rose(wind_dir, wind_speed, wind_rose_placeholder, dark=dark_mode)
-
-    # --- Localizzazione sorgente
     status_text.text("Source estimation...")
-
     payload_sensors = []
     for s in sensors_substance:
         if not s.is_fault:
@@ -283,7 +272,6 @@ def run_application(payload):
         else:
             source_placeholder.warning("Source not estimated.")
 
-    # --- gaussian plume dispersion (raw simulation) 
     status_text.text("Raw dispersion simulation...")
 
     stacks = [(x, y, Q, h_src)]
@@ -333,7 +321,6 @@ def run_application(payload):
     status_text.text("Wind rose graph generation...")
     plot_wind_rose(wind_dir, wind_speed, wind_rose_placeholder)
 
-    # --- Dispersion simulation + correction
     status_text.text("Dispersion simulation...")
     response_mcxm = requests.post(f"{API_CORRECTION}/correct_dispersion",
                                   json={
@@ -395,7 +382,6 @@ def run_application(payload):
     st.rerun()
 
 def render_results_from_state(results):
-    # 1) Weather
     if results.get("weather"):
         w = results["weather"]
         safe_markdown(
@@ -437,20 +423,19 @@ def render_results_from_state(results):
     meta = results.get("metadata") or st.session_state.get("metadata_text")
     if meta:
         metadata_section.markdown(f"""
-        ### ℹ️ Informazioni sulla griglia
+        ### Grid Information
 
-        - **Griglia**: {meta.get('grid_size', 'N/A')}×{meta.get('grid_size', 'N/A')}
-        - **Edifici totali**: {meta.get('total_buildings', 'N/A')}
-        - **Celle edifici**: {meta.get('building_cells', 'N/A')}
-        - **Celle libere**: {meta.get('free_cells', 'N/A')}
+        - **Grid**: {meta.get('grid_size', 'N/A')}×{meta.get('grid_size', 'N/A')}
+        - **Total buildings**: {meta.get('total_buildings', 'N/A')}
+        - **Building cells**: {meta.get('building_cells', 'N/A')}
+        - **Free cells**: {meta.get('free_cells', 'N/A')}
         - **CRS**: {meta.get('crs', 'N/A')}
-        - **Risoluzione**: {meta.get('resolution (m)', 'N/A')} m
-        - **Densità edifici**: {float(meta.get('building_density', np.nan)):.1f}%
-        - **Altezza media edifici**: {float(meta.get('mean_height', np.nan))} m
-        - **Città**: {meta.get('city', 'N/A')}
+        - **Resolution**: {meta.get('resolution (m)', 'N/A')} m
+        - **Building density**: {float(meta.get('building_density', np.nan)):.1f}%
+        - **Mean building height**: {float(meta.get('mean_height', np.nan))} m
+        - **City**: {meta.get('city', 'N/A')}
         """)
 
-    # 5) Dispersion (plan view + folium)
     disp = results.get("dispersion_map")
     grid = results.get("grid", {})
     meta = results.get("metadata", {})
@@ -459,7 +444,6 @@ def render_results_from_state(results):
     )
 
     if disp is not None:
-        # Plan view
         xg = np.array(grid.get("x_grid")) if grid.get("x_grid") is not None else None
         yg = np.array(grid.get("y_grid")) if grid.get("y_grid") is not None else None
 
@@ -474,7 +458,6 @@ def render_results_from_state(results):
                 Xg, Yg = np.meshgrid(x_lin, y_lin)
                 plot_plan_view(np.array(disp), xg, yg, dispersion_placeholder, dark=dark_mode)
 
-        # Folium map
         if bounds and all(v is not None for v in bounds):
             min_lon, min_lat, max_lon, max_lat = bounds
             m = plot_dispersion_on_map(
@@ -488,9 +471,8 @@ def render_results_from_state(results):
                     st_folium(m, width=700, height=500)
 
     progress_bar.progress(100)
-    st.sidebar.success("✅ Simulation results loaded successfully")
+    st.sidebar.success("Simulation results loaded successfully")
 
-# ---------------- INTERFACE STREAMLIT ---------------- #
 st.set_page_config(page_title="PentionSystem", layout="wide")
 if "simulation_results" not in st.session_state:
     st.session_state.simulation_results = {
@@ -553,7 +535,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Sidebar input
 st.sidebar.header("Insert simulation parameters")
 min_lat = st.sidebar.number_input("Min Lat", value=41.89, format="%.5f")
 min_lon = st.sidebar.number_input("Min Lon", value=12.48, format="%.5f")
@@ -658,7 +639,6 @@ sensors_section = tab5
 
 binary_map_section = binary_map_container
 
-# ---------------- START SIMULATION ---------------- #
 if start:
     status_text.success("Simulation started ✅")
 

@@ -19,17 +19,14 @@ def plot_plan_view(C1, x, y, dispersion_placeholder, dark=False):
         else:
             cbar_color = 'black'
 
-        # Se il risultato è 3D (es. da Gaussian Model), integra lungo il tempo
         if C1.ndim == 3:
-            data = np.trapz(C1, axis=2) * 1e6  # µg/m³
+            data = np.trapz(C1, axis=2) * 1e6
         else:
-            # Se è 2D (es. da CorrectionDispersion), usa direttamente la mappa
-            data = C1 * 1e6  # µg/m³
+            data = C1 * 1e6
 
         vmin = np.percentile(data, 5)
         vmax = np.percentile(data, 95)
 
-        # Plot della concentrazione integrata
         pcm = ax_main.pcolor(x, y, data, cmap='jet', shading='auto', vmin=vmin, vmax=vmax)
         cbar = fig.colorbar(pcm, ax=ax_main, label=r'$\mu g \cdot m^{-3}$')
         cbar.set_label(r'$\mu g \cdot m^{-3}$', color=cbar_color)
@@ -61,12 +58,11 @@ def plot_wind_rose(wind_dir, wind_speed, wind_rose_placeholder, dark=False):
                 ax_inset.spines['polar'].set_color('black')
                 ax_inset.title.set_color('black')
 
-            # Plot rosa dei venti con direzioni e velocità
             wind_dir = np.array(wind_dir) % 360
             wind_speed = np.full_like(wind_dir, fill_value=wind_speed, dtype=float)
             ax_inset.bar(wind_dir, wind_speed, normed=True, opening=0.8, edgecolor='white')
             ax_inset.set_legend(loc='lower right', title='Wind speed (m/s)')
-            ax_inset.set_title("Rosa dei venti")
+            ax_inset.set_title("Compass rose")
 
             st.pyplot(fig, clear_figure=True, width='content')
 
@@ -91,8 +87,8 @@ def plot_binary_map(binary_map, bounds, map_section, sensors=None, dark=False):
         ax.set_ylim(y_min, y_max)
 
 
-        ax.set_xlabel("Coordinate X (grid)")
-        ax.set_ylabel("Coordinate Y (grid)")
+        ax.set_xlabel("coordinates X (grid)")
+        ax.set_ylabel("coordinates Y (grid)")
         ax.grid(False)
 
         if sensors is not None:
@@ -117,7 +113,6 @@ def plot_binary_map(binary_map, bounds, map_section, sensors=None, dark=False):
 
         st.pyplot(fig, clear_figure=True, width='content')
 
-
 def plot_dispersion_on_map(min_lat, min_lon, max_lat, max_lon, sensors, dispersion_map, source_lat=None, source_lon=None, title="Mappa Dispersione", dark=False):
 
     center_lat = (min_lat + max_lat) / 2
@@ -126,7 +121,6 @@ def plot_dispersion_on_map(min_lat, min_lon, max_lat, max_lon, sensors, dispersi
     tiles = "CartoDB dark_matter" if dark else "OpenStreetMap"
     m = folium.Map(location=[center_lat, center_lon], zoom_start=14, tiles=tiles, control_scale=True)
 
-    # Sensori
     for s in sensors:
         folium.Marker(
             [s.y, s.x],
@@ -135,7 +129,6 @@ def plot_dispersion_on_map(min_lat, min_lon, max_lat, max_lon, sensors, dispersi
 
         ).add_to(m)
 
-    # Sorgente stimata
     if source_lat is not None and source_lon is not None:
         folium.Marker(
             [source_lat, source_lon],
@@ -144,7 +137,6 @@ def plot_dispersion_on_map(min_lat, min_lon, max_lat, max_lon, sensors, dispersi
 
         ).add_to(m)
 
-    # Heatmap della dispersione
     heat_data = []
     rows = len(dispersion_map)
     cols = len(dispersion_map[0]) if rows > 0 else 0
