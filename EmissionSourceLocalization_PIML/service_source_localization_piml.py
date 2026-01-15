@@ -1,4 +1,3 @@
-# service_source_localization_piml.py
 import pandas as pd
 import numpy as np
 from scipy.signal import find_peaks
@@ -12,7 +11,6 @@ logger = logging.getLogger(__name__)
 BASE_DIR = os.path.dirname(__file__)
 MODEL_PATH = os.path.join(BASE_DIR, "models/")
 
-# Caricamento modello e scaler PIML
 logger.info(f"[PIML] Loading model from {MODEL_PATH}")
 model = joblib.load(os.path.join(MODEL_PATH, "emission_source_model_piml.pkl"))
 scaler = joblib.load(os.path.join(MODEL_PATH, "scaler_piml.pkl"))
@@ -24,10 +22,8 @@ def estrai_feature(time, conc, window=None, spike_height=None):
         time = json.loads(time)
     if isinstance(conc, str):
         conc = json.loads(conc)
-
     time = np.array(time, dtype=float)
     conc = np.array(conc, dtype=float)
-
     if len(time) == 0 or len(conc) == 0:
         return {k: 0.0 for k in [
             "C_max","t_peak","t_first_peak","mean","std","AUC",
@@ -36,15 +32,12 @@ def estrai_feature(time, conc, window=None, spike_height=None):
 
     C_max = np.max(conc)
     idx_max = np.argmax(conc)
-    t_peak = time[idx_max]                     # ⬅⬅⬅ AGGIUNTO
-
+    t_peak = time[idx_max]
     spike_height = spike_height or 0.1 * C_max
     peaks, _ = find_peaks(conc, height=spike_height)
     t_first_peak = time[peaks[0]] if len(peaks) > 0 else 0.0
-
     rise_rate = (C_max - conc[0]) / (t_peak - time[0] + 1e-6)
     fall_rate = (C_max - conc[-1]) / (time[-1] - t_peak + 1e-6)
-
     mean_val, std_val = float(np.mean(conc)), float(np.std(conc))
     auc = np.trapz(conc, time)
     above = np.where(conc > spike_height)[0]
@@ -67,7 +60,6 @@ def estrai_feature(time, conc, window=None, spike_height=None):
         "spike_frequency": spike_freq
     }
 
-
 def predict_source_piml(sensors: list, n_sensor_operating: int):
     logger.info(f"[PIML] Predicting source for {len(sensors)} sensors")
 
@@ -78,10 +70,8 @@ def predict_source_piml(sensors: list, n_sensor_operating: int):
 
     agg_features = []
     for sensor_id, group in df.groupby("sensor_id"):
-        # ⬇⬇⬇ FIX QUI: estraiamo la LISTA vera dalla Series
         time_seq = group["time"].iloc[0]
         conc_seq = group["conc"].iloc[0]
-
         feat = estrai_feature(time_seq, conc_seq)
         first = group.iloc[0]
         feat.update({
@@ -98,16 +88,13 @@ def predict_source_piml(sensors: list, n_sensor_operating: int):
             "n_sens_valid": n_sensor_operating,
         })
         agg_features.append(feat)
-
     X_input = pd.DataFrame(agg_features).fillna(0)
     X_input = X_input.reindex(columns=scaler.feature_names_in_, fill_value=0)
     X_scaled = scaler.transform(X_input)
     y_pred = model.predict(X_scaled)
-
     x, y = float(y_pred[0][0]), float(y_pred[0][1])
     var = float(np.var(y_pred))
     conf = 1.0 / (1.0 + var)
-
     logger.info(f"[PIML] Predicted source: x={x:.3f}, y={y:.3f}, conf={conf:.3f}")
     return {
         "x": x,

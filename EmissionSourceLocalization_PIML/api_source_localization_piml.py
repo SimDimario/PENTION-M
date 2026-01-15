@@ -7,11 +7,9 @@ import sys
 import numpy as np
 import json
 
-# percorso locale del servizio
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from service_source_localization_piml import predict_source_piml
 
-# === VERSIONING MODELLO ===
 REGISTRY_PATH = "/logs/model_registry.json"
 
 def get_model_version():
