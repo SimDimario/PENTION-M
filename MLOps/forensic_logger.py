@@ -39,20 +39,11 @@ else:
     with open(PUBLIC_KEY_PATH, "rb") as f:
         public_key = serialization.load_pem_public_key(f.read())
 
-# ============================================================
-# Forensic Logger & ModelOps Service (Layer 5)
-# ============================================================
-
 app = FastAPI(title="MLOps Forensic Logger & ModelOps")
 
-# Percorsi e setup directory
 LOG_DIR = "/logs"
 FORENSIC_DIR = os.path.join(LOG_DIR, "forensic")
 os.makedirs(FORENSIC_DIR, exist_ok=True)
-
-# ============================================================
-# MODELLI DATI
-# ============================================================
 
 class ForensicExport(BaseModel):
     export_file: str
@@ -103,25 +94,14 @@ class ForensicEvent(BaseModel):
     class Config:
         extra = "allow"
 
-# ============================================================
-# FUNZIONI UTILI
-# ============================================================
-
 def write_bundle(event: dict):
     ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     bundle_name = f"bundle_{ts}_{uuid.uuid4().hex[:8]}.json"
     path = os.path.join(FORENSIC_DIR, bundle_name)
-
-    # Costruiamo una versione "canonica" dell'evento per l'hash
-    # in cui hash_sha256 e signature dentro ForensicExport sono vuoti
     canonical_event = json.loads(json.dumps(event, sort_keys=True, default=str))
-
     serialized = json.dumps(canonical_event, sort_keys=True, default=str)
     hash_value = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
     signature = private_key.sign(hash_value.encode()).hex()
-
-    # Popoliamo solo le compliance_tag nel blocco ForensicExport dell'evento,
-    # l'hash e la firma rimangono proprietà del bundle root.
     fe = event.setdefault("ForensicExport", {})
     fe.setdefault("compliance_tags", [])
 
@@ -153,10 +133,6 @@ def load_bundle(filename: str) -> dict:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
-# ============================================================
-# ENDPOINTS
-# ============================================================
-
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "forensic_logger", "time": datetime.utcnow().isoformat()}
@@ -165,12 +141,10 @@ def health():
 def log_forensic(event: ForensicEvent):
     event_dict = json.loads(event.json(by_alias=True))
 
-    # --- Inject temperature scaling value if present ---
     if "Inference" in event_dict and isinstance(event_dict["Inference"], dict):
         if "temperature_used" not in event_dict["Inference"]:
             event_dict["Inference"]["temperature_used"] = None
 
-    # === 🔍 Aggiunta metadati forensi sugli artifact ===
     artifacts = {}
     try:
         model_path = "/CorrectionDispersion_PIML/models/mcxm_piml_model_best.pth"
@@ -199,8 +173,6 @@ def log_forensic(event: ForensicEvent):
         artifacts["error"] = str(e)
 
     event_dict["artifacts"] = artifacts
-
-    # === aggiungi compliance tags PRIMA di scrivere il bundle ===
     fe = event_dict.setdefault("ForensicExport", {})
     fe.setdefault("compliance_tags", [])
     fe["compliance_tags"].extend([
@@ -245,37 +217,25 @@ def delete_bundle(filename: str):
     os.remove(path)
     return {"status": "ok", "deleted": filename}
 
-# ============================================================
-# Verifica integrità forense
-# ============================================================
-
 @app.get("/verify_bundle/{filename}")
 def verify_bundle(filename: str):
     """
-    Ricalcola gli hash del modello e della mappa di concentrazione
-    e li confronta con quelli salvati nel bundle forense.
+    Recalculates the model and heatmap hashes
+    and compares them with those stored in the forensic bundle.
     """
     try:
         bundle = load_bundle(filename)
         artifacts = bundle.get("event", {}).get("artifacts", {})
         result = {"bundle": filename, "verified": True, "details": {}}
-
-        # --- Recompute hash of event content (versione canonica) ---
         event_data = bundle.get("event", {})
-
         canonical_event = json.loads(json.dumps(event_data, sort_keys=True, default=str))
-
         recomputed_hash = hashlib.sha256(
             json.dumps(canonical_event, sort_keys=True, default=str).encode()
         ).hexdigest()
-
         hash_match = (recomputed_hash == bundle.get("hash_sha256", ""))
         result["details"]["event_hash_match"] = hash_match
-
         if not hash_match:
             result["verified"] = False
-
-        # Verifica hash del modello
         model_path = "/CorrectionDispersion_PIML/models/mcxm_piml_model_best.pth"
         if os.path.exists(model_path):
             with open(model_path, "rb") as mf:
@@ -287,8 +247,6 @@ def verify_bundle(filename: str):
         else:
             result["details"]["model_hash_match"] = False
             result["verified"] = False
-
-        # Verifica hash della mappa di concentrazione
         dataset_dir = "/CorrectionDispersion_PIML/dataset/real_dispersion"
         if os.path.exists(dataset_dir):
             maps = sorted([f for f in os.listdir(dataset_dir) if f.endswith(".npy")])
@@ -303,8 +261,6 @@ def verify_bundle(filename: str):
         else:
             result["details"]["concentration_map_hash_match"] = False
             result["verified"] = False
-
-        # Verify digital signature
         try:
             stored_sig = bytes.fromhex(bundle.get("signature", ""))
 
@@ -321,10 +277,6 @@ def verify_bundle(filename: str):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-# ============================================================
-# AVVIO LOCALE
-# ============================================================
 
 if __name__ == "__main__":
     import uvicorn

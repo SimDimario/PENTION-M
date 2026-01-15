@@ -7,21 +7,10 @@ import os
 import numpy as np
 import math
 import statistics
-
-# ============================================
-# Monitoring & Telemetry Service (Layer 4)
-# ============================================
-
 app = FastAPI(title="MLOps Monitoring & Drift Service")
-
-# Paths
 LOG_DIR = "/logs"
 LOG_FILE = os.path.join(LOG_DIR, "monitoring_log.jsonl")
 os.makedirs(LOG_DIR, exist_ok=True)
-
-# ---------------------------
-# Pydantic Schemas
-# ---------------------------
 
 class MonitoringBlock(BaseModel):
     model_version: str
@@ -66,10 +55,6 @@ class MonitoringEvent(BaseModel):
             raise ValueError("timestamp must be ISO 8601")
         return v
 
-# ---------------------------
-# Helpers
-# ---------------------------
-
 def append_jsonl(path: str, obj: dict):
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(obj, default=str) + "\n")
@@ -82,19 +67,17 @@ def safe_float(x, default=0.0):
 
 def compute_simple_drift(event: MonitoringEvent) -> float:
     """
-    Calcola un drift semplificato.
-    Supporta sia dict che BaseModel per PIML_Features / Inference.
+    Calculates a simplified drift.
+    Supports both dict and BaseModel for PIML_Features / Inference.
     """
     score = 0.0
     contrib = 0
 
-    # --- Estrattore generico ---
     def get_attr(obj, key):
         if isinstance(obj, dict):
             return obj.get(key)
         return getattr(obj, key, None)
 
-    # --- wind_vector ---
     wv = get_attr(event.PIML_Features, "wind_vector")
     if wv is not None and isinstance(wv, list) and len(wv) >= 1:
         try:
@@ -104,14 +87,12 @@ def compute_simple_drift(event: MonitoringEvent) -> float:
         score += min(var / 50.0, 1.0)
         contrib += 1
 
-    # --- stability_index ---
     si = get_attr(event.PIML_Features, "stability_index")
     if si is not None:
         si = safe_float(si, 4.0)
         score += min(abs(si - 3.5) / 3.0, 1.0)
         contrib += 1
 
-    # --- confidence_score ---
     conf = get_attr(event.Inference, "confidence_score")
     if conf is not None:
         conf = safe_float(conf, 1.0)
@@ -123,7 +104,7 @@ def compute_simple_drift(event: MonitoringEvent) -> float:
     return max(0.0, min(score / contrib, 1.0))
 
 def compute_latency_trend(events: list[dict]) -> float:
-    """Valuta se la latenza media sta crescendo (return 0–1)."""
+    """Evaluate whether average latency is increasing (return 0–1)."""
     if len(events) < 2:
         return 0.0
     last = [e.get("latency_ms", 0) for e in events[-5:]]
@@ -133,7 +114,7 @@ def compute_latency_trend(events: list[dict]) -> float:
 
 def compute_drift_dynamic(event: MonitoringEvent, history: list[dict]) -> float:
     """
-    Drift PIML basato su Mahalanobis multivariato.
+    Multivariate Mahalanobis-based PIML drift.
     """
     x = build_feature_vector(event)
 
@@ -142,11 +123,9 @@ def compute_drift_dynamic(event: MonitoringEvent, history: list[dict]) -> float:
     cov = baseline["cov"]
     count = baseline["count"]
 
-    # Se baseline non esiste → inizializza
     MIN_BASELINE_COUNT = 5
     if mean is None or cov is None or count < MIN_BASELINE_COUNT:
 
-        # aggiorna baseline
         if count == 0:
             mean = x
             cov = np.eye(len(x)).tolist()
@@ -160,7 +139,6 @@ def compute_drift_dynamic(event: MonitoringEvent, history: list[dict]) -> float:
             mean = mean + lr * delta
             cov = cov + lr * (np.outer(delta, delta) - cov)
 
-        # convert numpy arrays or lists into serializable lists
         if isinstance(mean, np.ndarray):
             mean_list = mean.tolist()
         else:
@@ -178,36 +156,25 @@ def compute_drift_dynamic(event: MonitoringEvent, history: list[dict]) -> float:
             "distances": []
         })
 
-        return 0.0  # finché non abbiamo baseline stabile
+        return 0.0
 
-    # baseline stabile → calcolo Mahalanobis
     mean = np.array(mean)
     cov = np.array(cov)
-
-    # regularizzazione per evitare matrici singolari
     cov = cov + np.eye(len(x)) * 1e-3
-
     d = mahalanobis(x, mean, cov)
-
-    # aggiorna rolling buffer
     distances = baseline.get("distances", [])
     distances.append(float(d))
     baseline["distances"] = distances
-
-    # calcolo quantile 95%
     if len(distances) < 20:
-        # fallback: usiamo la funzione esponenziale
         drift = float(1 - math.exp(-d))
     else:
         q95 = float(np.quantile(distances, 0.95))
         if q95 <= 1e-6:
-            drift = float(1 - math.exp(-d))  # fallback safe
+            drift = float(1 - math.exp(-d))
         else:
             drift = min(d / q95, 1.0)
 
-    # salva baseline aggiornata
     save_baseline(baseline)
-
     return round(drift, 4)
 
 def load_last_n(path: str, n: int) -> List[dict]:
@@ -232,7 +199,6 @@ def load_baseline():
         return {"mean": None, "cov": None, "count": 0, "distances": []}
     try:
         data = json.load(open(BASELINE_PATH))
-        # retrocompatibilità con vecchia versione
         if "distances" not in data:
             data["distances"] = []
         return data
@@ -240,7 +206,6 @@ def load_baseline():
         return {"mean": None, "cov": None, "count": 0, "distances": []}
 
 def save_baseline(bline):
-    # limita le distanze agli ultimi 300
     if "distances" in bline and len(bline["distances"]) > 300:
         bline["distances"] = bline["distances"][-300:]
     with open(BASELINE_PATH, "w") as f:
@@ -248,12 +213,12 @@ def save_baseline(bline):
 
 def build_feature_vector(event: MonitoringEvent):
     """
-    Feature vector fisico per il drift:
-    Supporta sia BaseModel che dict.
-    Include:
+    Physical feature vector for drift:
+    Supports both BaseModel and dict.
+    Includes:
     - sigma_y, sigma_z, Pe, stability_index
     - confidence_score
-    - wind_speed_mps, wind_dir_deg (normalizzato 0–1)
+    - wind_speed_mps, wind_dir_deg (normalized 0–1)
     """
     def get(obj, key):
         if isinstance(obj, dict):
@@ -271,7 +236,7 @@ def build_feature_vector(event: MonitoringEvent):
     conf = safe_float(get(inf, "confidence_score"), 1.0)
 
     wind_speed = safe_float(get(sa, "wind_speed_mps"), 0.0)
-    wind_dir = safe_float(get(sa, "wind_dir_deg"), 0.0) / 360.0  # normalizzato
+    wind_dir = safe_float(get(sa, "wind_dir_deg"), 0.0) / 360.0
 
     f = [
         sigma_y,
@@ -293,11 +258,6 @@ def mahalanobis(x, mean, cov):
     except:
         return 0.0
 
-
-# ---------------------------
-# Endpoints
-# ---------------------------
-
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "monitoring", "time": datetime.utcnow().isoformat()}
@@ -305,17 +265,15 @@ def health():
 @app.post("/monitor_event")
 def monitor_event(event: MonitoringEvent):
     """
-    Riceve un evento completo (idealmente lo stesso payload di /ingest_data)
-    ed estrae i campi rilevanti per il monitoring. Salva una riga JSONL.
+    Receives a complete event (ideally the same payload as /ingest_data)
+    and extracts the relevant fields for monitoring. Saves a single JSONL line.
     """
-    # Calcola drift se mancante
     history = load_last_n(LOG_FILE, 10)
     drift = compute_drift_dynamic(event, history)
     lat = 0
     mse_free = 0.0
     model_version = "unknown"
 
-    # helper per leggere sia da dict che da oggetto
     def get_attr(obj, key, default=None):
         if isinstance(obj, dict):
             return obj.get(key, default)
@@ -348,9 +306,9 @@ def monitor_event(event: MonitoringEvent):
 @app.get("/metrics/summary")
 def metrics_summary(last_n: int = Query(200, ge=1, le=5000)):
     """
-    Ritorna un riassunto statistico degli ultimi N eventi:
-    - media/mediana/min/max di latency e drift
-    - conteggio per model_version
+    Returns a statistical summary of the last N events:
+    - mean/median/min/max latency and drift
+    - count for model_version
     """
     events = load_last_n(LOG_FILE, last_n)
     if not events:
@@ -393,12 +351,8 @@ def metrics_summary(last_n: int = Query(200, ge=1, le=5000)):
 
 @app.get("/metrics/last")
 def last_events(k: int = Query(10, ge=1, le=200)):
-    """Restituisce le ultime k righe grezze del monitoring log."""
+    """Returns the last k raw lines of the monitoring log."""
     return {"status": "ok", "items": load_last_n(LOG_FILE, k)}
-
-# ---------------------------
-# Local run
-# ---------------------------
 
 if __name__ == "__main__":
     import uvicorn

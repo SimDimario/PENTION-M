@@ -7,32 +7,22 @@ import os
 import sys
 import importlib.util
 
-# --- Fix import manuale ---
 sys.path.extend(["/MLOps", "/CorrectionDispersion_PIML", "/gaussianPuff"])
-
 print("[RetrainService] mock_retrain.py LOADED (import container)")
-
-# ============================================================
-# Loader dinamico per il retraining reale PIML
-# ============================================================
 
 def load_piml_retrain():
     """
-    Carica dinamicamente il modulo service_train_piml.py da /CorrectionDispersion_PIML.
-    Deve esporre una funzione: retrain_model() -> (new_version: str, metrics: dict)
+    Dynamically load the service_train_piml.py module from /CorrectionDispersion_PIML.
+    Must expose a function: retrain_model() -> (new_version: str, metrics: dict)
     """
     module_path = "/CorrectionDispersion_PIML/service_train_piml.py"
     if not os.path.exists(module_path):
-        raise FileNotFoundError(f"Modulo non trovato: {module_path}")
+        raise FileNotFoundError(f"Module not found: {module_path}")
 
     spec = importlib.util.spec_from_file_location("service_train_piml", module_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
-
-# ============================================================
-# MOCK / REAL RETRAIN SERVICE – Layer 5 (Feedback & ModelOps)
-# ============================================================
 
 app = FastAPI(title="MLOps Retrain Service")
 
@@ -56,23 +46,16 @@ REGISTRY_PATH = os.path.join(LOG_DIR, "model_registry.json")
 
 os.makedirs(LOG_DIR, exist_ok=True)
 
-CHECK_INTERVAL = 30      # ogni 10s
-DRIFT_THRESHOLD = 0.6    # soglia per il drift medio
-DRIFT_WINDOW = 10         # numero di eventi usati per la media
-MIN_EVENTS = 10           # minimo eventi per attivare logica
-
-running = True  # flag di controllo thread
-LAST_RETRAIN_AT = None  # timestamp dell’ultimo retrain riuscito
-
-# Flag per evitare di creare più thread in caso di import multipli
+CHECK_INTERVAL = 30
+DRIFT_THRESHOLD = 0.6
+DRIFT_WINDOW = 10
+MIN_EVENTS = 10
+running = True
+LAST_RETRAIN_AT = None
 AUTO_THREAD_STARTED = False
 
-# ============================================================
-# FUNZIONI UTILI
-# ============================================================
-
 def load_recent_monitoring(n: int = 50):
-    """Carica le ultime N righe del monitoring log."""
+    """Load the last N lines of the monitoring log."""
     if not os.path.exists(MONITOR_LOG):
         return []
     with open(MONITOR_LOG, "r", encoding="utf-8") as f:
@@ -86,12 +69,12 @@ def load_recent_monitoring(n: int = 50):
     return data
 
 def append_log(path: str, entry: dict):
-    """Aggiunge una riga JSONL a un log file."""
+    """Adds a JSONL line to a log file."""
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, default=str) + "\n")
 
 def compute_mean_drift(events):
-    """Calcola il drift medio sugli ultimi eventi."""
+    """Calculate the average drift over the last events."""
     vals = [e.get("drift_score") for e in events if isinstance(e.get("drift_score"), (float, int))]
     if not vals:
         return 0.0
@@ -99,13 +82,12 @@ def compute_mean_drift(events):
 
 def simulate_retrain():
     """
-    Simula un retraining (usato SOLO per trigger manuale).
-    Versioning coerente: PIML_v1, PIML_v2, ...
+    Simulates a retraining (used ONLY for manual triggering).
+    Consistent versioning: PIML_v1, PIML_v2, ...
     """
     registry_path = REGISTRY_PATH
     current = 0
 
-    # Leggi versione attuale dal registry
     if os.path.exists(registry_path):
         try:
             with open(registry_path, "r", encoding="utf-8") as f:
@@ -115,11 +97,7 @@ def simulate_retrain():
                     current = int(v.replace("PIML_v", ""))
         except Exception:
             pass
-
-    # Incrementa versione
     new_version = f"PIML_v{current + 1}"
-
-    # Metriche fittizie coerenti
     metrics = {
         "description": "Mock retrain executed due to manual trigger",
         "drift_reset": True
@@ -128,30 +106,22 @@ def simulate_retrain():
     return new_version, metrics
 
 def retrain_loop():
-    """Loop continuo che controlla drift e decide se retrainare."""
+    """Continuous loop that checks drift and decides whether to retrieve."""
     global running, LAST_RETRAIN_AT
     print(f"[RetrainService] Avvio loop retraining (check ogni {CHECK_INTERVAL}s)")
 
     while running:
         time.sleep(CHECK_INTERVAL)
-
         now = datetime.utcnow()
-
-        # cooldown di 5 minuti tra due retrain
         if LAST_RETRAIN_AT is not None:
             if (now - LAST_RETRAIN_AT) < timedelta(minutes=5):
                 continue
-
-        # 1) Leggi ultimi eventi di monitoring
         events = load_recent_monitoring(DRIFT_WINDOW)
         if len(events) < MIN_EVENTS:
-            # comment di debug leggero
             continue
 
         last_event = events[-1]
         event_model_version = last_event.get("model_version")
-
-        # 2) Leggi versione modello dal registry
         if os.path.exists(REGISTRY_PATH):
             try:
                 with open(REGISTRY_PATH, "r", encoding="utf-8") as f:
@@ -161,12 +131,8 @@ def retrain_loop():
                 registry_version = None
         else:
             registry_version = None
-
-        # 3) Calcola drift medio sulle ultime N simulazioni
         drift_mean = compute_mean_drift(events)
         drift_trigger = drift_mean > DRIFT_THRESHOLD
-
-        # opzionale: richiedi almeno un evento negli ultimi 5 minuti
         try:
             recent = [
                 e for e in events
@@ -195,7 +161,7 @@ def retrain_loop():
         }
 
         try:
-            print("[RetrainService] Avvio retraining PIML reale...")
+            print("[RetrainService] Real PIML retraining launch...")
             piml_mod = load_piml_retrain()
             new_version, metrics = piml_mod.retrain_model()
 
@@ -206,7 +172,7 @@ def retrain_loop():
                 "fallback_used": False,
             })
 
-            print(f"[RetrainService] Retraining COMPLETATO → Nuova versione: {new_version}")
+            print(f"[RetrainService] Retraining COMPLETED → New version: {new_version}")
 
             # Aggiorna registry
             with open(REGISTRY_PATH, "w", encoding="utf-8") as f:
@@ -218,19 +184,17 @@ def retrain_loop():
                     "metrics": metrics
                 }, f, indent=2)
 
-            # 🔄 RESET DRIFT BASELINE DOPO RETRAIN
             drift_baseline_path = "/logs/drift_baseline.json"
             try:
                 with open(drift_baseline_path, "w", encoding="utf-8") as f:
                     json.dump({"mean": None, "cov": None, "count": 0, "distances": []}, f)
-                print("[RetrainService] Baseline drift resettata dopo retrain.")
+                print("[RetrainService] Baseline drift reset after retrain.")
             except Exception as e:
-                print(f"[RetrainService] ERRORE reset baseline drift: {e}")
+                print(f"[RetrainService] ERROR reset baseline drift: {e}")
 
-            # 🔄 RESET finestra per evitare drift ricorsivo
             with open(MONITOR_LOG, "w") as f:
-                pass  # svuota completamente il monitoring log
-            print("[RetrainService] Monitoring log svuotato dopo retrain.")
+                pass
+            print("[RetrainService] Monitoring log cleared after retrain.")
 
 
             append_log(RETRAIN_LOG, entry)
@@ -242,27 +206,19 @@ def retrain_loop():
                 "error": str(e),
                 "fallback_used": False,
             })
-            print(f"[RetrainService] Retraining reale FALLITO: {e}")
+            print(f"[RetrainService] Real retraining FAILED: {e}")
             append_log(RETRAIN_LOG, entry)
 
-    print("[RetrainService] Loop retraining terminato")
-
-# ============================================================
-# FUNZIONE PER AVVIARE IL THREAD (usata sia da startup che da import)
-# ============================================================
+    print("[RetrainService] Loop retraining completed")
 
 def start_retrain_thread():
     global AUTO_THREAD_STARTED
     if AUTO_THREAD_STARTED:
         return
     AUTO_THREAD_STARTED = True
-    print("[RetrainService] Avvio thread di background per il retrain...")
+    print("[RetrainService] Starting background thread for retrain...")
     thread = threading.Thread(target=retrain_loop, daemon=True)
     thread.start()
-
-# ============================================================
-# ENDPOINTS
-# ============================================================
 
 @app.get("/health")
 def health():
@@ -270,7 +226,7 @@ def health():
 
 @app.get("/status")
 def get_status():
-    """Ritorna l’ultimo stato del retrain log."""
+    """Returns the last state of the retrain log."""
     if not os.path.exists(RETRAIN_LOG):
         return {"status": "ok", "entries": 0}
     with open(RETRAIN_LOG, "r", encoding="utf-8") as f:
@@ -283,7 +239,7 @@ def get_status():
 @app.post("/trigger_retrain")
 def trigger_manual():
     """
-    Permette di forzare un retraining MOCK manuale.
+    Allows you to force a manual MOCK retraining.
     """
     new_version, metrics = simulate_retrain()
     entry = {
@@ -294,9 +250,8 @@ def trigger_manual():
         "status": "manual_mock_retrained"
     }
     append_log(RETRAIN_LOG, entry)
-    print(f"[RetrainService] Retraining manuale (MOCK) → {new_version}")
+    print(f"[RetrainService] Manual retraining (MOCK) → {new_version}")
 
-    # Aggiorniamo comunque il registry per il test manuale
     if os.path.exists(REGISTRY_PATH):
         try:
             with open(REGISTRY_PATH, "r", encoding="utf-8") as f:
@@ -322,10 +277,6 @@ def trigger_manual():
 
 if os.environ.get("MLOPS_AUTOSTART_RETRAIN", "1") == "1":
     start_retrain_thread()
-
-# ============================================================
-# ESECUZIONE LOCALE
-# ============================================================
 
 if __name__ == "__main__":
     import uvicorn

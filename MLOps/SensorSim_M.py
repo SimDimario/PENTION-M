@@ -3,15 +3,11 @@ import uuid
 import numpy as np
 from datetime import datetime
 
-# ============================================================
-# SENSOR SIMULATOR FOR PENTION-M (Layer 0 – Edge I/O Simulated)
-# ============================================================
-
 class SensorSimM:
     """
-    Simulatore di sensori per PENTION-M.
-    Genera dati meteorologici, GPS e di sostanza
-    coerenti con il formato sample_simulation_data.json.
+    Sensor simulator for PENTION-M.
+    Generates meteorological, GPS, and substance data
+    consistent with the sample_simulation_data.json format.
     """
 
     def __init__(self, seed: int | None = None):
@@ -19,9 +15,6 @@ class SensorSimM:
             random.seed(seed)
             np.random.seed(seed)
 
-    # ------------------------------
-    # SensorAir (meteorologia)
-    # ------------------------------
     def _simulate_sensor_air(self) -> dict:
         stability_classes = ["A", "B", "C", "D", "E", "F"]
         stability = random.choice(stability_classes)
@@ -39,9 +32,6 @@ class SensorSimM:
             "stability_class": stability
         }
 
-    # ------------------------------
-    # SensorSubstance (concentrazione sintetica)
-    # ------------------------------
     def _simulate_sensor_substance(self) -> dict:
         compounds = ["Cathinone", "Cannabinoid", "Phenethylamine", "Opioid", "Benzodiazepine"]
         compound = random.choice(compounds)
@@ -58,18 +48,12 @@ class SensorSimM:
             "noise_level": noise_level
         }
 
-    # ------------------------------
-    # SensorGPS (posizione simulata)
-    # ------------------------------
     def _simulate_sensor_gps(self) -> dict:
-        lat = round(random.uniform(51.15, 51.25), 4)   # Amsterdam area
+        lat = round(random.uniform(51.15, 51.25), 4)
         lon = round(random.uniform(5.90, 6.05), 4)
         alt = round(random.uniform(0.5, 3.0), 2)
         return {"latitude": lat, "longitude": lon, "altitude_m": alt}
 
-    # ------------------------------
-    # PIML Feature layer simulato
-    # ------------------------------
     def _simulate_piml_features(self, wind_speed: float, stability: str) -> dict:
         sigma_y = round(0.2 * wind_speed, 3)
         sigma_z = round(0.15 * wind_speed, 3)
@@ -84,9 +68,6 @@ class SensorSimM:
             "stability_index": stability_index
         }
 
-    # ------------------------------
-    # Inference & Monitoring placeholder
-    # ------------------------------
     def _simulate_inference_block(self, compound: str) -> dict:
         confidence = round(random.uniform(0.85, 0.99), 2)
         return {
@@ -104,9 +85,6 @@ class SensorSimM:
             "mse_free": round(random.uniform(0.002, 0.01), 4)
         }
 
-    # ------------------------------
-    # Generatore principale
-    # ------------------------------
     def generate_simulation(self) -> dict:
         sim_id = f"SIM_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
         air = self._simulate_sensor_air()
@@ -141,10 +119,6 @@ class SensorSimM:
                 "compliance_tags": ["GDPR", "LEA_audit_ok"]
             }
         }
-    
-# ============================================================
-# Sensor Network Generator (STEP 2)
-# ============================================================
 
 def generate_sensor_network_from_map(conc_map: np.ndarray,
                                      building_map: np.ndarray,
@@ -152,10 +126,10 @@ def generate_sensor_network_from_map(conc_map: np.ndarray,
                                      fault_rate: float = 0.1,
                                      seed: int | None = None):
     """
-    Genera una rete di sensori fisici a partire da una mappa di concentrazione.
-    - Evita celle occupate (building_map == 1)
-    - Campiona concentrazione reale
-    - Aggiunge rumore e fault_rate
+    Generates a physical sensor network from a concentration map.
+    - Avoid occupied cells (building_map == 1)
+    - Sample real concentration
+    - Add noise and fault_rate
     """
     if seed is not None:
         np.random.seed(seed)
@@ -192,9 +166,6 @@ def generate_sensor_network_from_map(conc_map: np.ndarray,
 
     return sensors
 
-# ============================================================
-# Test manuale
-# ============================================================
 if __name__ == "__main__":
     sim = SensorSimM(seed=42)
     sample = sim.generate_simulation()
