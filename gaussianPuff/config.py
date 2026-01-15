@@ -1,4 +1,3 @@
-#config.py
 from enum import Enum
 from dataclasses import dataclass, field, asdict
 from typing import List, Tuple, Optional
@@ -76,7 +75,6 @@ class NPS(Enum):
         except KeyError:
             raise ValueError(f"No NPS member matches '{nps_string}'")
 
-# Definizione delle proprietà fisiche per ciascun tipo di NPS
 nps_properties = {
     NPS.CANNABINOID_ANALOGUES: {"nu": 1, "rho_s": 1.2e3, "Ms": 314.46},
     NPS.CATHINONE_ANALOGUES: {"nu": 1, "rho_s": 1.3e3, "Ms": 149.23},
@@ -98,7 +96,7 @@ class ModelConfig:
     wind_type: WindType
     wind_speed: float
     output: OutputType
-    stacks: List[Tuple[float, float, float, float]]  # List of (x, y, Q, H)
+    stacks: List[Tuple[float, float, float, float]]
     dry_size: float = 60e-9
     x_slice: int = 26
     y_slice: int = 1
@@ -109,17 +107,14 @@ class ModelConfig:
 
     def to_dict(self):
         d = asdict(self)
-
         d["aerosol_type"] = self.aerosol_type.name if self.aerosol_type else None
         d["stability_profile"] = self.stability_profile.name if self.stability_profile else None
         d["stability_value"] = self.stability_value.name if self.stability_value else None
         d["wind_type"] = self.wind_type.name if self.wind_type else None
         d["output"] = self.output.name if self.output else None
         d["dispersion_model"] = self.dispersion_model.name if self.dispersion_model else None
-
         if self.config_puff:
             d["config_puff"] = (
                 self.config_puff.to_dict() if hasattr(self.config_puff, "to_dict") else asdict(self.config_puff)
             )
-
         return d

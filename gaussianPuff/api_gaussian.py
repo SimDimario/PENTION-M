@@ -1,21 +1,17 @@
 from fastapi import FastAPI
 import os, sys
-
 from pydantic import BaseModel, Field
 from typing import List, Tuple, Optional
 import logging
 import numpy as np
-
 import random
 from datetime import datetime
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from gaussianPuff.gaussianModel import run_dispersion_model
 from gaussianPuff.config import ModelConfig, WindType, StabilityType, PasquillGiffordStability, NPS, OutputType, DispersionModelType, ConfigPuff
 from gaussianPuff.plot_utils import plot_plan_view
 import uvicorn
 
-# Configurazione logger
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -46,42 +42,28 @@ class Payload(BaseModel):
 
 app = FastAPI()
 
-# ==========================================================
-# NEW ENDPOINT: GET METEO FOR PENTION-M
-# ==========================================================
 from gaussianPuff.config import PasquillGiffordStability
 
 @app.get("/get_meteo")
 def get_meteo():
     """
-    Restituisce condizioni meteo pseudo-realistiche e variabili
-    ad ogni simulazione, senza avviare GaussianPuff.
+    It returns pseudo-realistic and variable weather conditions
+    for each simulation, without running GaussianPuff.
     """
     try:
-        # Ora del giorno (per variare temperatura/umidità in modo plausibile)
         hour = datetime.utcnow().hour
-
-        # Temperatura: più bassa di notte, più alta di giorno
-        if 6 <= hour < 12:      # mattina
+        if 6 <= hour < 12:
             temperature = random.uniform(8.0, 16.0)
-        elif 12 <= hour < 18:   # pomeriggio
+        elif 12 <= hour < 18:
             temperature = random.uniform(12.0, 24.0)
-        else:                   # sera/notte
+        else:
             temperature = random.uniform(4.0, 18.0)
-
-        # Umidità relativa (abbastanza alta in Olanda)
         humidity = random.uniform(0.5, 0.9)
-
-        # Vento: velocità e direzione con variabilità
         base_speed = 4.0
-        wind_speed = max(0.5, random.gauss(base_speed, 1.0))  # m/s
-
-        # Direzione centrata su SW (225°) ma con spread
+        wind_speed = max(0.5, random.gauss(base_speed, 1.0))
         wind_dir_deg = (225.0 + random.uniform(-60.0, 60.0)) % 360.0
-
-        # Classe di stabilità Pasquill-Gifford con distribuzione realistica
         classes = ["A", "B", "C", "D", "E", "F"]
-        weights = [0.05, 0.10, 0.25, 0.30, 0.20, 0.10]  # neutrale e leggermente instabile più probabili
+        weights = [0.05, 0.10, 0.25, 0.30, 0.20, 0.10]
         stability_class = random.choices(classes, weights=weights, k=1)[0]
 
         return {
@@ -93,7 +75,6 @@ def get_meteo():
         }
 
     except Exception as e:
-        # Fallback neutro se succede qualcosa
         return {
             "temperature": 20.0,
             "humidity": 0.55,
@@ -105,17 +86,15 @@ def get_meteo():
 
 @app.post("/start_simulation")
 def start_simulation(payload: dict):
-    logger.info("Ricevuta richiesta /start_simulation")
+    logger.info("Request received /start_simulation")
     try:
         raw_config = payload.get("config", {})
         logger.info(raw_config)
-
         wind_type= WindType.from_string(raw_config["wind_type"])
         stability_type = StabilityType.from_string(raw_config["stability_profile"])
         output_type= OutputType.from_string(raw_config["output"])
         stability_value=PasquillGiffordStability.from_string(raw_config["stability_value"])
         nps_type= NPS.from_string(raw_config["aerosol_type"])
-
         dispersion_model = DispersionModelType(raw_config["dispersion_model"].lower()) \
             if "dispersion_model" in raw_config and raw_config["dispersion_model"] else DispersionModelType.PLUME
 
@@ -138,14 +117,12 @@ def start_simulation(payload: dict):
             dispersion_model=dispersion_model,
             config_puff=ConfigPuff(**raw_config["config_puff"]) if raw_config.get("config_puff") else None
         )
-
-
         bounds = payload.get("bounds", None)
-        logger.info(f"Configurazione modello creata: {config}")
-        logger.info(f"Bounds ricevuti: {bounds}")
+        logger.info(f"Template configuration created: {config}")
+        logger.info(f"Bounds received: {bounds}")
 
         result = run_dispersion_model(config, bounds)
-        logger.info("Simulazione completata")
+        logger.info("Simulation completed")
 
         C1, (x, y, z), times, stability, wind_dir, stab_label, wind_label, puff = result
         logger.info("End gaussian model simulation")
@@ -169,14 +146,14 @@ def start_simulation(payload: dict):
                 logger.info(f"{k}: {type(v)}")
 
         except Exception as e:
-            logger.exception("Errore nella conversione dei dati")
+            logger.exception("Error in data conversion")
             raise e
 
-        logger.info(f"Simulazione completata: ritorno")
+        logger.info(f"Simulation completed: returning")
         return response
 
     except Exception as error:
-        logger.exception("Errore durante la simulazione")
+        logger.exception("Error during simulation")
         raise error
 
 """if __name__ == "__main__":

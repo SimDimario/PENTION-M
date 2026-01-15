@@ -13,7 +13,6 @@ N_SENSORS = 5
 with open(BINARY_MAP_PATH_METADATA, 'r') as file:
     binary_map_metadata = json.load(file)
 
-# Caricamento mappa binaria (1 = suolo libero, 0 = edificio)
 binary_map = np.load(BINARY_MAP_PATH)
 free_cells = np.argwhere(binary_map == 1)
 
@@ -24,12 +23,9 @@ def random_position():
 
 if __name__ == "__main__":
 
-    origin_lat_ref, origin_lon_ref = 41.894592, 12.488163  # lat/lon di riferimento della mappa
-
-    origin_x, origin_y = random_position()  # coordinate in metri nella griglia
-
+    origin_lat_ref, origin_lon_ref = 41.894592, 12.488163
+    origin_x, origin_y = random_position()
     origin_lat, origin_lon = plot_utils.meters_to_latlon(origin_x, origin_y, origin_lat_ref, origin_lon_ref)
-
     sensors = []
     for i in range(N_SENSORS):
         x, y=random_position()
@@ -38,7 +34,6 @@ if __name__ == "__main__":
 
     x_slice=26
     y_slice=26
-
     config = ModelConfig(
         days=8,
         RH=0.01,
@@ -53,20 +48,15 @@ if __name__ == "__main__":
         dry_size=1.0,
         x_slice=x_slice,
         y_slice=y_slice,
-        #grid_size=binary_map_metadata['grid_size'][0],
         dispersion_model=DispersionModelType.PLUME,
-        config_puff=ConfigPuff(puff_interval=1, max_puff_age=6)  # 1 hour interval, max age 6 hours
+        config_puff=ConfigPuff(puff_interval=1, max_puff_age=6)
     )
 
-    result = run_dispersion_model(config)#, bounds=binary_map_metadata['bounds'])
+    result = run_dispersion_model(config)
     C1, (x, y, z), times, stability, wind_dir, stab_label, wind_label, puff = result
-    
     plot_utils.plot_plan_view(C1, x, y, f"Plan View - {stab_label} - {wind_label}", wind_dir, 10. ,puff, stability_class=PasquillGiffordStability.NEUTRAL.value)
-    
-    binary_map=binary_map[:,:, np.newaxis]  # aggiunta na dimensione per la compatibilità con C1
-    
+    binary_map=binary_map[:,:, np.newaxis]
     mask_edifici=C1*binary_map
-  
     plot_utils.plot_plan_view(mask_edifici, x, y, f"Plan View - {stab_label} - {wind_label}", wind_dir, 10. )
     plot_utils.plot_surface_time(C1, times, x_slice, y_slice, stability, stab_label, f"Surface Time - {stab_label} - {wind_label}")
     plot_utils.plot_height_slice(C1, y, z, stab_label, wind_label)
@@ -76,12 +66,11 @@ if __name__ == "__main__":
         sensor.plot_timeseries(use_noisy=True)
     
     sensor_data = [(sensor.x, sensor.y) for sensor in sensors]
-
-    mappa = plot_utils.plot_concentration_with_sensors(C1, x, y, sensor_data, (origin_lat, origin_lon), times, title="Concentrazione con sensori")
+    mappa = plot_utils.plot_concentration_with_sensors(C1, x, y, sensor_data, (origin_lat, origin_lon), times, title="Concentration with sensors")
     if mappa is not None:
         mappa.save("gaussianPuff/example/puff_map_with_sensors_0708.html")
-        print("📍 Mappa salvata: puff_map_with_sensors_0708.html")
+        print("Map saved: puff_map_with_sensors_0708.html")
     else:
-        print("⚠️ Errore: la funzione plot_concentration_with_sensors ha restituito None, impossibile salvare la mappa.")
-    
+        print("Error: the function plot_concentration_with_sensors returned None, unable to save the map.")
+
     mappa=plot_utils.animate_plan_view(C1,x,y,binary_map, sensor_data, save_path="gaussianPuff\\example\\animated")
