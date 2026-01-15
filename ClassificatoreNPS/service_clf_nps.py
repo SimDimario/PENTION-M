@@ -4,10 +4,9 @@ import os
 import logging
 import json
 from scipy.special import softmax
-from tensorflow.keras.models import load_model  # type: ignore
+from tensorflow.keras.models import load_model
 from xgboost import XGBClassifier
 
-# Configurazione logger
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -22,21 +21,20 @@ scaler_path = os.path.join(base_dir, 'model', 'scale_dnn.pkl')
 xgb_model_path = os.path.join(base_dir, "model", "xgb_nps_model.json")
 xgb_scaler_path = os.path.join(base_dir, "model", "xgb_scaler.pkl")
 
-logger.info("Caricamento modelli...")
+logger.info("Loading models...")
 dnn_clf = load_model(dnn_path)
-logger.info("DNN caricata")
+logger.info("DNN loaded")
 brf_clf = joblib.load(brf_path)
-logger.info("BRF caricato")
+logger.info("BRF loaded")
 scaler_dnn = joblib.load(scaler_path)
-logger.info("Scaler DNN caricato")
+logger.info("Scaler DNN loaded")
 
-# XGB (modello principale)
 xgb_clf = XGBClassifier()
 xgb_clf.load_model(xgb_model_path)
-logger.info("XGB caricato")
+logger.info("XGB loaded")
 
 xgb_scaler = joblib.load(xgb_scaler_path)
-logger.info("Scaler XGB caricato")
+logger.info("Scaler XGB loaded")
 
 mz_range = np.arange(1, 601)
 
@@ -50,15 +48,14 @@ legends = {
     6: 'Other compounds'
 }
 
-
 def _compute_features(spectrum):
-    """Estrae 13 caratteristiche dallo spettro di massa."""
-    logger.debug("Calcolo feature dello spettro")
+    """Extracts 13 features from the mass spectrum."""
+    logger.debug("Spectrum feature calculation")
 
     peaks = [(mz, intensity) for mz, intensity in zip(mz_range, spectrum) if intensity > 0]
 
     if not peaks:
-        logger.warning("Spettro senza picchi")
+        logger.warning("Spectrum without peaks")
         return [np.nan] * 13
 
     mz_values, intensities = zip(*peaks)
@@ -94,7 +91,7 @@ def _compute_features(spectrum):
 
 def pipe_clf_dnn(spectra: np.ndarray, T: float = 2.5):
     """
-    DNN + Temperature Scaling per confidenze realistiche.
+    DNN + Temperature Scaling for realistic confidence.
     """
     if spectra is None or len(spectra) == 0:
         raise ValueError("Input spectra is empty or None")
@@ -105,26 +102,20 @@ def pipe_clf_dnn(spectra: np.ndarray, T: float = 2.5):
         logger.info("Inizio predizione DNN")
         spectra_scaled = scaler_dnn.transform(spectra)
 
-        # Otteniamo le logits PRIMA della softmax
-        # (le DNN Keras con activation='softmax' NON espongono le logits)
-        # Quindi ricaviamo logits = log(prob) * T (inverse softmax approximation)
         probs_raw = dnn_clf.predict(spectra_scaled, verbose=0)[0]
 
-        # Evita log(0)
         probs_raw = np.clip(probs_raw, 1e-9, 1.0)
 
-        # ricostruzione logits approssimati
         logits = np.log(probs_raw)
 
-        # apply temperature scaling
         scaled_logits = logits / T
         scaled_probs = softmax(scaled_logits)
 
         pred_idx = int(np.argmax(scaled_probs))
         confidence = float(np.max(scaled_probs))
 
-        predictions = [legends.get(pred_idx, f"Classe {pred_idx}")]
-        logger.info("Predizione DNN completata (Temperature Scaling)")
+        predictions = [legends.get(pred_idx, f"Class {pred_idx}")]
+        logger.info("DNN prediction completed (Temperature Scaling)")
 
         return {
             "predictions": predictions,
@@ -135,7 +126,6 @@ def pipe_clf_dnn(spectra: np.ndarray, T: float = 2.5):
         logger.exception("Errore durante la predizione DNN")
         raise RuntimeError(f"Error during DNN prediction: {str(e)}")
 
-
 def pipe_clf_brf(spectra: np.ndarray):
     if spectra is None or len(spectra) == 0:
         raise ValueError("Input spectra is empty or None")
@@ -144,17 +134,17 @@ def pipe_clf_brf(spectra: np.ndarray):
 
     predictions = []
     try:
-        logger.info("Inizio predizione BRF")
+        logger.info("BRF Prediction Start")
         for idx, spectrum in enumerate(spectra):
-            logger.debug(f"Calcolo feature spettro {idx}")
+            logger.debug(f"Spectrum feature calculation {idx}")
             features = np.array(_compute_features(spectrum))
             selected_indices = [0, 1, 3, 5, 6, 7, 8, 10, 11]
             features = features[selected_indices].reshape(1, -1)
             prediction = brf_clf.predict(features)
-            predictions.append(legends.get(prediction[0], f"Classe {prediction[0]}"))
-        logger.info("Predizione BRF completata")
+            predictions.append(legends.get(prediction[0], f"Class {prediction[0]}"))
+        logger.info("BRF prediction completed")
     except Exception as e:
-        logger.exception("Errore durante la predizione BRF")
+        logger.exception("Error during BRF prediction")
         raise RuntimeError(f"Error during BRF prediction: {str(e)}")
 
     return np.array(predictions)
@@ -175,13 +165,10 @@ def pipe_clf_xgb(spectra: np.ndarray, dynamic_T: float | None = None):
         raise ValueError(f"Expected 2D array (n_samples, 600), got {spectra.shape}")
 
     try:
-        # scaling
         spectra_scaled = xgb_scaler.transform(spectra)
 
-        # probabilità grezze
         raw_probs = xgb_clf.predict_proba(spectra_scaled)[0]
 
-        # ---- COARSE TEMPERATURE SCALING ----
         if dynamic_T is not None:
             T = float(dynamic_T)
         else:
@@ -204,4 +191,3 @@ def pipe_clf_xgb(spectra: np.ndarray, dynamic_T: float | None = None):
 
     except Exception as e:
         raise RuntimeError(f"Error during XGB prediction: {str(e)}")
-

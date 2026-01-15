@@ -8,25 +8,14 @@ import numpy as np
 import pandas as pd
 import logging
 
-# ============================================================
-# LOGGER
-# ============================================================
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 logger = logging.getLogger(__name__)
 
-# ============================================================
-# FIX PATH PRIMA DELL’IMPORT
-# ============================================================
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from ClassificatoreNPS import service_clf_nps
-
-
-# ============================================================
-# MODELLI INPUT
-# ============================================================
 
 class Spectra(BaseModel):
     spectra: list[list[float]]
@@ -38,16 +27,7 @@ class GenRequest(BaseModel):
     concentration: float = 0.5
     compound_name: str | None = None
 
-
-# ============================================================
-# FASTAPI
-# ============================================================
-
 app = FastAPI(title="NPS Classifier Service")
-
-# ============================================================
-# ENDPOINT UFFICIALI USATI DA INGESTION
-# ============================================================
 
 @app.post("/predict_dnn")
 def predict_dnn(input_data: Spectra):
@@ -113,10 +93,6 @@ def set_temperature(T: float):
         return {"status": "ok", "new_temperature": T}
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
-
-# ============================================================
-# ENDPOINT DI DEBUG (NON USATO DA INGESTION)
-# ============================================================
 
 @app.post("/generate_and_predict")
 def generate_and_predict(req: GenRequest):
