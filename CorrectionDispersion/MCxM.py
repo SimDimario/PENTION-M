@@ -38,7 +38,6 @@ class MCxM_CNN(torch.nn.Module):
     def __init__(self, mask, m=500, dropout_p=0.3, n_channel=2, n_global_features=6, n_mask_correction=3, wind_dim=2):
         super().__init__()
 
-        # Parametri base
         self.m = m
         self.n_channel = n_channel
         self.n_global_features = n_global_features
@@ -47,45 +46,31 @@ class MCxM_CNN(torch.nn.Module):
         self.mask_layer = MaskLayer(mask)
         self.dropout = nn.Dropout(p=dropout_p)
 
-        # Calcolo dell'input size - flattened
-        flat_local = self.n_channel * m * m            # mappe locali flattenate
+        flat_local = self.n_channel * m * m
         input_size = flat_local + self.wind_dim +  self.n_global_features
         hidden_size = 512
 
         self.encoder = nn.Sequential(
-            nn.Linear(input_size, hidden_size),       # input_size → 512
-            nn.BatchNorm1d(hidden_size),              # BN prima di ReLU aiuta a mantenere la media e la varianza dei dati stabili durante l’addestramento.
-            nn.ReLU(),                                  #Metterla prima e dopo la ReLU serve a mantenere i dati ben distribuiti, riducendo problemi di saturazione o distribuzioni sbilanciate.
-            #self.dropout,                          # Dropout per regolarizzazione
-            #nn.BatchNorm1d(hidden_size),              # BN dopo ReLU
-
-            nn.Linear(hidden_size, hidden_size),      # 512 → 512
+            nn.Linear(input_size, hidden_size),
             nn.BatchNorm1d(hidden_size),
             nn.ReLU(),
-            #self.dropout,
-            #nn.BatchNorm1d(hidden_size),
-
-            nn.Linear(hidden_size, hidden_size),      # 512 → 512
+            nn.Linear(hidden_size, hidden_size),
             nn.BatchNorm1d(hidden_size),
             nn.ReLU(),
-            #self.dropout,
-            #nn.BatchNorm1d(hidden_size),
-
-            nn.Linear(hidden_size, hidden_size),      # 512 → 512
+            nn.Linear(hidden_size, hidden_size),
             nn.BatchNorm1d(hidden_size),
             nn.ReLU(),
-            #self.dropout,
-            #nn.BatchNorm1d(hidden_size),
+            nn.Linear(hidden_size, hidden_size),
+            nn.BatchNorm1d(hidden_size),
+            nn.ReLU(),
         )
 
-        # DECODER: riportiamo a m²
         """self.decoder = nn.Sequential(
             nn.Linear(hidden_size, m*m),       # 512 → m*m
-            nn.Sigmoid()  # normalizza output tra 0 e 1, utile per mappe binarie
+            nn.Sigmoid()  # normalizes output between 0 and 1, useful for binary maps
         )"""
-        self.decoder = nn.Linear(hidden_size, m*m)  # 512 → m*m
+        self.decoder = nn.Linear(hidden_size, m*m)
 
-        # He initialization for weight
         for layer in self.encoder:
             if isinstance(layer, nn.Linear):
                 nn.init.kaiming_normal_(layer.weight, nonlinearity='relu')
@@ -95,7 +80,7 @@ class MCxM_CNN(torch.nn.Module):
 
     def forward(self, gauss_disp, wind_features, global_features):
         
-        B = gauss_disp.size(0) #batch size
+        B = gauss_disp.size(0)
         u = gauss_disp
 
         print(f"[Forward] Input gauss_disp shape: {gauss_disp.shape}")
@@ -104,35 +89,22 @@ class MCxM_CNN(torch.nn.Module):
 
         for i in range(self.n_mask_correction):
             
-            # --- MASKING LAYER
-            # 1. Masking 
-            u = self.mask_layer(u)  # shape: (B, m, m)
+            u = self.mask_layer(u)
             print(f"[Forward][Step {i}] After mask_layer, u shape: {u.shape}")
-
-            # 0. Concatenazione gauss_disp con variabili meteorogiche e globali
-            x_flat = u.view(B, -1)  # (B, n_channel * m * m)
+            x_flat = u.view(B, -1)
             print(f"[Forward][Step {i}] x_flat shape: {x_flat.shape}")
-
-            um = torch.cat([x_flat, wind_features], dim=1)  # (B, n_channel*m*m + wind_dim)
+            um = torch.cat([x_flat, wind_features], dim=1)
             print(f"[Forward][Step {i}] After concatenating wind_features, um shape: {um.shape}")
-
             if global_features is not None:
-                um = torch.cat([um,global_features], dim=1)  # shape: (B, m*m+2+n_global)
+                um = torch.cat([um,global_features], dim=1)
                 print(f"[Forward][Step {i}] After concatenating global_features, um shape: {um.shape}")
-
-            # --- CORRECTION NETWORK
-            # 2. Flatten la mappa
-            x = um.view(B, -1)  # shape: (B, m*m) -> (b, m^2)
+            x = um.view(B, -1)
             print(f"[Forward][Step {i}] Flattened for encoder, x shape: {x.shape}")
-
-            # 3. Correzione tramite encoder-decoder
             x = self.encoder(x)
             print(f"[Forward][Step {i}] After encoder, x shape: {x.shape}")
-            x = self.decoder(x) # shape: (B, m*m)
+            x = self.decoder(x)
             print(f"[Forward][Step {i}] After decoder, x shape: {x.shape}")
-
-            # 4. ricostruzione della mappa corretta
-            u = x.view(B, self.m, self.m) # shape: (B, m, m)
+            u = x.view(B, self.m, self.m)
             print(f"[Forward][Step {i}] Reconstructed map u shape: {u.shape}")
 
         return u
