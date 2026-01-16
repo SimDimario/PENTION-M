@@ -179,48 +179,27 @@
 ├── docker
 ├── docker-compose.yml
 ├── documents
-│   ├── .$PENTION-M_Architecture.drawio.bkp
-│   ├── Data Flow Model DSR.drawio
-│   ├── Documenti iniziali
-│   │   ├── Descrizione_documenti_prof.docx
+│   ├── architecture
+│   │   ├── Data Flow Model DSR.drawio
+│   │   └── PENTION-M_Architecture.drawio
+│   ├── forensic_outputs
+│   │   └── forensic_report_SIM_20260112_182710.pdf
+│   ├── presentation
+│   │   ├── PENTION-M simulazione PIML + MLOps per la detection di sostanze NPS.pdf
+│   │   └── PENTION-M simulazione PIML + MLOps per la detection di sostanze NPS.pptx
+│   ├── requirements
 │   │   ├── PENTION proposal_MION_vFINAL.pdf
 │   │   ├── PENTION_initial_requirements_elicitation.xls
 │   │   └── Requirements Elicitations Interview.docx
-│   ├── PENTION-M_Architecture.drawio
-│   ├── Paper utili
-│   │   ├── PENTION-M
-│   │   │   ├── 2503.18849v1.pdf
-│   │   │   ├── A+comprehensive+review+of+physics-informed+deep+learning+and+its+applications+in+geoenergy+development.pdf
-│   │   │   ├── MLOps_for_Cyberphysical_Production_Systems_Challenges_and_Solutions.pdf
-│   │   │   ├── Spiegazione paper.docx
-│   │   │   ├── Temperature scaling
-│   │   │   │   ├── 1706.04599v2.pdf
-│   │   │   │   ├── 1807.00263v1.pdf
-│   │   │   │   ├── 2106.07998v2.pdf
-│   │   │   │   └── spiegazione paper.docx
-│   │   │   ├── fluids-10-00226-v2.pdf
-│   │   │   ├── kashinath-et-al-2021-physics-informed-machine-learning-case-studies-for-weather-and-climate-modelling.pdf
-│   │   │   ├── paper13.pdf
-│   │   │   ├── s42979-023-02282-2.pdf
-│   │   │   └── s44379-025-00016-0.pdf
-│   │   └── PENTION-S Claudio
-│   │       ├── Journal of Chemistry - 2022 - Bărbulescu - Computer‐Aided Classification of New Psychoactive Substances.pdf
-│   │       ├── Scheda di utilità dei paper.txt
-│   │       ├── analytica-06-00017.pdf
-│   │       └── deep-learning-enabled-ms-ms-spectrum-prediction-facilitates-automated-identification-of-novel-psychoactive-substances.pdf
-│   ├── Presentazione finale
-│   │   ├── PENTION-M simulazione PIML + MLOps per la detection di sostanze NPS.pdf
-│   │   └── PENTION-M simulazione PIML + MLOps per la detection di sostanze NPS.pptx
-│   ├── Workshop-4-11-2025
+│   ├── stakeholder_workshop_2025-11-04
 │   │   ├── (Audio) 2025-11-04.m4a
 │   │   ├── 2025-11-04 09-59-04.mkv
 │   │   ├── PENTION Requirements Elicitation Form (V2)(1-3).xlsx
 │   │   ├── PENTION Requirements Elicitation Form(1-5).xlsx
 │   │   ├── PENTION_LEA_Workshop_DutchPolice_Meeting_Summary_2025-11-04.docx
 │   │   ├── PENTION_LEA_Workshop_DutchPolice_Meeting_Summary_2025-11-04.pdf
-│   │   ├── Trascrizione workshop PENTION.txt
-│   │   └── Workshop-requirement engineering.pptx
-│   ├── forensic_report_SIM_20260112_182710.pdf
+│   │   ├── Workshop-requirement engineering.pptx
+│   │   └── transcript.txt
 │   └── thesis_latex
 │       ├── bib.bib
 │       ├── chapters
