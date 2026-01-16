@@ -8,9 +8,6 @@
 │   ├── NPSClassifier.ipynb
 │   ├── __init__.py
 │   ├── api_clf_nps.py
-│   ├── article
-│   │   ├── 1-s2.0-S2468170921000758-main.pdf
-│   │   └── 1-s2.0-S2468170923000358-main.pdf
 │   ├── datasetNPS
 │   │   ├── 1-s2.0-S2468170923000358-mmc1.csv
 │   │   ├── 1-s2.0-S2468170923000358-mmc2.txt
@@ -47,8 +44,6 @@
 │   ├── MCxM.py
 │   ├── __init__.py
 │   ├── api_correction.py
-│   ├── article
-│   │   └── HAZARDOUS.pdf
 │   ├── binary_map_gen.py
 │   ├── binary_maps_data
 │   │   ├── binary_map_example.png
@@ -241,17 +236,7 @@
 │   ├── Sensor.py
 │   ├── __init__.py
 │   ├── api_gaussian.py
-│   ├── article
-│   │   └── gp_notes.pdf
 │   ├── config.py
-│   ├── example
-│   │   ├── dispersion_map.png
-│   │   ├── dispersion_masked_map.png
-│   │   ├── mapp_disp.png
-│   │   ├── object_position_mao.png
-│   │   ├── puff_animation_noisy.gif
-│   │   ├── time_series_sensor_measurement.png
-│   │   └── wind.png
 │   ├── gaussianFunction.py
 │   ├── gaussianModel.py
 │   ├── plot_utils.py
@@ -261,9 +246,9 @@
 ├── logs
 │   ├── drift_baseline.json
 │   ├── forensic
-│   │   ├── bundle_20251129_165138_abe1fb11.json
-│   │   ├── bundle_20251129_165157_04b341e9.json
-│   │   ├── bundle_20251129_165208_0cb9af00.json
+│   │   ├── bundle_20251208_180247_a8f87755.json
+│   │   ├── bundle_20251208_180254_f016b3e0.json
+│   │   ├── bundle_20251208_180301_68039736.json
 │   │   │   ...
 │   │   ├── bundle_20260110_175557_1651e311.json
 │   │   ├── bundle_20260112_182819_dccf4ed9.json
