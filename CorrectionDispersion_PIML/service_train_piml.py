@@ -13,9 +13,16 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = "MODEL_NOT_SAVED_IN_FAST_RETRAIN.pth"
 LOGS_DIR = "/logs"
 REGISTRY_PATH = os.path.join(LOGS_DIR, "model_registry.json")
-BINARY_MAP_PATH = os.path.join(SCRIPT_DIR, "binary_maps_data", "amsterdam_netherlands_bbox.npy")
+BINARY_MAP_PATH = os.path.join(
+    SCRIPT_DIR, "binary_maps_data", "amsterdam_netherlands_bbox.npy"
+)
 REAL_CONC_PATH = os.path.join(SCRIPT_DIR, "dataset", "real_dispersion")
-CSV_PATH = os.path.join(SCRIPT_DIR, "dataset", "nps_simulated_dataset_gaussiano_2025-11-24_PIML_processed.csv")
+CSV_PATH = os.path.join(
+    SCRIPT_DIR,
+    "dataset",
+    "nps_simulated_dataset_gaussiano_2025-11-24_PIML_processed.csv",
+)
+
 
 def retrain_model():
     """
@@ -28,7 +35,9 @@ def retrain_model():
     if not os.path.exists(BINARY_MAP_PATH):
         raise FileNotFoundError(f"Binary map not found: {BINARY_MAP_PATH}")
     if not os.path.exists(REAL_CONC_PATH):
-        raise FileNotFoundError(f"The real_dispersion folder was not found: {REAL_CONC_PATH}")
+        raise FileNotFoundError(
+            f"The real_dispersion folder was not found: {REAL_CONC_PATH}"
+        )
     if not os.path.exists(CSV_PATH):
         raise FileNotFoundError(f"CSV dataset not found: {CSV_PATH}")
 
@@ -64,11 +73,15 @@ def retrain_model():
         try:
             i = int(file.split("_")[1])
         except Exception:
-            print(f"[RetrainService] [WARN] Impossible to extract index from filename: {file}")
+            print(
+                f"[RetrainService] [WARN] Impossible to extract index from filename: {file}"
+            )
             continue
 
         if i >= len(csv_df_reduced):
-            print(f"[RetrainService] [WARN] Index {i} out of range CSV (len={len(csv_df_reduced)}), skip {file}")
+            print(
+                f"[RetrainService] [WARN] Index {i} out of range CSV (len={len(csv_df_reduced)}), skip {file}"
+            )
             continue
 
         wind_dir_cos, wind_dir_sin, wind_speed, gps_x, gps_y = csv_df_reduced.iloc[i]
@@ -83,17 +96,15 @@ def retrain_model():
     print(f"[RetrainService] [DEBUG] Dataset built with {n_maps} valid maps.")
 
     if n_maps < 10:
-        print(f"[RetrainService] [WARN] Only {n_maps} valid maps. Retrain may be unstable.")
+        print(
+            f"[RetrainService] [WARN] Only {n_maps} valid maps. Retrain may be unstable."
+        )
 
     if n_maps == 0:
         raise RuntimeError("No valid maps for PIML retrain.")
 
     dataset = CNNDataset2(
-        concentration_maps,
-        wind_dirs,
-        wind_speeds,
-        global_features=None,
-        m=m
+        concentration_maps, wind_dirs, wind_speeds, global_features=None, m=m
     )
 
     n_total = len(dataset)
@@ -107,10 +118,13 @@ def retrain_model():
     val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"[RetrainService] [INFO] Device: {device}")
-    model = MCxM_PIML(binary_map, m=m, n_channel=1, wind_dim=2, n_global_features=0).to(device)
+    model = MCxM_PIML(binary_map, m=m, n_channel=1, wind_dim=2, n_global_features=0).to(
+        device
+    )
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     best_val_loss = float("inf")
     from time import time
+
     t_start = time()
     epochs = 2
     for epoch in range(epochs):
@@ -122,20 +136,14 @@ def retrain_model():
             wind_dir = wind_dir.to(device)
             wind_speed = wind_speed.to(device)
             optimizer.zero_grad()
-            output = model(
-                conc_map,
-                torch.stack([wind_speed, wind_dir], dim=1)
-            )
+            output = model(conc_map, torch.stack([wind_speed, wind_dir], dim=1))
             wind_vec = (
                 torch.cos(torch.deg2rad(wind_dir)).mean().item(),
                 torch.sin(torch.deg2rad(wind_dir)).mean().item(),
             )
             target = conc_map.squeeze(1)
             loss, comps = physics_masked_loss_piml(
-                output,
-                target,
-                binary_map,
-                wind_vector=wind_vec
+                output, target, binary_map, wind_vector=wind_vec
             )
             loss.backward()
             optimizer.step()
@@ -159,10 +167,7 @@ def retrain_model():
                 )
                 target = conc_map.squeeze(1)
                 v_loss, comps = physics_masked_loss_piml(
-                    output,
-                    target,
-                    binary_map,
-                    wind_vector=wind_vec
+                    output, target, binary_map, wind_vector=wind_vec
                 )
                 val_loss += v_loss.item()
 
@@ -175,7 +180,9 @@ def retrain_model():
 
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
-            print(f"[RetrainService] Best *virtual* model updated (val_loss={best_val_loss:.6f})")
+            print(
+                f"[RetrainService] Best *virtual* model updated (val_loss={best_val_loss:.6f})"
+            )
 
     duration_min = round((time() - t_start) / 60, 2)
     print(f"[RetrainService] Total retraining duration: {duration_min} minutes")
@@ -189,7 +196,11 @@ def retrain_model():
         except Exception:
             prev_version = None
 
-    if prev_version and isinstance(prev_version, str) and prev_version.startswith("PIML_v"):
+    if (
+        prev_version
+        and isinstance(prev_version, str)
+        and prev_version.startswith("PIML_v")
+    ):
         try:
             i = int(prev_version.replace("PIML_v", ""))
             new_version = f"PIML_v{i+1}"
@@ -206,8 +217,12 @@ def retrain_model():
         "model_path": "NOT_SAVED_FAST_RETRAIN",
     }
 
-    print(f"[RetrainService] Retraining completed. new_version={new_version}, metrics={metrics}")
+    print(
+        f"[RetrainService] Retraining completed. new_version={new_version}, metrics={metrics}"
+    )
 
     return new_version, metrics
+
+
 if __name__ == "__main__":
     retrain_model()

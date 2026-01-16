@@ -3,6 +3,7 @@ import uuid
 import numpy as np
 from datetime import datetime
 
+
 class SensorSimM:
     """
     Sensor simulator for PENTION-M.
@@ -29,11 +30,17 @@ class SensorSimM:
             "humidity_%": RH,
             "wind_speed_mps": wind_speed,
             "wind_dir_deg": wind_dir_deg,
-            "stability_class": stability
+            "stability_class": stability,
         }
 
     def _simulate_sensor_substance(self) -> dict:
-        compounds = ["Cathinone", "Cannabinoid", "Phenethylamine", "Opioid", "Benzodiazepine"]
+        compounds = [
+            "Cathinone",
+            "Cannabinoid",
+            "Phenethylamine",
+            "Opioid",
+            "Benzodiazepine",
+        ]
         compound = random.choice(compounds)
 
         t = np.linspace(0, 1, 5)
@@ -45,7 +52,7 @@ class SensorSimM:
             "compound_name": compound,
             "concentration_series_mg_m3": [round(float(v), 4) for v in conc],
             "unit": "mg/m³",
-            "noise_level": noise_level
+            "noise_level": noise_level,
         }
 
     def _simulate_sensor_gps(self) -> dict:
@@ -58,23 +65,28 @@ class SensorSimM:
         sigma_y = round(0.2 * wind_speed, 3)
         sigma_z = round(0.15 * wind_speed, 3)
         pe_number = round(wind_speed / max(0.1, np.random.uniform(0.5, 1.5)), 2)
-        stability_index = {"A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6}.get(stability, 4)
+        stability_index = {"A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6}.get(
+            stability, 4
+        )
 
         return {
             "sigma_y": sigma_y,
             "sigma_z": sigma_z,
             "pe_number": pe_number,
             "wind_vector": [wind_speed, random.randint(0, 360)],
-            "stability_index": stability_index
+            "stability_index": stability_index,
         }
 
     def _simulate_inference_block(self, compound: str) -> dict:
         confidence = round(random.uniform(0.85, 0.99), 2)
         return {
             "dispersion_map_id": f"MAP_{uuid.uuid4().hex[:6]}.npy",
-            "predicted_source_location": [random.randint(50, 150), random.randint(50, 150)],
+            "predicted_source_location": [
+                random.randint(50, 150),
+                random.randint(50, 150),
+            ],
             "predicted_class": compound,
-            "confidence_score": confidence
+            "confidence_score": confidence,
         }
 
     def _simulate_monitoring_block(self) -> dict:
@@ -82,7 +94,7 @@ class SensorSimM:
             "model_version": "XGBoost_v1.2",
             "drift_score": round(random.uniform(0.0, 0.05), 3),
             "latency_ms": random.randint(300, 900),
-            "mse_free": round(random.uniform(0.002, 0.01), 4)
+            "mse_free": round(random.uniform(0.002, 0.01), 4),
         }
 
     def generate_simulation(self) -> dict:
@@ -90,7 +102,9 @@ class SensorSimM:
         air = self._simulate_sensor_air()
         substance = self._simulate_sensor_substance()
         gps = self._simulate_sensor_gps()
-        piml_feat = self._simulate_piml_features(air["wind_speed_mps"], air["stability_class"])
+        piml_feat = self._simulate_piml_features(
+            air["wind_speed_mps"], air["stability_class"]
+        )
         inference = self._simulate_inference_block(substance["compound_name"])
         monitoring = self._simulate_monitoring_block()
 
@@ -106,25 +120,32 @@ class SensorSimM:
             "ModelOps": {
                 "model_registry_id": "mdl_XGB_2025_11",
                 "training_data_version": "PENTION_EI_Complete_v3",
-                "retraining_trigger": False
+                "retraining_trigger": False,
             },
             "UI_Output": {
                 "dashboard_tabs": [
-                    "Simulation", "Dispersion", "Source", "NPS", "MLOps Monitoring"
+                    "Simulation",
+                    "Dispersion",
+                    "Source",
+                    "NPS",
+                    "MLOps Monitoring",
                 ],
-                "visualization_files": ["dispersion_map.html", "wind_rose.png"]
+                "visualization_files": ["dispersion_map.html", "wind_rose.png"],
             },
             "ForensicExport": {
                 "export_file": f"{sim_id}_bundle.zip",
-                "compliance_tags": ["GDPR", "LEA_audit_ok"]
-            }
+                "compliance_tags": ["GDPR", "LEA_audit_ok"],
+            },
         }
 
-def generate_sensor_network_from_map(conc_map: np.ndarray,
-                                     building_map: np.ndarray,
-                                     n_sensors: int = 5,
-                                     fault_rate: float = 0.1,
-                                     seed: int | None = None):
+
+def generate_sensor_network_from_map(
+    conc_map: np.ndarray,
+    building_map: np.ndarray,
+    n_sensors: int = 5,
+    fault_rate: float = 0.1,
+    seed: int | None = None,
+):
     """
     Generates a physical sensor network from a concentration map.
     - Avoid occupied cells (building_map == 1)
@@ -149,25 +170,29 @@ def generate_sensor_network_from_map(conc_map: np.ndarray,
         conc_value = conc_map[y, x] + np.random.normal(0, 0.01)
         is_fault = np.random.rand() < fault_rate
 
-        sensors.append({
-            "sensor_id": len(sensors) + 1,
-            "sensor_is_fault": is_fault,
-            "time": 0.0,
-            "conc": float(np.clip(conc_value, 0, 1)),
-            "wind_dir_x": 0.0,
-            "wind_dir_y": 0.0,
-            "wind_speed": 0.0,
-            "wind_type": 1,
-            "gps_x": x,
-            "gps_y": y,
-            "stability_value": 4.0
-        })
+        sensors.append(
+            {
+                "sensor_id": len(sensors) + 1,
+                "sensor_is_fault": is_fault,
+                "time": 0.0,
+                "conc": float(np.clip(conc_value, 0, 1)),
+                "wind_dir_x": 0.0,
+                "wind_dir_y": 0.0,
+                "wind_speed": 0.0,
+                "wind_type": 1,
+                "gps_x": x,
+                "gps_y": y,
+                "stability_value": 4.0,
+            }
+        )
         attempts += 1
 
     return sensors
+
 
 if __name__ == "__main__":
     sim = SensorSimM(seed=42)
     sample = sim.generate_simulation()
     import json
+
     print(json.dumps(sample, indent=2))

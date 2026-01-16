@@ -5,15 +5,18 @@ import statistics
 from typing import Dict, Any
 import pandas as pd
 
+
 def safe_mean(values):
     vals = [v for v in values if v is not None]
     return float(sum(vals) / len(vals)) if vals else None
+
 
 def safe_std(values):
     vals = [v for v in values if v is not None]
     if len(vals) <= 1:
         return None
     return float(statistics.pstdev(vals))
+
 
 def load_piml_dispersion_kpi(piml_csv_path: str) -> Dict[str, Any]:
     """
@@ -39,6 +42,7 @@ def load_piml_dispersion_kpi(piml_csv_path: str) -> Dict[str, Any]:
         "building_violation_ratio": float(df["building_violation"].mean()),
     }
     return kpi
+
 
 def load_nps_kpi(nps_summary_path: str) -> Dict[str, Any]:
     """
@@ -69,6 +73,7 @@ def load_nps_kpi(nps_summary_path: str) -> Dict[str, Any]:
         "clf_conf_range_max": conf_max,
     }
 
+
 def load_localization_kpi(emission_metrics_path: str) -> Dict[str, Any]:
     """
     Read validation/Emission/emission_piml_metrics.json produced by the notebook
@@ -89,6 +94,7 @@ def load_localization_kpi(emission_metrics_path: str) -> Dict[str, Any]:
         "localization_rmse_m": float(data.get("rmse_m", 0.0)),
         "localization_mae_m": float(data.get("mae_m", 0.0)),
     }
+
 
 def load_mlops_kpi(monitoring_log_path: str) -> Dict[str, Any]:
     """
@@ -142,6 +148,7 @@ def load_mlops_kpi(monitoring_log_path: str) -> Dict[str, Any]:
         kpi["mse_free_mean"] = float(sum(mses) / len(mses))
     return kpi
 
+
 def load_forensic_kpi(forensic_csv_path: str) -> Dict[str, Any]:
     """
     Read validation/Forensic/forensic_validation_results.csv and calculate:
@@ -169,13 +176,16 @@ def load_forensic_kpi(forensic_csv_path: str) -> Dict[str, Any]:
         "forensic_num_bundles": int(len(df)),
     }
 
+
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     root_dir = os.path.dirname(script_dir)
     piml_csv = os.path.join(script_dir, "PIML", "validation_results_piml.csv")
     nps_json = os.path.join(script_dir, "NPS", "results_nps", "summary.json")
     emission_json = os.path.join(script_dir, "Emission", "emission_piml_metrics.json")
-    forensic_csv = os.path.join(script_dir, "Forensic", "forensic_validation_results.csv")
+    forensic_csv = os.path.join(
+        script_dir, "Forensic", "forensic_validation_results.csv"
+    )
     monitoring_log = os.path.join(root_dir, "logs", "monitoring_log.jsonl")
     kpi = {}
     kpi.update(load_piml_dispersion_kpi(piml_csv))
@@ -192,6 +202,7 @@ def main():
         print(df.to_markdown(index=False))
     except Exception:
         print(df)
+
 
 if __name__ == "__main__":
     main()

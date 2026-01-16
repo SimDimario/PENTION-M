@@ -13,7 +13,9 @@ from binary_map_gen import generate_binary_map, convert_np
 import uvicorn
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_MAP_PATH = os.path.join(SCRIPT_DIR, "binary_maps_data", "amsterdam_netherlands_bbox.npy")
+DEFAULT_MAP_PATH = os.path.join(
+    SCRIPT_DIR, "binary_maps_data", "amsterdam_netherlands_bbox.npy"
+)
 
 if os.path.exists(DEFAULT_MAP_PATH):
     DEFAULT_BUILDING_MAP = np.load(DEFAULT_MAP_PATH)
@@ -24,6 +26,7 @@ else:
 
 app = FastAPI()
 
+
 class BBox(BaseModel):
     min_lon: float
     min_lat: float
@@ -31,6 +34,7 @@ class BBox(BaseModel):
     max_lat: float
     grid_size: int = 300
     place: str = "Amsterdam, Netherlands"
+
 
 class DispersionInput(BaseModel):
     wind_speed: float
@@ -40,15 +44,14 @@ class DispersionInput(BaseModel):
     global_features: list | None = None
     concentration_tensor_3d: Optional[list] = None
 
+
 @app.post("/generate_binary_map")
 def generate_map(bbox: BBox):
 
     quartiere_bbox = (bbox.min_lon, bbox.min_lat, bbox.max_lon, bbox.max_lat)
 
     binary_map, metadata = generate_binary_map(
-        place=bbox.place,
-        bbox=quartiere_bbox,
-        grid_size=bbox.grid_size
+        place=bbox.place, bbox=quartiere_bbox, grid_size=bbox.grid_size
     )
 
     out_dir = "binary_maps_data"
@@ -64,8 +67,9 @@ def generate_map(bbox: BBox):
     return {
         "status_code": "success",
         "map": binary_map.tolist(),
-        "metadata": convert_np(metadata)
+        "metadata": convert_np(metadata),
     }
+
 
 @app.post("/correct_dispersion")
 def predict_endpoint(payload: DispersionInput):
@@ -85,27 +89,24 @@ def predict_endpoint(payload: DispersionInput):
         try:
             C_tensor = np.array(payload.concentration_tensor_3d, dtype=np.float32)
             if C_tensor.ndim != 3:
-                print(f"[WARN] concentration_tensor_3d shape inattesa: {C_tensor.shape}")
+                print(
+                    f"[WARN] concentration_tensor_3d shape inattesa: {C_tensor.shape}"
+                )
                 C_tensor = None
             else:
-                print(f"[INFO] 3D tensor received from ingestion: shape={C_tensor.shape}")
+                print(
+                    f"[INFO] 3D tensor received from ingestion: shape={C_tensor.shape}"
+                )
         except Exception as e:
             print(f"[WARN] Error parsing 3D tensor: {e}")
             C_tensor = None
 
     correction_result = correct_dispersion_piml(
-        payload.wind_dir,
-        payload.wind_speed,
-        conc_map,
-        build_map,
-        glob_feat,
-        C_tensor
+        payload.wind_dir, payload.wind_speed, conc_map, build_map, glob_feat, C_tensor
     )
 
-    return {
-        "status": "ok",
-        **correction_result
-    }
+    return {"status": "ok", **correction_result}
+
 
 """
 if __name__ == "__main__":

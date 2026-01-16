@@ -22,8 +22,9 @@ logger.info(f"Loading scaler from {MODEL_PATH}")
 scaler = joblib.load(os.path.join(MODEL_PATH, "scaler.pkl"))
 logger.info("Scaler loaded successfully.")
 
+
 def estrai_feature(time, conc, window=None, spike_height=None):
-   
+
     time = np.array(time)
     conc = np.array(conc)
     C_max = np.max(conc)
@@ -65,8 +66,9 @@ def estrai_feature(time, conc, window=None, spike_height=None):
         "fall_rate": fall_rate,
         "plume_duration": plume_duration,
         "spike_count": spike_count,
-        "spike_frequency": spike_freq
+        "spike_frequency": spike_freq,
     }
+
 
 def predict_source(sensors: list, n_sensor_operating: int):
 
@@ -83,13 +85,15 @@ def predict_source(sensors: list, n_sensor_operating: int):
         concs = group["conc"].to_list()
         feat = estrai_feature(times, concs)
         first_row = group.iloc[0]
-        feat.update({
-            "wind_dir_x": first_row["wind_dir_x"],
-            "wind_dir_y": first_row["wind_dir_y"],
-            "wind_speed": first_row["wind_speed"],
-            "wind_type": first_row["wind_type"],
-            "n_sens_valid": n_sensor_operating,
-        })
+        feat.update(
+            {
+                "wind_dir_x": first_row["wind_dir_x"],
+                "wind_dir_y": first_row["wind_dir_y"],
+                "wind_speed": first_row["wind_speed"],
+                "wind_type": first_row["wind_type"],
+                "n_sens_valid": n_sensor_operating,
+            }
+        )
         agg_features_list.append(feat)
 
     X_input = pd.DataFrame(agg_features_list).fillna(0)

@@ -2,8 +2,11 @@ from torch.utils.data import Dataset
 import torch
 import numpy as np
 
+
 class CNNDataset2(Dataset):
-    def __init__(self, concentration_maps, wind_dir, wind_speed, global_features=None, m=500):
+    def __init__(
+        self, concentration_maps, wind_dir, wind_speed, global_features=None, m=500
+    ):
         self.concentration_maps = concentration_maps
         self.wind_dir = wind_dir
         self.wind_speed = wind_speed

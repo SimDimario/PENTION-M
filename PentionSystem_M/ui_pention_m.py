@@ -15,6 +15,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 import networkx as nx
 import osmnx as ox
 import sys
+
 sys.path.append("/shared_config")
 from config_geo import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX
 
@@ -37,6 +38,7 @@ except Exception as e:
     print(f"[UI] ERROR loading NPS dataset: {e}", flush=True)
     NPS_DF = None
 
+
 class SimulationState:
     def __init__(self):
         self.G: nx.MultiDiGraph | None = None
@@ -47,8 +49,10 @@ class SimulationState:
         self.path = []
         self.current_sim_id = None
 
+
 state = SimulationState()
 active_sockets: list[WebSocket] = []
+
 
 def load_graph():
     """Loads the Amsterdam road graph or, as a fallback, a synthetic grid graph."""
@@ -65,10 +69,16 @@ def load_graph():
 
             lats = [v["y"] for k, v in G.nodes(data=True)]
             lons = [v["x"] for k, v in G.nodes(data=True)]
-            print("[UI] BOUNDING BOX REAL:",
-                "lat:", min(lats), max(lats),
-                "lon:", min(lons), max(lons),
-                flush=True)
+            print(
+                "[UI] BOUNDING BOX REAL:",
+                "lat:",
+                min(lats),
+                max(lats),
+                "lon:",
+                min(lons),
+                max(lons),
+                flush=True,
+            )
 
         except Exception as e:
             print(f"[UI] Error loading cached graph: {e}", flush=True)
@@ -82,14 +92,17 @@ def load_graph():
             G = nx.Graph(G)
             print("[UI] Graph downloaded and cached.", flush=True)
         except Exception as e:
-            print(f"[UI] ERROR downloading graph, falling back to synthetic grid: {e}", flush=True)
+            print(
+                f"[UI] ERROR downloading graph, falling back to synthetic grid: {e}",
+                flush=True,
+            )
             G = None
 
     if G is None:
         print("[UI] Building synthetic grid graph for Amsterdam area.", flush=True)
         G = nx.grid_2d_graph(20, 20)
 
-        for (i, j) in G.nodes:
+        for i, j in G.nodes:
             fi = i / 19.0
             fj = j / 19.0
             lat = LAT_MIN + (LAT_MAX - LAT_MIN) * fi
@@ -100,9 +113,11 @@ def load_graph():
     state.G = G
     return G
 
+
 def node_latlon(G, node):
     data = G.nodes[node]
     return float(data["y"]), float(data["x"])
+
 
 def haversine_m(lat1, lon1, lat2, lon2):
     R = 6371000.0
@@ -113,6 +128,7 @@ def haversine_m(lat1, lon1, lat2, lon2):
     a = sin(dphi / 2) ** 2 + cos(phi1) * cos(phi2) * sin(dlambda / 2) ** 2
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
     return R * c
+
 
 async def broadcast(message: dict):
     """Sends a JSON message to all connected WebSocket clients."""
@@ -125,6 +141,7 @@ async def broadcast(message: dict):
     for ws in dead:
         if ws in active_sockets:
             active_sockets.remove(ws)
+
 
 def get_last_monitoring():
     """Reads the latest entry from monitoring_log.jsonl, if it exists."""
@@ -140,6 +157,7 @@ def get_last_monitoring():
     except Exception:
         return None
 
+
 def get_model_registry():
     """Legge model_registry.json, se esiste."""
     reg_path = os.path.join(LOG_DIR, "model_registry.json")
@@ -151,14 +169,14 @@ def get_model_registry():
     except Exception:
         return None
 
+
 def get_last_forensic_bundle():
     """Gets the latest JSON forensic bundle in /logs/forensic."""
     dir_forensic = os.path.join(LOG_DIR, "forensic")
     if not os.path.isdir(dir_forensic):
         return None
     files = sorted(
-        glob(os.path.join(dir_forensic, "bundle_*.json")),
-        key=os.path.getmtime
+        glob(os.path.join(dir_forensic, "bundle_*.json")), key=os.path.getmtime
     )
     if not files:
         return None
@@ -167,7 +185,8 @@ def get_last_forensic_bundle():
             return json.load(f)
     except Exception:
         return None
-    
+
+
 def generate_noisy_spectrum(noise_level: float):
     if NPS_DF is None:
         return [0.0] * 600, "UNKNOWN"
@@ -182,9 +201,7 @@ def generate_noisy_spectrum(noise_level: float):
         s = np.roll(s, shift)
 
     drift = np.linspace(
-        np.random.uniform(-0.4, 0.4),
-        np.random.uniform(-0.4, 0.4),
-        len(s)
+        np.random.uniform(-0.4, 0.4), np.random.uniform(-0.4, 0.4), len(s)
     )
     s = s + drift
     s = s * (1 + np.random.normal(0, 0.03, len(s)))
@@ -196,7 +213,10 @@ def generate_noisy_spectrum(noise_level: float):
 
     return s.tolist(), compound_name
 
-def build_simulation_payload(sim_id: str, lat: float, lon: float, source_lat: float, source_lon: float):
+
+def build_simulation_payload(
+    sim_id: str, lat: float, lon: float, source_lat: float, source_lon: float
+):
     """
     NEW VERSION — The UI only sends raw data.
     Physical weather from GaussianPuff /get_meteo.
@@ -204,7 +224,9 @@ def build_simulation_payload(sim_id: str, lat: float, lon: float, source_lat: fl
     now_iso = datetime.utcnow().isoformat() + "Z"
 
     try:
-        resp_met = requests.get("http://gaussian_dispersion_model:8002/get_meteo", timeout=10).json()
+        resp_met = requests.get(
+            "http://gaussian_dispersion_model:8002/get_meteo", timeout=10
+        ).json()
         temperature = resp_met.get("temperature", 20.0)
         humidity = resp_met.get("humidity", 0.5)
         wind_speed = resp_met.get("wind_speed", 4.0)
@@ -223,7 +245,6 @@ def build_simulation_payload(sim_id: str, lat: float, lon: float, source_lat: fl
     payload = {
         "simulation_id": sim_id,
         "timestamp": now_iso,
-
         "SensorAir": {
             "temperature_C": temperature,
             "humidity_%": humidity,
@@ -231,29 +252,26 @@ def build_simulation_payload(sim_id: str, lat: float, lon: float, source_lat: fl
             "wind_dir_deg": wind_dir_deg,
             "stability_class": stability_class,
         },
-
         "SensorSubstance": {
             "compound_name": true_compound,
             "concentration_series_mg_m3": spectrum_noisy,
             "unit": "intensity",
             "noise_level": noise_level,
         },
-
         "SensorGPS": {
             "latitude": lat,
             "longitude": lon,
             "altitude_m": 2.0,
         },
-
-        "SourceGPS": {
-            "latitude": source_lat,
-            "longitude": source_lon
-        }
+        "SourceGPS": {"latitude": source_lat, "longitude": source_lon},
     }
 
     return payload
 
-def call_ingestion_pipeline(sim_id: str, lat: float, lon: float, source_lat: float, source_lon: float):
+
+def call_ingestion_pipeline(
+    sim_id: str, lat: float, lon: float, source_lat: float, source_lon: float
+):
     payload = build_simulation_payload(sim_id, lat, lon, source_lat, source_lon)
 
     payload["event_start_ts"] = datetime.utcnow().isoformat() + "Z"
@@ -267,6 +285,7 @@ def call_ingestion_pipeline(sim_id: str, lat: float, lon: float, source_lat: flo
         return {"code": resp.status_code, "body": body}
     except Exception as e:
         return {"code": 500, "body": {"error": str(e)}}
+
 
 async def simulation_loop(force_near=False):
     try:
@@ -310,20 +329,19 @@ async def simulation_loop(force_near=False):
         state.path.append((van_lat, van_lon))
         sim_id = f"SIM_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
         state.current_sim_id = sim_id
-        await broadcast({
-            "type": "init",
-            "simulation_id": sim_id,
-            "source": {"lat": source_lat, "lon": source_lon},
-            "van": {"lat": van_lat, "lon": van_lon},
-            "status": "patrolling",
-        })
+        await broadcast(
+            {
+                "type": "init",
+                "simulation_id": sim_id,
+                "source": {"lat": source_lat, "lon": source_lon},
+                "van": {"lat": van_lat, "lon": van_lon},
+                "status": "patrolling",
+            }
+        )
         if force_near:
             try:
                 path_nodes = nx.shortest_path(
-                    G,
-                    source=state.van_node,
-                    target=state.source_node,
-                    weight="length"
+                    G, source=state.van_node, target=state.source_node, weight="length"
                 )
             except Exception:
                 path_nodes = [state.van_node, state.source_node]
@@ -338,26 +356,30 @@ async def simulation_loop(force_near=False):
 
                 dist = haversine_m(lat, lon, source_lat, source_lon)
 
-                await broadcast({
-                    "type": "van_update",
-                    "lat": lat,
-                    "lon": lon,
-                    "status": "patrolling",
-                    "distance_m": dist
-                })
+                await broadcast(
+                    {
+                        "type": "van_update",
+                        "lat": lat,
+                        "lon": lon,
+                        "status": "patrolling",
+                        "distance_m": dist,
+                    }
+                )
 
                 INNER_RADIUS = DETECTION_RADIUS_M - 50
                 if dist <= INNER_RADIUS:
                     state.detected = True
                     state.running = False
 
-                    await broadcast({
-                        "type": "van_update",
-                        "lat": lat,
-                        "lon": lon,
-                        "status": "detected",
-                        "distance_m": dist
-                    })
+                    await broadcast(
+                        {
+                            "type": "van_update",
+                            "lat": lat,
+                            "lon": lon,
+                            "status": "detected",
+                            "distance_m": dist,
+                        }
+                    )
                     await asyncio.sleep(0.1)
 
                     break
@@ -365,7 +387,9 @@ async def simulation_loop(force_near=False):
                 await asyncio.sleep(STEP_DELAY_SEC)
 
             if state.detected:
-                result = call_ingestion_pipeline(sim_id, lat, lon, source_lat, source_lon)
+                result = call_ingestion_pipeline(
+                    sim_id, lat, lon, source_lat, source_lon
+                )
                 monitoring = None
                 if isinstance(result.get("body"), dict):
                     monitoring = result["body"].get("monitoring")
@@ -373,14 +397,16 @@ async def simulation_loop(force_near=False):
                     monitoring = get_last_monitoring()
                 registry = get_model_registry()
                 bundle = get_last_forensic_bundle()
-                await broadcast({
-                    "type": "detection_result",
-                    "simulation_id": sim_id,
-                    "ingestion_response": result,
-                    "monitoring": monitoring,
-                    "registry": registry,
-                    "forensic_bundle": bundle,
-                })
+                await broadcast(
+                    {
+                        "type": "detection_result",
+                        "simulation_id": sim_id,
+                        "ingestion_response": result,
+                        "monitoring": monitoring,
+                        "registry": registry,
+                        "forensic_bundle": bundle,
+                    }
+                )
 
             return
 
@@ -399,61 +425,77 @@ async def simulation_loop(force_near=False):
                 state.detected = True
                 state.running = False
 
-                await broadcast({
-                    "type": "van_update",
-                    "lat": van_lat,
-                    "lon": van_lon,
-                    "status": "detected",
-                    "distance_m": dist,
-                })
+                await broadcast(
+                    {
+                        "type": "van_update",
+                        "lat": van_lat,
+                        "lon": van_lon,
+                        "status": "detected",
+                        "distance_m": dist,
+                    }
+                )
 
                 await asyncio.sleep(0.15)
 
-                result = call_ingestion_pipeline(sim_id, van_lat, van_lon, source_lat, source_lon)
-                monitoring = result.get("body", {}).get("monitoring") or get_last_monitoring()
+                result = call_ingestion_pipeline(
+                    sim_id, van_lat, van_lon, source_lat, source_lon
+                )
+                monitoring = (
+                    result.get("body", {}).get("monitoring") or get_last_monitoring()
+                )
                 registry = get_model_registry()
                 bundle = get_last_forensic_bundle()
 
-                await broadcast({
-                    "type": "detection_result",
-                    "simulation_id": sim_id,
-                    "ingestion_response": result,
-                    "monitoring": monitoring,
-                    "registry": registry,
-                    "forensic_bundle": bundle,
-                })
+                await broadcast(
+                    {
+                        "type": "detection_result",
+                        "simulation_id": sim_id,
+                        "ingestion_response": result,
+                        "monitoring": monitoring,
+                        "registry": registry,
+                        "forensic_bundle": bundle,
+                    }
+                )
 
                 break
 
-            await broadcast({
-                "type": "van_update",
-                "lat": van_lat,
-                "lon": van_lon,
-                "status": "patrolling",
-                "distance_m": dist,
-            })
+            await broadcast(
+                {
+                    "type": "van_update",
+                    "lat": van_lat,
+                    "lon": van_lon,
+                    "status": "patrolling",
+                    "distance_m": dist,
+                }
+            )
 
             await asyncio.sleep(STEP_DELAY_SEC)
 
         if not state.detected:
-            await broadcast({
-                "type": "sim_end",
-                "simulation_id": sim_id,
-                "reason": "stopped_or_completed",
-            })
+            await broadcast(
+                {
+                    "type": "sim_end",
+                    "simulation_id": sim_id,
+                    "reason": "stopped_or_completed",
+                }
+            )
 
     except Exception as e:
         state.running = False
         state.detected = False
         print(f"[UI] simulation_loop error: {e}", flush=True)
-        await broadcast({
-            "type": "error",
-            "message": str(e),
-        })
+        await broadcast(
+            {
+                "type": "error",
+                "message": str(e),
+            }
+        )
+
 
 @app.get("/", response_class=FileResponse)
 def serve_index():
     return FileResponse("static/index.html")
+
 
 @app.post("/api/start_simulation")
 async def start_simulation():
@@ -462,11 +504,13 @@ async def start_simulation():
     asyncio.create_task(simulation_loop())
     return {"status": "started"}
 
+
 @app.post("/api/reset")
 def reset():
     state.running = False
     state.detected = False
     return {"status": "reset"}
+
 
 @app.get("/api/status")
 def api_status():
@@ -482,6 +526,7 @@ def api_status():
         "current_simulation_id": state.current_sim_id,
     }
 
+
 @app.post("/api/start_simulation_near")
 async def start_simulation_near():
     if state.running:
@@ -489,6 +534,7 @@ async def start_simulation_near():
 
     asyncio.create_task(simulation_loop(force_near=True))
     return {"status": "started_debug"}
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -504,6 +550,8 @@ async def websocket_endpoint(websocket: WebSocket):
         if websocket in active_sockets:
             active_sockets.remove(websocket)
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("ui_pention_m:app", host="0.0.0.0", port=8005, reload=True)

@@ -11,8 +11,12 @@ PLOT_DIR = os.path.join(BASE_DIR, "plots")
 os.makedirs(PLOT_DIR, exist_ok=True)
 
 files = sorted(
-    [f for f in os.listdir(DATASET_DIR) if f.startswith("nps_simulated_dataset_gaussiano") and f.endswith("_PIML.csv")],
-    reverse=True
+    [
+        f
+        for f in os.listdir(DATASET_DIR)
+        if f.startswith("nps_simulated_dataset_gaussiano") and f.endswith("_PIML.csv")
+    ],
+    reverse=True,
 )
 if not files:
     raise FileNotFoundError("No PIML datasets found in ./dataset/")
@@ -30,7 +34,11 @@ print(dataset.head(5))
 print("\nMissing values ​​per column:\n", dataset.isnull().sum())
 print("\nBasic statistics:\n", dataset.describe())
 
-continuous_cols = [c for c in ["wind_speed", "sigma_y", "sigma_z", "stability_index", "RH"] if c in dataset.columns]
+continuous_cols = [
+    c
+    for c in ["wind_speed", "sigma_y", "sigma_z", "stability_index", "RH"]
+    if c in dataset.columns
+]
 if continuous_cols:
     dataset[continuous_cols].hist(figsize=(12, 8), bins=20)
     plt.suptitle("Distribution of PIML physical variables", fontsize=16)
@@ -39,7 +47,9 @@ if continuous_cols:
 else:
     print("No continuous columns found for distribution.")
 
-categorical_cols = [c for c in ["stability_class", "dispersion_model"] if c in dataset.columns]
+categorical_cols = [
+    c for c in ["stability_class", "dispersion_model"] if c in dataset.columns
+]
 if categorical_cols:
     fig, axes = plt.subplots(1, len(categorical_cols), figsize=(10, 5))
     if len(categorical_cols) == 1:
@@ -47,7 +57,7 @@ if categorical_cols:
     for ax, col in zip(axes, categorical_cols):
         sns.countplot(data=dataset, x=col, ax=ax)
         ax.set_title(f"Distribution of {col}")
-        ax.tick_params(axis='x', rotation=45)
+        ax.tick_params(axis="x", rotation=45)
     plt.tight_layout()
     plt.savefig(os.path.join(PLOT_DIR, "distribuzioni_variabili_categoriche.png"))
     plt.close()
@@ -56,7 +66,9 @@ if "wind_dir_mean" in dataset.columns:
     dataset["wind_dir_cos"] = np.cos(np.deg2rad(dataset["wind_dir_mean"]))
     dataset["wind_dir_sin"] = np.sin(np.deg2rad(dataset["wind_dir_mean"]))
 
-label_cols = [c for c in ["stability_class", "dispersion_model"] if c in dataset.columns]
+label_cols = [
+    c for c in ["stability_class", "dispersion_model"] if c in dataset.columns
+]
 if label_cols:
     encoders = {col: LabelEncoder().fit(dataset[col].astype(str)) for col in label_cols}
     for col, le in encoders.items():

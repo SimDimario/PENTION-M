@@ -20,18 +20,22 @@ PUBLIC_KEY_PATH = os.path.join(KEY_DIR, "public_key.pem")
 if not os.path.exists(PRIVATE_KEY_PATH):
     private_key = ed25519.Ed25519PrivateKey.generate()
     with open(PRIVATE_KEY_PATH, "wb") as f:
-        f.write(private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
-        ))
+        f.write(
+            private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+        )
 
     public_key = private_key.public_key()
     with open(PUBLIC_KEY_PATH, "wb") as f:
-        f.write(public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        ))
+        f.write(
+            public_key.public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+            )
+        )
 else:
     with open(PRIVATE_KEY_PATH, "rb") as f:
         private_key = serialization.load_pem_private_key(f.read(), password=None)
@@ -45,14 +49,17 @@ LOG_DIR = "/logs"
 FORENSIC_DIR = os.path.join(LOG_DIR, "forensic")
 os.makedirs(FORENSIC_DIR, exist_ok=True)
 
+
 class ForensicExport(BaseModel):
     export_file: str
     compliance_tags: List[str]
+
 
 class ModelOps(BaseModel):
     model_registry_id: str
     training_data_version: str
     retraining_trigger: bool
+
 
 class Monitoring(BaseModel):
     model_version: str
@@ -60,16 +67,19 @@ class Monitoring(BaseModel):
     latency_ms: int
     mse_free: float
 
+
 class Inference(BaseModel):
     predicted_class: Optional[str] = None
     confidence_score: Optional[float] = None
     dispersion_map_id: Optional[str] = None
+
 
 class PIMLFeatures(BaseModel):
     sigma_y: Optional[float] = None
     sigma_z: Optional[float] = None
     pe_number: Optional[float] = None
     stability_index: Optional[float] = None
+
 
 class ForensicEvent(BaseModel):
     simulation_id: str
@@ -94,6 +104,7 @@ class ForensicEvent(BaseModel):
     class Config:
         extra = "allow"
 
+
 def write_bundle(event: dict):
     ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     bundle_name = f"bundle_{ts}_{uuid.uuid4().hex[:8]}.json"
@@ -112,7 +123,7 @@ def write_bundle(event: dict):
         "signature": signature,
         "public_key": public_key.public_bytes(
             encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
         ).decode(),
         "event": event,
     }
@@ -122,9 +133,11 @@ def write_bundle(event: dict):
 
     return path, hash_value, signature
 
+
 def list_bundles(n: int = 20) -> List[str]:
     files = sorted(os.listdir(FORENSIC_DIR), reverse=True)
     return files[:n]
+
 
 def load_bundle(filename: str) -> dict:
     path = os.path.join(FORENSIC_DIR, filename)
@@ -133,9 +146,15 @@ def load_bundle(filename: str) -> dict:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
+
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "forensic_logger", "time": datetime.utcnow().isoformat()}
+    return {
+        "status": "ok",
+        "service": "forensic_logger",
+        "time": datetime.utcnow().isoformat(),
+    }
+
 
 @app.post("/log_forensic")
 def log_forensic(event: ForensicEvent):
@@ -160,7 +179,9 @@ def log_forensic(event: ForensicEvent):
             if maps:
                 latest_map = os.path.join(dataset_dir, maps[-1])
                 with open(latest_map, "rb") as cf:
-                    artifacts["concentration_map_hash"] = hashlib.sha256(cf.read()).hexdigest()
+                    artifacts["concentration_map_hash"] = hashlib.sha256(
+                        cf.read()
+                    ).hexdigest()
             else:
                 artifacts["concentration_map_hash"] = "none_found"
         else:
@@ -175,11 +196,13 @@ def log_forensic(event: ForensicEvent):
     event_dict["artifacts"] = artifacts
     fe = event_dict.setdefault("ForensicExport", {})
     fe.setdefault("compliance_tags", [])
-    fe["compliance_tags"].extend([
-        "SIGNATURE_OK",
-        "HASH_OK",
-        "ARTIFACTS_OK",
-    ])
+    fe["compliance_tags"].extend(
+        [
+            "SIGNATURE_OK",
+            "HASH_OK",
+            "ARTIFACTS_OK",
+        ]
+    )
 
     try:
         path, bundle_hash, bundle_sig = write_bundle(event_dict)
@@ -194,10 +217,12 @@ def log_forensic(event: ForensicEvent):
         "path": path,
     }
 
+
 @app.get("/forensic_bundles")
 def get_bundles(last_n: int = Query(10, ge=1, le=100)):
     files = list_bundles(last_n)
     return {"status": "ok", "count": len(files), "bundles": files}
+
 
 @app.get("/forensic_bundle/{filename}")
 def get_bundle(filename: str):
@@ -209,6 +234,7 @@ def get_bundle(filename: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.delete("/forensic_bundle/{filename}")
 def delete_bundle(filename: str):
     path = os.path.join(FORENSIC_DIR, filename)
@@ -216,6 +242,7 @@ def delete_bundle(filename: str):
         raise HTTPException(status_code=404, detail="Bundle not found")
     os.remove(path)
     return {"status": "ok", "deleted": filename}
+
 
 @app.get("/verify_bundle/{filename}")
 def verify_bundle(filename: str):
@@ -228,11 +255,13 @@ def verify_bundle(filename: str):
         artifacts = bundle.get("event", {}).get("artifacts", {})
         result = {"bundle": filename, "verified": True, "details": {}}
         event_data = bundle.get("event", {})
-        canonical_event = json.loads(json.dumps(event_data, sort_keys=True, default=str))
+        canonical_event = json.loads(
+            json.dumps(event_data, sort_keys=True, default=str)
+        )
         recomputed_hash = hashlib.sha256(
             json.dumps(canonical_event, sort_keys=True, default=str).encode()
         ).hexdigest()
-        hash_match = (recomputed_hash == bundle.get("hash_sha256", ""))
+        hash_match = recomputed_hash == bundle.get("hash_sha256", "")
         result["details"]["event_hash_match"] = hash_match
         if not hash_match:
             result["verified"] = False
@@ -278,6 +307,8 @@ def verify_bundle(filename: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8013)

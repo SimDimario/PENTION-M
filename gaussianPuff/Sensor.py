@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import random
 from scipy.interpolate import RegularGridInterpolator
 import os
-import sys 
+import sys
 from gaussianPuff.config import WindType, StabilityType, PasquillGiffordStability
 import numpy as np
 import pandas as pd
@@ -11,9 +11,17 @@ import pandas as pd
 """sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from ClassificatoreNPS import service_clf_nps"""
 
+
 class SensorSubstance:
-    def __init__(self, sensor_id, x: float, y: float, z: float = 2.,
-                 noise_level: float = 0.1, is_fault: bool = False):
+    def __init__(
+        self,
+        sensor_id,
+        x: float,
+        y: float,
+        z: float = 2.0,
+        noise_level: float = 0.1,
+        is_fault: bool = False,
+    ):
         self.id = sensor_id
         self.x = x
         self.y = y
@@ -21,7 +29,7 @@ class SensorSubstance:
         self.noise_level = noise_level
         self.concentrations = None
         self.noisy_concentrations = None
-        self.times= None
+        self.times = None
         self.is_fault = is_fault
 
     def sample_substance(self, conc_field, x_grid, y_grid, t_grid):
@@ -34,14 +42,16 @@ class SensorSubstance:
             self.concentrations = np.array([], dtype=float)
             self.noisy_concentrations = np.array([], dtype=float)
             self.times = []
-            return 
-        
+            return
+
         x_sorted = np.sort(np.unique(x_grid))
         y_sorted = np.sort(np.unique(y_grid))
         times = np.sort(np.unique(t_grid))
         self.times = times
 
-        interpolator = RegularGridInterpolator((x_sorted, y_sorted, times), conc_field, bounds_error=False, fill_value=0.0)
+        interpolator = RegularGridInterpolator(
+            (x_sorted, y_sorted, times), conc_field, bounds_error=False, fill_value=0.0
+        )
         coords = [(self.x, self.y, t) for t in times]
         self.concentrations = np.array([interpolator(c) for c in coords])
 
@@ -66,7 +76,7 @@ class SensorSubstance:
                 "noisy_concentrations": np.array([], dtype=float),
                 "mass_spectrum": None,
                 "source_pos": None,
-                "source_intensity": None
+                "source_intensity": None,
             }
         src_x = np.random.uniform(x_grid.min(), x_grid.max())
         src_y = np.random.uniform(y_grid.min(), y_grid.max())
@@ -74,12 +84,16 @@ class SensorSubstance:
         conc_field = np.zeros((len(x_grid), len(y_grid), len(t_grid)))
         for i, x in enumerate(x_grid):
             for j, y in enumerate(y_grid):
-                r2 = (x - src_x)**2 + (y - src_y)**2
+                r2 = (x - src_x) ** 2 + (y - src_y) ** 2
                 for k, t in enumerate(t_grid):
-                    conc_field[i, j, k] = src_intensity * np.exp(-r2 / (2*0.01)) * np.exp(-0.1*t)
+                    conc_field[i, j, k] = (
+                        src_intensity * np.exp(-r2 / (2 * 0.01)) * np.exp(-0.1 * t)
+                    )
         from scipy.interpolate import RegularGridInterpolator
-        interpolator = RegularGridInterpolator((x_grid, y_grid, t_grid), conc_field, 
-                                            bounds_error=False, fill_value=0.0)
+
+        interpolator = RegularGridInterpolator(
+            (x_grid, y_grid, t_grid), conc_field, bounds_error=False, fill_value=0.0
+        )
         coords = [(self.x, self.y, t) for t in t_grid]
         self.concentrations = np.array([interpolator(c) for c in coords])
         self.times = t_grid
@@ -105,19 +119,26 @@ class SensorSubstance:
             "noisy_concentrations": self.noisy_concentrations,
             "mass_spectrum": spectrum,
             "source_pos": (src_x, src_y),
-            "source_intensity": src_intensity
+            "source_intensity": src_intensity,
         }
 
     import os
-    default_dataset_path = "/PentionSystem/ClassificatoreNPS/datasetNPS/1-s2.0-S2468170923000358-mmc1.csv"
 
-    def _generate_mass_spectra(self, df=pd.read_csv(default_dataset_path, sep=',', header=0), n_generic=9, noise_level=0.01):
+    default_dataset_path = (
+        "/PentionSystem/ClassificatoreNPS/datasetNPS/1-s2.0-S2468170923000358-mmc1.csv"
+    )
 
+    def _generate_mass_spectra(
+        self,
+        df=pd.read_csv(default_dataset_path, sep=",", header=0),
+        n_generic=9,
+        noise_level=0.01,
+    ):
         """
         Generate mass spectra for a sensor based on a real dataset.
 
         Args:
-            df (pd.DataFrame): 
+            df (pd.DataFrame):
             n_generic (int): Number of generic spectra to generate in addition to the NPS spectrum.
             noise_level (float): Gaussian noise to be added to the spectra.
         Returns:
@@ -128,17 +149,19 @@ class SensorSubstance:
             print(f"Sensor {self.id} is faulty. No mass spectrum generated.")
             return np.full(600, np.nan, dtype=float)
 
-        df_nps = df[df['label'] != 'Other'] 
+        df_nps = df[df["label"] != "Other"]
         row_nps = df_nps.sample(n=1).iloc[0]
-        spectrum_nps = row_nps[df.columns[1:601]].values.astype(float)  
+        spectrum_nps = row_nps[df.columns[1:601]].values.astype(float)
         spectrum_nps += np.random.normal(0, noise_level, size=spectrum_nps.shape)
-        
+
         mass_spectra = [spectrum_nps]
 
         for _ in range(n_generic):
             row_generic = df.sample(n=1).iloc[0]
             spectrum_generic = row_generic[df.columns[1:601]].values.astype(float)
-            spectrum_generic += np.random.normal(0, noise_level, size=spectrum_generic.shape)
+            spectrum_generic += np.random.normal(
+                0, noise_level, size=spectrum_generic.shape
+            )
             mass_spectra.append(spectrum_generic)
 
         return mass_spectra
@@ -148,7 +171,7 @@ class SensorSubstance:
         Simulates a synthetic mass spectrum
         """
         num_bins = 600
-        np.random.seed(None) 
+        np.random.seed(None)
         baseline = np.random.rand(num_bins) * 0.01
         peak_positions = np.random.choice(range(num_bins), size=3, replace=False)
         spectrum = baseline.copy()
@@ -167,7 +190,7 @@ class SensorSubstance:
             peak_positions = np.random.choice(range(num_bins), size=2, replace=False)
             for pos in peak_positions:
                 spectrum[pos] += np.random.uniform(0.01, 0.05)
-        
+
         spectrum += baseline * (1 + np.random.rand(num_bins))
         return spectrum
 
@@ -180,7 +203,7 @@ class SensorSubstance:
 
         if data is None:
             raise ValueError("Concentration data is not available for the sensor.")
-        
+
         plt.plot(self.times, data, label=f"Sensor {self.id}")
         plt.xlabel("Time (h)")
         plt.ylabel("Concentration [μg/m³]")
@@ -194,16 +217,19 @@ class SensorSubstance:
         base_prob = 0.1
         if wind_speed > 6.0:
             base_prob += 0.2
-        if stability_value in [PasquillGiffordStability.VERY_UNSTABLE, PasquillGiffordStability.VERY_STABLE]:
+        if stability_value in [
+            PasquillGiffordStability.VERY_UNSTABLE,
+            PasquillGiffordStability.VERY_STABLE,
+        ]:
             base_prob += 0.15
         if RH > 0.8:
             base_prob += 0.2
         if wind_type == WindType.FLUCTUATING:
             base_prob += 0.1
         return min(base_prob, 0.75)
-        
+
     def run_sensor(self, wind_speed, stability_value, RH, wind_type):
-        '''
+        """
         Performs sensor sampling.
         Samples meteorology, substance, and simulates the mass spectrum.
         If the sensor is in a fault state, it does not sample data.
@@ -212,14 +238,17 @@ class SensorSubstance:
             dict: Data sampled from the sensor, including time, mass spectrum,
                 wind speed, wind type, stability type, stability value,
                 humidity, dry size, and relative humidity (RH).
-        '''
-        
-        self.is_fault = np.random.rand() < self._fault_probability(wind_speed, stability_value, RH, wind_type)
-        
+        """
+
+        self.is_fault = np.random.rand() < self._fault_probability(
+            wind_speed, stability_value, RH, wind_type
+        )
+
         mass_spectra = self._generate_mass_spectra(noise_level=self.noise_level)
 
         return mass_spectra
-    
+
+
 class SensorAir:
     def __init__(self, sensor_id, x: float, y: float, z: float):
         self.id = sensor_id
@@ -228,26 +257,38 @@ class SensorAir:
         self.z = z
 
     def sample_meteorology(self):
-        wind_type = random.choice([WindType.CONSTANT ,WindType.PREVAILING, WindType.FLUCTUATING])
+        wind_type = random.choice(
+            [WindType.CONSTANT, WindType.PREVAILING, WindType.FLUCTUATING]
+        )
         stability_type = random.choice([StabilityType.CONSTANT, StabilityType.ANNUAL])
         if stability_type == StabilityType.CONSTANT:
-            stability_value = random.choice([
-                PasquillGiffordStability.VERY_UNSTABLE,
-                PasquillGiffordStability.MODERATELY_UNSTABLE,
-                PasquillGiffordStability.SLIGHTLY_UNSTABLE,
-                PasquillGiffordStability.NEUTRAL,
-                PasquillGiffordStability.MODERATELY_STABLE,
-                PasquillGiffordStability.VERY_STABLE
-            ])
+            stability_value = random.choice(
+                [
+                    PasquillGiffordStability.VERY_UNSTABLE,
+                    PasquillGiffordStability.MODERATELY_UNSTABLE,
+                    PasquillGiffordStability.SLIGHTLY_UNSTABLE,
+                    PasquillGiffordStability.NEUTRAL,
+                    PasquillGiffordStability.MODERATELY_STABLE,
+                    PasquillGiffordStability.VERY_STABLE,
+                ]
+            )
         else:
             stability_value = PasquillGiffordStability.NEUTRAL
-        
-        wind_speed = self._assign_wind_speed(stability_value)  
+
+        wind_speed = self._assign_wind_speed(stability_value)
         humidify = random.choice([True, False])
         dry_size = round(np.random.uniform(0.5, 2.5), 2)
         RH = round(np.random.uniform(0, 0.99), 2) if humidify else 0.0
 
-        return wind_speed, wind_type, stability_type, stability_value, humidify, dry_size, RH
+        return (
+            wind_speed,
+            wind_type,
+            stability_type,
+            stability_value,
+            humidify,
+            dry_size,
+            RH,
+        )
 
     def _assign_wind_speed(self, stability: PasquillGiffordStability) -> float:
         """
@@ -268,6 +309,7 @@ class SensorAir:
             return round(random.uniform(0.5, 3.0), 2)
         else:
             return round(random.uniform(2.0, 6.0), 2)
+
 
 """if __name__ == "__main__":
     

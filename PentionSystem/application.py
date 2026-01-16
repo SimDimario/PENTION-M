@@ -9,7 +9,8 @@ import time
 import streamlit as st
 from streamlit_folium import st_folium
 from folium import Map
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if project_root not in sys.path:
     sys.path.append(project_root)
 from gaussianPuff.Sensor import SensorSubstance, SensorAir
@@ -19,6 +20,7 @@ API_CORRECTION = "http://correction_dispersion:8001"
 API_CLASSIFICATORE = "http://clas_nps:8000"
 API_GAUSSIAN = "http://gaussian_dispersion_model:8002"
 API_SOURCE = "http://loc_emission_source:8003"
+
 
 def safe_markdown(placeholder, text, level="info"):
     try:
@@ -32,11 +34,13 @@ def safe_markdown(placeholder, text, level="info"):
         else:
             st.info(text)
 
+
 if "theme" not in st.session_state:
     theme_base = st.get_option("theme.base") or "light"
     st.session_state["theme"] = "dark" if "dark" in theme_base.lower() else "light"
 
 dark_mode = st.session_state.get("theme") == "dark"
+
 
 def advance_progress(progress_bar, progress, target, steps=5, delay=0.15):
     step_size = (target - progress) / steps
@@ -45,6 +49,7 @@ def advance_progress(progress_bar, progress, target, steps=5, delay=0.15):
         progress_bar.progress(int(progress))
         time.sleep(delay)
     return int(target)
+
 
 def run_application(payload):
     n_sensors = payload.get("Number of sensors", 10)
@@ -77,18 +82,21 @@ def run_application(payload):
     free_cells = np.argwhere(binary_map == 1)
 
     if free_cells.size == 0:
-        st.error("The binary map does not contain free cells to place sensors or the source.")
+        st.error(
+            "The binary map does not contain free cells to place sensors or the source."
+        )
         return
 
     building_cells = np.sum(binary_map == 0)
 
-    res = metadata.get('resolution (m)')
+    res = metadata.get("resolution (m)")
     res_fmt = f"{float(res):.2f}" if res is not None else "N/A"
 
-    mean_h = metadata.get('mean_height')
+    mean_h = metadata.get("mean_height")
     mean_h_fmt = f"{float(mean_h):.1f}" if mean_h is not None else "N/A"
 
-    metadata_section.markdown(f"""
+    metadata_section.markdown(
+        f"""
     ### Grid Information
     - **Grid**: {metadata.get('grid_size','N/A')}×{metadata.get('grid_size','N/A')}
     - **Total buildings**: {metadata.get('total_buildings','N/A')}
@@ -99,31 +107,43 @@ def run_application(payload):
     - **Building density**: {float(metadata.get('building_density', np.nan)):.1f}%
     - **Average building height**: {mean_h_fmt} m
     - **City**: {metadata.get('city','N/A')}
-    """)
+    """
+    )
 
     st.session_state["metadata_text"] = metadata
     status_text.text("Binary map generated successfully ✅")
     status_text.text("Sample meteo condition...")
     sensor_air = SensorAir(sensor_id=00, x=0.0, y=0.0, z=2.0)
     progress = advance_progress(progress_bar, progress, 25)
-    wind_speed, wind_type, stability_type, stability_value, humidify, dry_size, RH = sensor_air.sample_meteorology()
+    wind_speed, wind_type, stability_type, stability_value, humidify, dry_size, RH = (
+        sensor_air.sample_meteorology()
+    )
 
     if weather_section is not None:
-        safe_markdown(weather_placeholder,
+        safe_markdown(
+            weather_placeholder,
             f"**Wind speed (m/s):** {wind_speed}  \n"
             f"**Wind type:** {wind_type}  \n"
             f"**Stability:** {stability_type}  \n"
-            f"**Relative Humidity (%):** {RH}"
-        ) 
+            f"**Relative Humidity (%):** {RH}",
+        )
 
     status_text.text("Air sampling...")
     sensors_substance = []
     for i in range(n_sensors):
         x, y = random_position(free_cells)
-        sensor_substance = SensorSubstance(i, x=x, y=y, z=2.0, noise_level=round(np.random.uniform(0.0, 0.0005), 4))
+        sensor_substance = SensorSubstance(
+            i, x=x, y=y, z=2.0, noise_level=round(np.random.uniform(0.0, 0.0005), 4)
+        )
         sensors_substance.append(sensor_substance)
 
-    plot_binary_map(binary_map, metadata['bounds'], binary_map_section, sensors_substance, dark=dark_mode)
+    plot_binary_map(
+        binary_map,
+        metadata["bounds"],
+        binary_map_section,
+        sensors_substance,
+        dark=dark_mode,
+    )
     progress = advance_progress(progress_bar, progress, 35)
 
     mass_spectrum = []
@@ -133,8 +153,15 @@ def run_application(payload):
         mass_spectrum.extend(recording)
 
     if sensors_section is not None:
-        sensor_info = [{"ID": s.id, "x": s.x, "y": s.y, "Status": "Operating" if not s.is_fault else "Faulty"}
-                       for s in sensors_substance]
+        sensor_info = [
+            {
+                "ID": s.id,
+                "x": s.x,
+                "y": s.y,
+                "Status": "Operating" if not s.is_fault else "Faulty",
+            }
+            for s in sensors_substance
+        ]
         sensors_placeholder.table(sensor_info)
 
     status_text.text("NPS classification...")
@@ -142,7 +169,9 @@ def run_application(payload):
 
     if mass_spectrum:
         spectra_json = [m.tolist() for m in mass_spectrum]
-        response_dnn = requests.post(f"{API_CLASSIFICATORE}/predict_dnn", json={"spectra": spectra_json})
+        response_dnn = requests.post(
+            f"{API_CLASSIFICATORE}/predict_dnn", json={"spectra": spectra_json}
+        )
 
         if response_dnn.status_code == 200:
             predictions = response_dnn.json().get("predictions", [])
@@ -183,12 +212,23 @@ def run_application(payload):
         wind_speed=wind_speed,
         output=OutputType.PLAN_VIEW,
         stacks=stacks,
-        dry_size=dry_size, x_slice=26, y_slice=1,
-        dispersion_model=DispersionModelType.PLUME)
+        dry_size=dry_size,
+        x_slice=26,
+        y_slice=1,
+        dispersion_model=DispersionModelType.PLUME,
+    )
 
-    bounds = (payload["min_lon"], payload["min_lat"], payload["max_lon"], payload["max_lat"])
+    bounds = (
+        payload["min_lon"],
+        payload["min_lat"],
+        payload["max_lon"],
+        payload["max_lat"],
+    )
 
-    response_gauss = requests.post(f"{API_GAUSSIAN}/start_simulation", json={"config": param_gaussian_model.to_dict(), "bounds": bounds})
+    response_gauss = requests.post(
+        f"{API_GAUSSIAN}/start_simulation",
+        json={"config": param_gaussian_model.to_dict(), "bounds": bounds},
+    )
 
     status_text.text("Running Gaussian dispersion model...")
     progress = advance_progress(progress_bar, progress, 60)
@@ -208,11 +248,11 @@ def run_application(payload):
     wind_dir_raw = gauss_data.get("wind_dir")
     C1_raw = gauss_data.get("concentration", [])
 
-    x=np.array(x_raw)
-    y=np.array(y_raw)
-    times=np.array(times_raw)
-    wind_dir=np.array(wind_dir_raw)
-    C1=np.array(C1_raw)
+    x = np.array(x_raw)
+    y = np.array(y_raw)
+    times = np.array(times_raw)
+    wind_dir = np.array(wind_dir_raw)
+    C1 = np.array(C1_raw)
 
     print(type(C1))
     print(C1.shape)
@@ -236,24 +276,33 @@ def run_application(payload):
                     break
                 wd = wind_dir[idx]
 
-                payload_sensors.append({
-                    "sensor_id": s.id,
-                    "sensor_is_fault": s.is_fault,
-                    "time": t_idx,
-                    "conc": conc if not s.is_fault else None,
-                    "wind_dir_x": np.cos(np.deg2rad(wd)) if not s.is_fault else None,
-                    "wind_dir_y": np.sin(np.deg2rad(wd)) if not s.is_fault else None,
-                    "wind_speed": wind_speed if not s.is_fault else None,
-                    "wind_type": wind_type.value if not s.is_fault else None,
-                })
+                payload_sensors.append(
+                    {
+                        "sensor_id": s.id,
+                        "sensor_is_fault": s.is_fault,
+                        "time": t_idx,
+                        "conc": conc if not s.is_fault else None,
+                        "wind_dir_x": (
+                            np.cos(np.deg2rad(wd)) if not s.is_fault else None
+                        ),
+                        "wind_dir_y": (
+                            np.sin(np.deg2rad(wd)) if not s.is_fault else None
+                        ),
+                        "wind_speed": wind_speed if not s.is_fault else None,
+                        "wind_type": wind_type.value if not s.is_fault else None,
+                    }
+                )
 
     n_sensor_operating = ([s for s in sensors_substance if not s.is_fault]).__len__()
 
     status_text.text("Start the prediction of the source...")
-    response_loc = requests.post(f"{API_SOURCE}/predict_source_raw", json={
-        "payload_sensors": payload_sensors,
-        "n_sensor_operating": n_sensor_operating
-    })
+    response_loc = requests.post(
+        f"{API_SOURCE}/predict_source_raw",
+        json={
+            "payload_sensors": payload_sensors,
+            "n_sensor_operating": n_sensor_operating,
+        },
+    )
 
     status_text.text("Estimating source location...")
     progress = advance_progress(progress_bar, progress, 70)
@@ -286,15 +335,24 @@ def run_application(payload):
         wind_speed=wind_speed,
         output=OutputType.PLAN_VIEW,
         stacks=stacks,
-        dry_size=dry_size, x_slice=26, y_slice=1,
-        dispersion_model=DispersionModelType.PLUME)
+        dry_size=dry_size,
+        x_slice=26,
+        y_slice=1,
+        dispersion_model=DispersionModelType.PLUME,
+    )
 
-    bounds = (payload["min_lon"], payload["min_lat"], payload["max_lon"], payload["max_lat"])
+    bounds = (
+        payload["min_lon"],
+        payload["min_lat"],
+        payload["max_lon"],
+        payload["max_lat"],
+    )
 
-    response_gauss = requests.post(f"{API_GAUSSIAN}/start_simulation",
-                                   json={"config": param_gaussian_model.to_dict(),
-                                         "bounds": bounds})
-    
+    response_gauss = requests.post(
+        f"{API_GAUSSIAN}/start_simulation",
+        json={"config": param_gaussian_model.to_dict(), "bounds": bounds},
+    )
+
     status_text.text("Refining Gaussian simulation...")
     progress = advance_progress(progress_bar, progress, 80)
 
@@ -321,22 +379,24 @@ def run_application(payload):
     plot_wind_rose(wind_dir, wind_speed, wind_rose_placeholder)
 
     status_text.text("Dispersion simulation...")
-    response_mcxm = requests.post(f"{API_CORRECTION}/correct_dispersion",
-                                  json={
-                                      "wind_speed": wind_speed,
-                                      "wind_dir": wind_dir.tolist(),
-                                      "concentration_map": C1.tolist(),
-                                      "building_map": binary_map.tolist(),
-                                      "global_features": None
-                                  })
-    
+    response_mcxm = requests.post(
+        f"{API_CORRECTION}/correct_dispersion",
+        json={
+            "wind_speed": wind_speed,
+            "wind_dir": wind_dir.tolist(),
+            "concentration_map": C1.tolist(),
+            "building_map": binary_map.tolist(),
+            "global_features": None,
+        },
+    )
+
     status_text.text("Applying CNN correction model...")
     progress = advance_progress(progress_bar, progress, 90)
 
-    if response_mcxm.status_code != 200: 
+    if response_mcxm.status_code != 200:
         st.error("Error during dispersion correction.")
         return sensors_substance, substance_nps, x, y, C1, metadata
-    
+
     real_dispersion_map = response_mcxm.json().get("predictions", [])
     real_dispersion_map = np.array(real_dispersion_map)
     print(f"mapp finale {type(real_dispersion_map)}")
@@ -345,8 +405,15 @@ def run_application(payload):
     if bounds and all(v is not None for v in bounds):
         min_lon, min_lat, max_lon, max_lat = bounds
         m = plot_dispersion_on_map(
-            min_lat, min_lon, max_lat, max_lon,
-            sensors_substance, real_dispersion_map, x, y, dark=dark_mode
+            min_lat,
+            min_lon,
+            max_lat,
+            max_lon,
+            sensors_substance,
+            real_dispersion_map,
+            x,
+            y,
+            dark=dark_mode,
         )
         st.session_state["final_map"] = m
         m.save("dispersion_map.html")
@@ -361,7 +428,9 @@ def run_application(payload):
             "wind_type": wind_type,
             "stability": stability_type,
             "RH": RH,
-            "wind_dir": wind_dir.tolist() if isinstance(wind_dir, np.ndarray) else wind_dir,
+            "wind_dir": (
+                wind_dir.tolist() if isinstance(wind_dir, np.ndarray) else wind_dir
+            ),
         },
         "sensors": sensors_substance,
         "nps": most_common_substance,
@@ -369,16 +438,22 @@ def run_application(payload):
         "dispersion_map": real_dispersion_map,
         "metadata": {
             **metadata,
-            "bounds": (payload["min_lon"], payload["min_lat"], payload["max_lon"], payload["max_lat"]),
+            "bounds": (
+                payload["min_lon"],
+                payload["min_lat"],
+                payload["max_lon"],
+                payload["max_lat"],
+            ),
         },
         "grid": {
             "x_grid": x_grid.tolist() if isinstance(x_grid, np.ndarray) else x_grid,
             "y_grid": y_grid.tolist() if isinstance(y_grid, np.ndarray) else y_grid,
-        }
+        },
     }
 
     print("END")
     st.rerun()
+
 
 def render_results_from_state(results):
     if results.get("weather"):
@@ -388,7 +463,7 @@ def render_results_from_state(results):
             f"- **Wind speed (m/s):** {w.get('wind_speed')}  \n"
             f"- **Wind type:** {w.get('wind_type')}  \n"
             f"- **Stability:** {w.get('stability')}  \n"
-            f"- **Relative Humidity (%):** {w.get('RH')}"
+            f"- **Relative Humidity (%):** {w.get('RH')}",
         )
         # Wind rose
         if w.get("wind_dir") is not None and w.get("wind_speed") is not None:
@@ -398,9 +473,15 @@ def render_results_from_state(results):
 
     # 2) Sensor
     if results.get("sensors"):
-        sensor_info = [{"ID": s.id, "x": s.x, "y": s.y,
-                        "Status": "Operating" if not s.is_fault else "Faulty"}
-                       for s in results["sensors"]]
+        sensor_info = [
+            {
+                "ID": s.id,
+                "x": s.x,
+                "y": s.y,
+                "Status": "Operating" if not s.is_fault else "Faulty",
+            }
+            for s in results["sensors"]
+        ]
         sensors_placeholder.table(sensor_info)
 
     # 3) NPS
@@ -421,7 +502,8 @@ def render_results_from_state(results):
     # 4b) Metadata
     meta = results.get("metadata") or st.session_state.get("metadata_text")
     if meta:
-        metadata_section.markdown(f"""
+        metadata_section.markdown(
+            f"""
         ### Grid Information
 
         - **Grid**: {meta.get('grid_size', 'N/A')}×{meta.get('grid_size', 'N/A')}
@@ -433,13 +515,17 @@ def render_results_from_state(results):
         - **Building density**: {float(meta.get('building_density', np.nan)):.1f}%
         - **Mean building height**: {float(meta.get('mean_height', np.nan))} m
         - **City**: {meta.get('city', 'N/A')}
-        """)
+        """
+        )
 
     disp = results.get("dispersion_map")
     grid = results.get("grid", {})
     meta = results.get("metadata", {})
     bounds = meta.get("bounds") or (
-        meta.get("min_lon"), meta.get("min_lat"), meta.get("max_lon"), meta.get("max_lat")
+        meta.get("min_lon"),
+        meta.get("min_lat"),
+        meta.get("max_lon"),
+        meta.get("max_lat"),
     )
 
     if disp is not None:
@@ -447,23 +533,37 @@ def render_results_from_state(results):
         yg = np.array(grid.get("y_grid")) if grid.get("y_grid") is not None else None
 
         if xg is not None and yg is not None:
-            plot_plan_view(np.array(disp), xg, yg, dispersion_placeholder, dark=dark_mode)
+            plot_plan_view(
+                np.array(disp), xg, yg, dispersion_placeholder, dark=dark_mode
+            )
         else:
-            if bounds and all(v is not None for v in bounds) and isinstance(disp, np.ndarray):
+            if (
+                bounds
+                and all(v is not None for v in bounds)
+                and isinstance(disp, np.ndarray)
+            ):
                 min_lon, min_lat, max_lon, max_lat = bounds
                 ny, nx = disp.shape[:2]
                 x_lin = np.linspace(min_lon, max_lon, nx)
                 y_lin = np.linspace(min_lat, max_lat, ny)
                 Xg, Yg = np.meshgrid(x_lin, y_lin)
-                plot_plan_view(np.array(disp), xg, yg, dispersion_placeholder, dark=dark_mode)
+                plot_plan_view(
+                    np.array(disp), xg, yg, dispersion_placeholder, dark=dark_mode
+                )
 
         if bounds and all(v is not None for v in bounds):
             min_lon, min_lat, max_lon, max_lat = bounds
             m = plot_dispersion_on_map(
-                min_lat, min_lon, max_lat, max_lon,
-                results.get("sensors") or [], np.array(disp),
-                *(results.get("source") or (None, None)), dark=dark_mode)
-            if 'final_map_section' in globals() and final_map_section is not None:
+                min_lat,
+                min_lon,
+                max_lat,
+                max_lon,
+                results.get("sensors") or [],
+                np.array(disp),
+                *(results.get("source") or (None, None)),
+                dark=dark_mode,
+            )
+            if "final_map_section" in globals() and final_map_section is not None:
                 final_map_section.empty()
                 with final_map_section.container():
 
@@ -471,6 +571,7 @@ def render_results_from_state(results):
 
     progress_bar.progress(100)
     st.sidebar.success("Simulation results loaded successfully")
+
 
 st.set_page_config(page_title="PentionSystem", layout="wide")
 if "simulation_results" not in st.session_state:
@@ -480,7 +581,7 @@ if "simulation_results" not in st.session_state:
         "nps": None,
         "source": None,
         "dispersion_map": None,
-        "metadata": None
+        "metadata": None,
     }
 
 st.markdown(
@@ -531,7 +632,7 @@ st.markdown(
         💊 PENTION — NPS Emission Source Identification
     </div>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 st.sidebar.header("Insert simulation parameters")
@@ -540,7 +641,9 @@ min_lon = st.sidebar.number_input("Min Lon", value=12.48, format="%.5f")
 max_lat = st.sidebar.number_input("Max Lat", value=41.91, format="%.5f")
 max_lon = st.sidebar.number_input("Max Lon", value=12.50, format="%.5f")
 place = st.sidebar.text_input("Place", value="Insert place name")
-n_sensors = st.sidebar.slider("Number of sensors", min_value=5, max_value=50, value=10, step=1)
+n_sensors = st.sidebar.slider(
+    "Number of sensors", min_value=5, max_value=50, value=10, step=1
+)
 
 st.sidebar.markdown(
     """
@@ -577,16 +680,16 @@ st.sidebar.markdown(
         }
     </style>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 st.markdown('<div class="start-btn">', unsafe_allow_html=True)
 start = st.sidebar.button("▶ Start")
-st.markdown('</div>', unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "🌦 Weather", "🧪 Detection & Source", "📈 Simulation", "🗺 Map", "📡 Sensors"
-])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    ["🌦 Weather", "🧪 Detection & Source", "📈 Simulation", "🗺 Map", "📡 Sensors"]
+)
 
 with tab1:
     st.subheader("🌦 Weather Conditions")
@@ -648,12 +751,14 @@ if start:
         "max_lat": max_lat,
         "grid_size": 500,
         "place": place,
-        "Number of sensors": n_sensors
+        "Number of sensors": n_sensors,
     }
 
     with st.spinner("⏳ Running full simulation... please wait."):
         results = run_application(payload)
-        st.session_state.simulation_results = results or st.session_state.simulation_results
+        st.session_state.simulation_results = (
+            results or st.session_state.simulation_results
+        )
 
 else:
     results = st.session_state.simulation_results

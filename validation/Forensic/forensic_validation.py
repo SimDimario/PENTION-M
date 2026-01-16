@@ -6,11 +6,17 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BUNDLE_DIR = os.path.join(BASE_DIR, "logs", "forensic")
-MODEL_PATH = os.path.join(BASE_DIR, "CorrectionDispersion_PIML", "models", "mcxm_piml_model_best.pth")
-MAP_DIR = os.path.join(BASE_DIR, "CorrectionDispersion_PIML", "dataset", "real_dispersion")
+MODEL_PATH = os.path.join(
+    BASE_DIR, "CorrectionDispersion_PIML", "models", "mcxm_piml_model_best.pth"
+)
+MAP_DIR = os.path.join(
+    BASE_DIR, "CorrectionDispersion_PIML", "dataset", "real_dispersion"
+)
+
 
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
 
 def canonicalize_event(event: dict) -> bytes:
     """
@@ -24,24 +30,31 @@ def canonicalize_event(event: dict) -> bytes:
     serialized = json.dumps(obj, sort_keys=True, default=str)
     return serialized.encode("utf-8")
 
+
 def load_bundle(path):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
+
 def verify_signature(hash_value: str, signature_hex: str, public_key_pem: str) -> bool:
     try:
-        pub: Ed25519PublicKey = serialization.load_pem_public_key(public_key_pem.encode())
+        pub: Ed25519PublicKey = serialization.load_pem_public_key(
+            public_key_pem.encode()
+        )
         pub.verify(bytes.fromhex(signature_hex), hash_value.encode())
         return True
     except Exception:
         return False
+
 
 def verify_artifacts(event):
     artifacts = event.get("artifacts", {})
     results = {}
     if os.path.exists(MODEL_PATH):
         with open(MODEL_PATH, "rb") as f:
-            results["model_hash_match"] = (sha256_bytes(f.read()) == artifacts.get("model_hash"))
+            results["model_hash_match"] = sha256_bytes(f.read()) == artifacts.get(
+                "model_hash"
+            )
     else:
         results["model_hash_match"] = False
     if os.path.exists(MAP_DIR):
@@ -49,12 +62,15 @@ def verify_artifacts(event):
         if maps:
             latest_map = os.path.join(MAP_DIR, maps[-1])
             with open(latest_map, "rb") as f:
-                results["map_hash_match"] = (sha256_bytes(f.read()) == artifacts.get("concentration_map_hash"))
+                results["map_hash_match"] = sha256_bytes(f.read()) == artifacts.get(
+                    "concentration_map_hash"
+                )
         else:
             results["map_hash_match"] = False
     else:
         results["map_hash_match"] = False
     return results
+
 
 def validate_bundle(path):
     print(f"\n=== VALIDATING BUNDLE: {path} ===")
@@ -65,7 +81,7 @@ def validate_bundle(path):
     public_key = bundle["public_key"]
     canonical = canonicalize_event(event)
     recomputed_hash = sha256_bytes(canonical)
-    hash_match = (recomputed_hash == expected_hash)
+    hash_match = recomputed_hash == expected_hash
     signature_ok = verify_signature(recomputed_hash, signature, public_key)
     artifact_results = verify_artifacts(event)
     result = {
@@ -75,6 +91,7 @@ def validate_bundle(path):
     }
     print(json.dumps(result, indent=2))
     return result
+
 
 if __name__ == "__main__":
     files = sorted([f for f in os.listdir(BUNDLE_DIR) if f.endswith(".json")])

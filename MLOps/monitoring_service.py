@@ -7,10 +7,12 @@ import os
 import numpy as np
 import math
 import statistics
+
 app = FastAPI(title="MLOps Monitoring & Drift Service")
 LOG_DIR = "/logs"
 LOG_FILE = os.path.join(LOG_DIR, "monitoring_log.jsonl")
 os.makedirs(LOG_DIR, exist_ok=True)
+
 
 class MonitoringBlock(BaseModel):
     model_version: str
@@ -18,11 +20,13 @@ class MonitoringBlock(BaseModel):
     latency_ms: int = 0
     mse_free: float = 0.0
 
+
 class InferenceBlock(BaseModel):
     dispersion_map_id: Optional[str] = None
     predicted_source_location: Optional[List[float]] = None
     predicted_class: Optional[str] = None
     confidence_score: Optional[float] = None
+
 
 class SensorAir(BaseModel):
     temperature_C: Optional[float] = None
@@ -31,12 +35,14 @@ class SensorAir(BaseModel):
     wind_dir_deg: Optional[int] = None
     stability_class: Optional[str] = None
 
+
 class PIMLFeatures(BaseModel):
     sigma_y: Optional[float] = None
     sigma_z: Optional[float] = None
     pe_number: Optional[float] = None
     wind_vector: Optional[List[float]] = None
     stability_index: Optional[float] = None
+
 
 class MonitoringEvent(BaseModel):
     simulation_id: str
@@ -55,15 +61,18 @@ class MonitoringEvent(BaseModel):
             raise ValueError("timestamp must be ISO 8601")
         return v
 
+
 def append_jsonl(path: str, obj: dict):
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(obj, default=str) + "\n")
+
 
 def safe_float(x, default=0.0):
     try:
         return float(x)
     except Exception:
         return default
+
 
 def compute_simple_drift(event: MonitoringEvent) -> float:
     """
@@ -103,6 +112,7 @@ def compute_simple_drift(event: MonitoringEvent) -> float:
         return 0.0
     return max(0.0, min(score / contrib, 1.0))
 
+
 def compute_latency_trend(events: list[dict]) -> float:
     """Evaluate whether average latency is increasing (return 0–1)."""
     if len(events) < 2:
@@ -111,6 +121,7 @@ def compute_latency_trend(events: list[dict]) -> float:
     mean_recent = sum(last) / len(last)
     mean_all = sum(e.get("latency_ms", 0) for e in events) / len(events)
     return round(min(max((mean_recent - mean_all) / max(mean_all, 1.0), 0.0), 1.0), 3)
+
 
 def compute_drift_dynamic(event: MonitoringEvent, history: list[dict]) -> float:
     """
@@ -149,12 +160,9 @@ def compute_drift_dynamic(event: MonitoringEvent, history: list[dict]) -> float:
         else:
             cov_list = list(map(list, cov))
 
-        save_baseline({
-            "mean": mean_list,
-            "cov": cov_list,
-            "count": count,
-            "distances": []
-        })
+        save_baseline(
+            {"mean": mean_list, "cov": cov_list, "count": count, "distances": []}
+        )
 
         return 0.0
 
@@ -177,6 +185,7 @@ def compute_drift_dynamic(event: MonitoringEvent, history: list[dict]) -> float:
     save_baseline(baseline)
     return round(drift, 4)
 
+
 def load_last_n(path: str, n: int) -> List[dict]:
     if not os.path.exists(path):
         return []
@@ -192,7 +201,9 @@ def load_last_n(path: str, n: int) -> List[dict]:
                 continue
     return out[-n:] if n > 0 else out
 
+
 BASELINE_PATH = "/logs/drift_baseline.json"
+
 
 def load_baseline():
     if not os.path.exists(BASELINE_PATH):
@@ -205,11 +216,13 @@ def load_baseline():
     except:
         return {"mean": None, "cov": None, "count": 0, "distances": []}
 
+
 def save_baseline(bline):
     if "distances" in bline and len(bline["distances"]) > 300:
         bline["distances"] = bline["distances"][-300:]
     with open(BASELINE_PATH, "w") as f:
         json.dump(bline, f)
+
 
 def build_feature_vector(event: MonitoringEvent):
     """
@@ -220,6 +233,7 @@ def build_feature_vector(event: MonitoringEvent):
     - confidence_score
     - wind_speed_mps, wind_dir_deg (normalized 0–1)
     """
+
     def get(obj, key):
         if isinstance(obj, dict):
             return obj.get(key, 0.0)
@@ -250,6 +264,7 @@ def build_feature_vector(event: MonitoringEvent):
 
     return np.array(f, dtype=np.float32)
 
+
 def mahalanobis(x, mean, cov):
     try:
         inv = np.linalg.inv(cov)
@@ -258,9 +273,15 @@ def mahalanobis(x, mean, cov):
     except:
         return 0.0
 
+
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "monitoring", "time": datetime.utcnow().isoformat()}
+    return {
+        "status": "ok",
+        "service": "monitoring",
+        "time": datetime.utcnow().isoformat(),
+    }
+
 
 @app.post("/monitor_event")
 def monitor_event(event: MonitoringEvent):
@@ -302,6 +323,7 @@ def monitor_event(event: MonitoringEvent):
 
     append_jsonl(LOG_FILE, row)
     return {"status": "ok", "stored": row}
+
 
 @app.get("/metrics/summary")
 def metrics_summary(last_n: int = Query(200, ge=1, le=5000)):
@@ -345,15 +367,18 @@ def metrics_summary(last_n: int = Query(200, ge=1, le=5000)):
             "latency_ms": stats(lat_vals),
             "drift_score": stats(drift_vals),
             "mse_free": stats(mse_vals),
-            "by_model_version": versions
-        }
+            "by_model_version": versions,
+        },
     }
+
 
 @app.get("/metrics/last")
 def last_events(k: int = Query(10, ge=1, le=200)):
     """Returns the last k raw lines of the monitoring log."""
     return {"status": "ok", "items": load_last_n(LOG_FILE, k)}
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8012)

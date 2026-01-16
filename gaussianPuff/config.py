@@ -2,14 +2,17 @@ from enum import Enum
 from dataclasses import dataclass, field, asdict
 from typing import List, Tuple, Optional
 
+
 class DispersionModelType(Enum):
     PLUME = "plume"
     PUFF = "puff"
 
-class ConfigPuff():
+
+class ConfigPuff:
     def __init__(self, puff_interval: float = 1, max_puff_age: float = 6):
         self.puff_interval = puff_interval
         self.max_puff_age = max_puff_age
+
 
 class OutputType(Enum):
     PLAN_VIEW = 1
@@ -23,6 +26,7 @@ class OutputType(Enum):
         except KeyError:
             raise ValueError(f"No OutpuType member matches '{output_type}'")
 
+
 class WindType(Enum):
     CONSTANT = 1
     FLUCTUATING = 2
@@ -34,12 +38,13 @@ class WindType(Enum):
         except KeyError:
             raise ValueError(f"No WindType member matches '{wind_type}'")
 
+
 class PasquillGiffordStability(Enum):
     VERY_UNSTABLE = 1
     MODERATELY_UNSTABLE = 2
     SLIGHTLY_UNSTABLE = 3
     NEUTRAL = 4
-    MODERATELY_STABLE= 5
+    MODERATELY_STABLE = 5
     VERY_STABLE = 6
 
     def from_string(psg_stab: str):
@@ -47,6 +52,7 @@ class PasquillGiffordStability(Enum):
             return PasquillGiffordStability[psg_stab]
         except KeyError:
             raise ValueError(f"No Pasquill-Gifford member matches '{psg_stab}'")
+
 
 class StabilityType(Enum):
     CONSTANT = 1
@@ -57,6 +63,7 @@ class StabilityType(Enum):
             return StabilityType[stab_type]
         except KeyError:
             raise ValueError(f"No StabilityType member matches '{stab_type}'")
+
 
 class NPS(Enum):
     CANNABINOID_ANALOGUES = 0
@@ -75,6 +82,7 @@ class NPS(Enum):
         except KeyError:
             raise ValueError(f"No NPS member matches '{nps_string}'")
 
+
 nps_properties = {
     NPS.CANNABINOID_ANALOGUES: {"nu": 1, "rho_s": 1.2e3, "Ms": 314.46},
     NPS.CATHINONE_ANALOGUES: {"nu": 1, "rho_s": 1.3e3, "Ms": 149.23},
@@ -84,6 +92,7 @@ nps_properties = {
     NPS.FENTANYL_ANALOGUES: {"nu": 1, "rho_s": 1.24e3, "Ms": 336.47},
     NPS.OTHER_COMPOUNDS: {"nu": 1, "rho_s": 1.3e3, "Ms": 250.00},
 }
+
 
 @dataclass
 class ModelConfig:
@@ -100,7 +109,7 @@ class ModelConfig:
     dry_size: float = 60e-9
     x_slice: int = 26
     y_slice: int = 1
-    grid_size: int= 500
+    grid_size: int = 500
     wind_dir_deg: float = 225.0
     dispersion_model: DispersionModelType = DispersionModelType.PLUME
     config_puff: Optional[ConfigPuff] = None
@@ -108,13 +117,21 @@ class ModelConfig:
     def to_dict(self):
         d = asdict(self)
         d["aerosol_type"] = self.aerosol_type.name if self.aerosol_type else None
-        d["stability_profile"] = self.stability_profile.name if self.stability_profile else None
-        d["stability_value"] = self.stability_value.name if self.stability_value else None
+        d["stability_profile"] = (
+            self.stability_profile.name if self.stability_profile else None
+        )
+        d["stability_value"] = (
+            self.stability_value.name if self.stability_value else None
+        )
         d["wind_type"] = self.wind_type.name if self.wind_type else None
         d["output"] = self.output.name if self.output else None
-        d["dispersion_model"] = self.dispersion_model.name if self.dispersion_model else None
+        d["dispersion_model"] = (
+            self.dispersion_model.name if self.dispersion_model else None
+        )
         if self.config_puff:
             d["config_puff"] = (
-                self.config_puff.to_dict() if hasattr(self.config_puff, "to_dict") else asdict(self.config_puff)
+                self.config_puff.to_dict()
+                if hasattr(self.config_puff, "to_dict")
+                else asdict(self.config_puff)
             )
         return d

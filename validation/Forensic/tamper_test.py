@@ -6,7 +6,9 @@ import sys
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(BASE_DIR)
 from validation.Forensic.forensic_validation import validate_bundle, BUNDLE_DIR
+
 TAMPER = os.path.join(os.path.dirname(__file__), "tampered_bundle.json")
+
 
 def create_tampered_copy():
     bundles = sorted([f for f in os.listdir(BUNDLE_DIR) if f.endswith(".json")])
@@ -20,6 +22,7 @@ def create_tampered_copy():
         json.dump(data, f, indent=2)
 
     return TAMPER
+
 
 if __name__ == "__main__":
     tampered_path = create_tampered_copy()

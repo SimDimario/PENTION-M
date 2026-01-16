@@ -14,9 +14,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 base_dir = os.path.dirname(__file__)
-dnn_path = os.path.join(base_dir, 'model', 'dnn_spectra_version.keras')
-brf_path = os.path.join(base_dir, 'model', 'balanced_random_forest_brf.pkl')
-scaler_path = os.path.join(base_dir, 'model', 'scale_dnn.pkl')
+dnn_path = os.path.join(base_dir, "model", "dnn_spectra_version.keras")
+brf_path = os.path.join(base_dir, "model", "balanced_random_forest_brf.pkl")
+scaler_path = os.path.join(base_dir, "model", "scale_dnn.pkl")
 
 xgb_model_path = os.path.join(base_dir, "model", "xgb_nps_model.json")
 xgb_scaler_path = os.path.join(base_dir, "model", "xgb_scaler.pkl")
@@ -39,20 +39,23 @@ logger.info("Scaler XGB loaded")
 mz_range = np.arange(1, 601)
 
 legends = {
-    0: 'Cathinone analogues',
-    1: 'Cannabinoid analogues',
-    2: 'Phenethylamine analogues',
-    3: 'Piperazine analogues',
-    4: 'Tryptamine analogues',
-    5: 'Fentanyl analogues',
-    6: 'Other compounds'
+    0: "Cathinone analogues",
+    1: "Cannabinoid analogues",
+    2: "Phenethylamine analogues",
+    3: "Piperazine analogues",
+    4: "Tryptamine analogues",
+    5: "Fentanyl analogues",
+    6: "Other compounds",
 }
+
 
 def _compute_features(spectrum):
     """Extracts 13 features from the mass spectrum."""
     logger.debug("Spectrum feature calculation")
 
-    peaks = [(mz, intensity) for mz, intensity in zip(mz_range, spectrum) if intensity > 0]
+    peaks = [
+        (mz, intensity) for mz, intensity in zip(mz_range, spectrum) if intensity > 0
+    ]
 
     if not peaks:
         logger.warning("Spectrum without peaks")
@@ -65,10 +68,19 @@ def _compute_features(spectrum):
     base_peak_idx = np.argmax(intensities)
     base_peak_mass = mz_values[base_peak_idx]
 
-    base_prox = np.min(np.abs(mz_values - base_peak_mass)[np.abs(mz_values - base_peak_mass) != 0]) if len(
-        mz_values) > 1 else 0.0
+    base_prox = (
+        np.min(
+            np.abs(mz_values - base_peak_mass)[np.abs(mz_values - base_peak_mass) != 0]
+        )
+        if len(mz_values) > 1
+        else 0.0
+    )
     max_mass = np.max(mz_values)
-    max_prox = np.min(np.abs(mz_values - max_mass)[np.abs(mz_values - max_mass) != 0]) if len(mz_values) > 1 else 0.0
+    max_prox = (
+        np.min(np.abs(mz_values - max_mass)[np.abs(mz_values - max_mass) != 0])
+        if len(mz_values) > 1
+        else 0.0
+    )
     num_peaks = len(peaks)
     intensity_mean = np.mean(intensities)
     intensity_std = np.std(intensities)
@@ -84,10 +96,21 @@ def _compute_features(spectrum):
     mean_ppmd = np.mean(diffs) if len(diffs) > 0 else 0
 
     return [
-        base_peak_mass, base_prox, max_mass, max_prox,
-        num_peaks, intensity_mean, intensity_std, intensity_density,
-        mass_mean, mass_std, mass_density, ppmd, mean_ppmd
+        base_peak_mass,
+        base_prox,
+        max_mass,
+        max_prox,
+        num_peaks,
+        intensity_mean,
+        intensity_std,
+        intensity_density,
+        mass_mean,
+        mass_std,
+        mass_density,
+        ppmd,
+        mean_ppmd,
     ]
+
 
 def pipe_clf_dnn(spectra: np.ndarray, T: float = 2.5):
     """
@@ -96,7 +119,9 @@ def pipe_clf_dnn(spectra: np.ndarray, T: float = 2.5):
     if spectra is None or len(spectra) == 0:
         raise ValueError("Input spectra is empty or None")
     if spectra.ndim != 2:
-        raise ValueError(f"Expected 2D array (n_samples, n_features), got shape {spectra.shape}")
+        raise ValueError(
+            f"Expected 2D array (n_samples, n_features), got shape {spectra.shape}"
+        )
 
     try:
         logger.info("Inizio predizione DNN")
@@ -117,20 +142,20 @@ def pipe_clf_dnn(spectra: np.ndarray, T: float = 2.5):
         predictions = [legends.get(pred_idx, f"Class {pred_idx}")]
         logger.info("DNN prediction completed (Temperature Scaling)")
 
-        return {
-            "predictions": predictions,
-            "confidence": confidence
-        }
+        return {"predictions": predictions, "confidence": confidence}
 
     except Exception as e:
         logger.exception("Errore durante la predizione DNN")
         raise RuntimeError(f"Error during DNN prediction: {str(e)}")
 
+
 def pipe_clf_brf(spectra: np.ndarray):
     if spectra is None or len(spectra) == 0:
         raise ValueError("Input spectra is empty or None")
     if spectra.ndim != 2:
-        raise ValueError(f"Expected 2D array (n_samples, n_features), got shape {spectra.shape}")
+        raise ValueError(
+            f"Expected 2D array (n_samples, n_features), got shape {spectra.shape}"
+        )
 
     predictions = []
     try:
@@ -149,6 +174,7 @@ def pipe_clf_brf(spectra: np.ndarray):
 
     return np.array(predictions)
 
+
 def load_temperature():
     config_path = os.path.join(base_dir, "model", "temp_config.json")
     try:
@@ -157,6 +183,7 @@ def load_temperature():
         return float(cfg.get("T", 1.8))
     except:
         return 1.8
+
 
 def pipe_clf_xgb(spectra: np.ndarray, dynamic_T: float | None = None):
     if spectra is None or len(spectra) == 0:
@@ -186,7 +213,7 @@ def pipe_clf_xgb(spectra: np.ndarray, dynamic_T: float | None = None):
             "predictions": [prediction],
             "confidence": confidence,
             "temperature_used": T,
-            "model": "XGB_v2"
+            "model": "XGB_v2",
         }
 
     except Exception as e:

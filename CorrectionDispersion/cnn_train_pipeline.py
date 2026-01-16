@@ -10,37 +10,50 @@ from matplotlib.patches import Circle
 from windrose import WindroseAxes
 import json
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'gaussianPuff')))
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "gaussianPuff"))
+)
 from torch.utils.data import random_split
 from torch_geometric.loader import DataLoader
 from torch.utils.data import random_split
 from CNNDataset import CNNDataset2
 from train_model import train
 
-def plot_plan_view(C1, x, y, title, wind_dir=None, wind_speed=None, puff_list=None, stability_class=1, n_show=10):
+
+def plot_plan_view(
+    C1,
+    x,
+    y,
+    title,
+    wind_dir=None,
+    wind_speed=None,
+    puff_list=None,
+    stability_class=1,
+    n_show=10,
+):
     fig, ax_main = plt.subplots(figsize=(8, 6))
 
     if isinstance(C1, torch.Tensor):
         C1 = C1.detach().cpu().numpy()
-    data=C1
+    data = C1
     vmin = np.percentile(data, 5)
     vmax = np.percentile(data, 95)
 
-    pcm = ax_main.pcolor(x, y, data, cmap='jet', shading='auto', vmin=vmin, vmax=vmax)
-    fig.colorbar(pcm, ax=ax_main, label=r'$\mu g \cdot m^{-3}$')
-    ax_main.set_xlabel('x (m)')
-    ax_main.set_ylabel('y (m)')
+    pcm = ax_main.pcolor(x, y, data, cmap="jet", shading="auto", vmin=vmin, vmax=vmax)
+    fig.colorbar(pcm, ax=ax_main, label=r"$\mu g \cdot m^{-3}$")
+    ax_main.set_xlabel("x (m)")
+    ax_main.set_ylabel("y (m)")
     ax_main.set_title(title)
-    ax_main.axis('equal')
+    ax_main.axis("equal")
 
     if wind_dir is not None and wind_speed is not None:
-        inset_pos = [0.65, 0.65, 0.3, 0.3] 
+        inset_pos = [0.65, 0.65, 0.3, 0.3]
         ax_inset = WindroseAxes(fig, inset_pos)
         fig.add_axes(ax_inset)
         wind_dir = np.array(wind_dir) % 360
         wind_speed = np.full_like(wind_dir, fill_value=wind_speed, dtype=float)
-        ax_inset.bar(wind_dir, wind_speed, normed=True, opening=0.8, edgecolor='white')
-        ax_inset.set_legend(loc='lower right', title='Wind speed (m/s)')
+        ax_inset.bar(wind_dir, wind_speed, normed=True, opening=0.8, edgecolor="white")
+        ax_inset.set_legend(loc="lower right", title="Wind speed (m/s)")
         ax_inset.set_title("Wind rose")
 
     if puff_list is not None and len(puff_list) > 0:
@@ -51,32 +64,36 @@ def plot_plan_view(C1, x, y, title, wind_dir=None, wind_speed=None, puff_list=No
 
         for i, puff in enumerate(puff_list):
             distance = np.sqrt(puff.x**2 + puff.y**2)
-            sigma_y = a * (distance + 1)**b
-            circle = Circle((puff.x, puff.y), 2 * sigma_y, color='white', fill=False, lw=1.5)
+            sigma_y = a * (distance + 1) ** b
+            circle = Circle(
+                (puff.x, puff.y), 2 * sigma_y, color="white", fill=False, lw=1.5
+            )
             ax_main.add_patch(circle)
-            ax_main.plot(puff.x, puff.y, 'wo', markersize=3)
+            ax_main.plot(puff.x, puff.y, "wo", markersize=3)
 
-        ax_main.legend(["Puff center (2σ)"], loc='lower right')
+        ax_main.legend(["Puff center (2σ)"], loc="lower right")
 
     plt.tight_layout()
     plt.show()
 
+
 def smooth_curve(values, window=3):
     if len(values) < window:
         return values
-    smoothed = np.convolve(values, np.ones(window)/window, mode='valid')
-    pad_left = [values[0]] * (window//2)
-    pad_right = [values[-1]] * (window - 1 - window//2)
+    smoothed = np.convolve(values, np.ones(window) / window, mode="valid")
+    pad_left = [values[0]] * (window // 2)
+    pad_right = [values[-1]] * (window - 1 - window // 2)
     return np.concatenate([pad_left, smoothed, pad_right])
 
+
 def plot_training_curves(train_losses, val_losses, val_maes, smooth_window=3):
-    epochs = range(1, len(train_losses)+1)
+    epochs = range(1, len(train_losses) + 1)
 
     train_s = smooth_curve(train_losses, smooth_window)
     val_s = smooth_curve(val_losses, smooth_window)
     mae_s = smooth_curve(val_maes, smooth_window)
 
-    plt.figure(figsize=(9,6))
+    plt.figure(figsize=(9, 6))
     plt.plot(epochs, train_s, label="Train Loss", color="blue")
     plt.plot(epochs, val_s, label="Val Loss", color="orange")
     plt.plot(epochs, mae_s, label="Val MAE", color="green")
@@ -88,39 +105,48 @@ def plot_training_curves(train_losses, val_losses, val_maes, smooth_window=3):
     plt.grid(True)
     plt.show()
 
+
 def rotate_map(cm, k):
     """Rotate the concentration map 90° k times"""
     return np.rot90(cm, k)
 
+
 def normalize_free_pixels(cm, mask):
-        """
-        cm: np.ndarray (m, m)
-        mask: np.ndarray binary (m, m) -> 1 = free, 0 = building
-        """
-        free_vals = cm[mask==1]
-        vmin, vmax = free_vals.min(), free_vals.max()
-        cm_norm = cm.copy()
-        cm_norm[mask==1] = (free_vals - vmin) / (vmax - vmin + 1e-8)
-        return cm_norm
+    """
+    cm: np.ndarray (m, m)
+    mask: np.ndarray binary (m, m) -> 1 = free, 0 = building
+    """
+    free_vals = cm[mask == 1]
+    vmin, vmax = free_vals.min(), free_vals.max()
+    cm_norm = cm.copy()
+    cm_norm[mask == 1] = (free_vals - vmin) / (vmax - vmin + 1e-8)
+    return cm_norm
+
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-BINARY_MAP_PATH = os.path.join(os.path.dirname(__file__), "binary_maps_data/roma_italy_bbox.npy")
-METADATA_MAP_PATH = os.path.join(SCRIPT_DIR, "binary_maps_data", "roma_italy_metadata_bbox.json")
+BINARY_MAP_PATH = os.path.join(
+    os.path.dirname(__file__), "binary_maps_data/roma_italy_bbox.npy"
+)
+METADATA_MAP_PATH = os.path.join(
+    SCRIPT_DIR, "binary_maps_data", "roma_italy_metadata_bbox.json"
+)
 REAL_CONC_PATH = os.path.join(SCRIPT_DIR, "dataset", "real_dispersion")
-CSV_PATH = os.path.join(SCRIPT_DIR, "dataset", "nps_simulated_dataset_gaussiano_2025-09-08_processed.csv")
+CSV_PATH = os.path.join(
+    SCRIPT_DIR, "dataset", "nps_simulated_dataset_gaussiano_2025-09-08_processed.csv"
+)
 
 if __name__ == "__main__":
-    
+
     binary_map = np.load(BINARY_MAP_PATH)
     print(binary_map.shape)
     csv_df = pd.read_csv(CSV_PATH)
-    csv_df_reduced = csv_df.groupby('simulation_id').first().reset_index()
-    csv_df_reduced = csv_df_reduced[['wind_dir_cos', 'wind_dir_sin','wind_speed']]
+    csv_df_reduced = csv_df.groupby("simulation_id").first().reset_index()
+    csv_df_reduced = csv_df_reduced[["wind_dir_cos", "wind_dir_sin", "wind_speed"]]
     print(type(csv_df_reduced["wind_dir_cos"][0]))
     print(type(csv_df_reduced["wind_dir_sin"][0]))
     print(type(csv_df_reduced["wind_speed"][0]))
     m = 500
-    with open(os.path.join(METADATA_MAP_PATH), 'r') as f:
+    with open(os.path.join(METADATA_MAP_PATH), "r") as f:
         metadata = json.load(f)
     concentration_maps = []
     wind_dirs = []
@@ -129,7 +155,7 @@ if __name__ == "__main__":
     for file in tqdm(os.listdir(REAL_CONC_PATH), desc="Loading concentration maps"):
         conc_map = np.load(os.path.join(REAL_CONC_PATH, file))
         conc_map_mean = np.mean(conc_map, axis=2)
-        i = int(file.split('_')[1])
+        i = int(file.split("_")[1])
         wind_dir_cos, wind_dir_sin, wind_speed = csv_df_reduced.iloc[i]
         concentration_maps.append(conc_map_mean)
         rad_angle = np.arctan2(wind_dir_sin, wind_dir_cos)
@@ -145,7 +171,7 @@ if __name__ == "__main__":
     for cm, wd, ws in zip(concentration_maps, wind_dirs, wind_speeds):
         for k in range(4):
             rotated_cm = rotate_map(cm, k)
-            new_wd = (wd + k*90) % 360
+            new_wd = (wd + k * 90) % 360
             augmented_concentration_maps.append(rotated_cm)
             augmented_wind_dirs.append(new_wd)
             augmented_wind_speeds.append(ws)
@@ -161,19 +187,28 @@ if __name__ == "__main__":
         normalize_free_pixels(cm, binary_map) for cm in augmented_concentration_maps
     ]
 
-    city_features = np.array([
-        metadata.get('building_density', 0.0),
-        metadata.get('mean_height', 0.0),
-        metadata.get('total_buildings', 0.0),
-        metadata.get('free_cells', 0.0),
-        metadata.get('total_cells', 0.0),
-    ], dtype=np.float32)
+    city_features = np.array(
+        [
+            metadata.get("building_density", 0.0),
+            metadata.get("mean_height", 0.0),
+            metadata.get("total_buildings", 0.0),
+            metadata.get("free_cells", 0.0),
+            metadata.get("total_cells", 0.0),
+        ],
+        dtype=np.float32,
+    )
 
     print("City features:", city_features)
     global_features = np.tile(city_features, (len(augmented_concentration_maps), 1))
 
     print("[INFO] Initializing CNNDataset.")
-    dataset = CNNDataset2(augmented_concentration_maps, augmented_wind_dirs, augmented_wind_speeds, global_features=None, m=m)
+    dataset = CNNDataset2(
+        augmented_concentration_maps,
+        augmented_wind_dirs,
+        augmented_wind_speeds,
+        global_features=None,
+        m=m,
+    )
 
     dataset_size = len(dataset)
     val_size = int(0.4 * dataset_size)
@@ -181,15 +216,28 @@ if __name__ == "__main__":
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
     batch_size = 10
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader   = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)    
-    device = torch.device('mps' if torch.backends.mps.is_available() else ('cuda' if torch.cuda.is_available() else 'cpu'))
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    device = torch.device(
+        "mps"
+        if torch.backends.mps.is_available()
+        else ("cuda" if torch.cuda.is_available() else "cpu")
+    )
     print(f"[INFO] Using device: {device}")
 
-    epochs=10
-    model = MCxM_CNN(binary_map, m=m, n_channel=1, n_mask_correction=3, wind_dim=2, n_global_features=0).to(device)
-    
+    epochs = 10
+    model = MCxM_CNN(
+        binary_map,
+        m=m,
+        n_channel=1,
+        n_mask_correction=3,
+        wind_dim=2,
+        n_global_features=0,
+    ).to(device)
+
     print("[INFO] Starting training loop.")
-    model, output, train_losses, val_losses, val_maes = train(epochs, model, train_loader, val_loader, binary_map, device)
+    model, output, train_losses, val_losses, val_maes = train(
+        epochs, model, train_loader, val_loader, binary_map, device
+    )
 
     print("[INFO] Training complete.")
     plot_training_curves(train_losses, val_losses, val_maes, smooth_window=3)

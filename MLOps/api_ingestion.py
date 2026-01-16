@@ -17,8 +17,16 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.append("/gaussianPuff")
 sys.path.append("/MLOps")
 from gaussianPuff.gaussianModel import run_dispersion_model
-from gaussianPuff.config import ModelConfig, StabilityType, WindType, OutputType, DispersionModelType, PasquillGiffordStability
+from gaussianPuff.config import (
+    ModelConfig,
+    StabilityType,
+    WindType,
+    OutputType,
+    DispersionModelType,
+    PasquillGiffordStability,
+)
 import sys
+
 sys.path.append("/shared_config")
 from config_geo import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, GRID
 
@@ -27,6 +35,7 @@ LOG_DIR = "/logs"
 LOG_FILE = os.path.join(LOG_DIR, "ingestion_log.jsonl")
 os.makedirs(LOG_DIR, exist_ok=True)
 
+
 class SensorAir(BaseModel):
     temperature_C: float
     humidity_: float = Field(..., alias="humidity_%")
@@ -34,20 +43,24 @@ class SensorAir(BaseModel):
     wind_dir_deg: int
     stability_class: str
 
+
 class SensorSubstance(BaseModel):
     compound_name: str
     concentration_series_mg_m3: List[float]
     unit: str
     noise_level: float
 
+
 class SensorGPS(BaseModel):
     latitude: float
     longitude: float
     altitude_m: float
 
+
 class SourceGPS(BaseModel):
     latitude: float
     longitude: float
+
 
 class PIMLFeatures(BaseModel):
     sigma_y: float
@@ -56,11 +69,13 @@ class PIMLFeatures(BaseModel):
     wind_vector: List[float]
     stability_index: float
 
+
 class Inference(BaseModel):
     dispersion_map_id: str
     predicted_source_location: List[float]
     predicted_class: str
     confidence_score: float
+
 
 class Monitoring(BaseModel):
     model_version: str
@@ -68,18 +83,22 @@ class Monitoring(BaseModel):
     latency_ms: int
     mse_free: float
 
+
 class ModelOps(BaseModel):
     model_registry_id: str
     training_data_version: str
     retraining_trigger: bool
 
+
 class UIOutput(BaseModel):
     dashboard_tabs: List[str]
     visualization_files: List[str]
 
+
 class ForensicExport(BaseModel):
     export_file: str
     compliance_tags: List[str]
+
 
 class SimulationData(BaseModel):
     simulation_id: str
@@ -105,16 +124,11 @@ class SimulationData(BaseModel):
             raise ValueError("timestamp must be ISO 8601")
         return v
 
+
 def stability_to_index(stab: str) -> float:
-    mapping = {
-        "A": 1.0,
-        "B": 2.0,
-        "C": 3.0,
-        "D": 4.0,
-        "E": 5.0,
-        "F": 6.0
-    }
+    mapping = {"A": 1.0, "B": 2.0, "C": 3.0, "D": 4.0, "E": 5.0, "F": 6.0}
     return mapping.get(stab.upper(), 4.0)
+
 
 def generate_concentration_map_from_gaussian(sensor_air: dict, src_x: int, src_y: int):
     """
@@ -161,14 +175,22 @@ def generate_concentration_map_from_gaussian(sensor_air: dict, src_x: int, src_y
             wind_dir_deg=wind_dir_deg,
         )
 
-        C1, (x_grid, y_grid, z_grid), times, stability_array, wind_dir_series, *_ = run_dispersion_model(config)
+        C1, (x_grid, y_grid, z_grid), times, stability_array, wind_dir_series, *_ = (
+            run_dispersion_model(config)
+        )
         conc_map_2d = np.mean(C1, axis=2)
         p95 = np.percentile(conc_map_2d, 95)
         conc_map_2d = conc_map_2d / (p95 + 1e-6)
         conc_map_2d = np.clip(conc_map_2d, 0, 1)
         conc_time_series = np.mean(C1, axis=(0, 1))
 
-        return conc_map_2d.tolist(), conc_time_series.tolist(), C1, stability_array, wind_dir_series
+        return (
+            conc_map_2d.tolist(),
+            conc_time_series.tolist(),
+            C1,
+            stability_array,
+            wind_dir_series,
+        )
 
     except Exception as e:
         print(f"[WARN] GaussianPuff simulation failed: {e}")
@@ -181,10 +203,12 @@ def generate_concentration_map_from_gaussian(sensor_air: dict, src_x: int, src_y
             np.array([225.0], dtype=np.float32),
         )
 
+
 def append_log(entry: dict):
     """Save logs in JSON lines format"""
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, default=str) + "\n")
+
 
 def safe_post(url: str, payload: dict, label: str):
     """Send a POST request with safe error handling"""
@@ -195,10 +219,15 @@ def safe_post(url: str, payload: dict, label: str):
         except Exception:
             body = r.text
         print(f"[{label}] -> {r.status_code}: {str(body)[:500]}")
-        return body if isinstance(body, dict) else {"status": "error", "raw": body, "code": r.status_code}
+        return (
+            body
+            if isinstance(body, dict)
+            else {"status": "error", "raw": body, "code": r.status_code}
+        )
     except Exception as e:
         print(f"[WARN] {label} not reachable: {e}")
         return {"status": "warning", "error": str(e)}
+
 
 def sanitize_correction_response(resp):
     """
@@ -208,8 +237,11 @@ def sanitize_correction_response(resp):
     if not isinstance(resp, dict):
         return resp
 
-    clean = {k: v for k, v in resp.items()
-             if k not in ("corrected_map", "corrected_concentration_map")}
+    clean = {
+        k: v
+        for k, v in resp.items()
+        if k not in ("corrected_map", "corrected_concentration_map")
+    }
 
     cm = resp.get("corrected_map") or resp.get("corrected_concentration_map")
     if cm is not None:
@@ -222,14 +254,15 @@ def sanitize_correction_response(resp):
 
     return clean
 
-def compute_dynamic_temperature( #Temperature scaling function
+
+def compute_dynamic_temperature(  # Temperature scaling function
     spectrum,
     stability_class,
     stability_index,
     wind_speed,
     drift_score,
     mse_free,
-    latency_ms
+    latency_ms,
 ):
     """
     Hybrid metaheuristic optimized for dynamic T.
@@ -258,6 +291,7 @@ def compute_dynamic_temperature( #Temperature scaling function
         T += 0.05
     return float(max(1.0, min(T, 3.0)))
 
+
 @app.post("/ingest_data")
 def ingest_data(sim_data: SimulationData):
     """
@@ -274,17 +308,21 @@ def ingest_data(sim_data: SimulationData):
     """
     full_start_ts = sim_data.event_start_ts
 
-    append_log({
-        "timestamp": datetime.utcnow().isoformat(),
-        "simulation_id": sim_data.simulation_id,
-        "status": "received",
-        "model_version_used": (sim_data.Monitoring.model_version if sim_data.Monitoring else "unknown"),
-        "sensor_data": {
-            "temperature": sim_data.SensorAir.temperature_C,
-            "humidity": sim_data.SensorAir.humidity_,
-            "compound": sim_data.SensorSubstance.compound_name
+    append_log(
+        {
+            "timestamp": datetime.utcnow().isoformat(),
+            "simulation_id": sim_data.simulation_id,
+            "status": "received",
+            "model_version_used": (
+                sim_data.Monitoring.model_version if sim_data.Monitoring else "unknown"
+            ),
+            "sensor_data": {
+                "temperature": sim_data.SensorAir.temperature_C,
+                "humidity": sim_data.SensorAir.humidity_,
+                "compound": sim_data.SensorSubstance.compound_name,
+            },
         }
-    })
+    )
 
     def latlon_to_grid(lat, lon):
         gx = int((lon - LON_MIN) / (LON_MAX - LON_MIN) * (GRID - 1))
@@ -298,8 +336,11 @@ def ingest_data(sim_data: SimulationData):
         lon = LON_MIN + gx / (GRID - 1) * (LON_MAX - LON_MIN)
         return lat, lon
 
-    src_x, src_y = latlon_to_grid(sim_data.SourceGPS.latitude, sim_data.SourceGPS.longitude)
-    conc_map_real, conc_time_series, C1, stability_array, wind_dir_series = generate_concentration_map_from_gaussian(
+    src_x, src_y = latlon_to_grid(
+        sim_data.SourceGPS.latitude, sim_data.SourceGPS.longitude
+    )
+    conc_map_real, conc_time_series, C1, stability_array, wind_dir_series = (
+        generate_concentration_map_from_gaussian(
             {
                 "wind_speed_mps": sim_data.SensorAir.wind_speed_mps,
                 "wind_dir_deg": sim_data.SensorAir.wind_dir_deg,
@@ -307,16 +348,22 @@ def ingest_data(sim_data: SimulationData):
                 "humidity": sim_data.SensorAir.humidity_,
             },
             src_x,
-            src_y
+            src_y,
+        )
     )
 
     from gaussianPuff.sigmaCalculation import calc_sigmas
 
-    distances = np.sqrt((np.arange(500)[:,None] - src_y)**2 + 
-                        (np.arange(500)[None,:] - src_x)**2) * 10
+    distances = (
+        np.sqrt(
+            (np.arange(500)[:, None] - src_y) ** 2
+            + (np.arange(500)[None, :] - src_x) ** 2
+        )
+        * 10
+    )
 
     stab_class = sim_data.SensorAir.stability_class.upper()
-    pg_map = { "A":1, "B":2, "C":3, "D":4, "E":5, "F":6 }
+    pg_map = {"A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6}
     pg_category = pg_map.get(stab_class, 4)
     sigma_y_map, sigma_z_map = calc_sigmas(pg_category, distances)
     sigma_y = float(np.mean(sigma_y_map))
@@ -347,11 +394,12 @@ def ingest_data(sim_data: SimulationData):
             float(np.cos(np.radians(wind_dir_deg_eff))),
             float(np.sin(np.radians(wind_dir_deg_eff))),
         ],
-        stability_index=stability_index
+        stability_index=stability_index,
     )
 
     try:
         from CorrectionDispersion_PIML.api_correction_piml import DEFAULT_BUILDING_MAP
+
         building_map_real = DEFAULT_BUILDING_MAP.tolist()
     except Exception:
         building_map_real = []
@@ -376,7 +424,9 @@ def ingest_data(sim_data: SimulationData):
 
     corrected_map = None
     if isinstance(resp_correction, dict):
-        corrected_map = resp_correction.get("corrected_map") or resp_correction.get("corrected_concentration_map")
+        corrected_map = resp_correction.get("corrected_map") or resp_correction.get(
+            "corrected_concentration_map"
+        )
 
     if corrected_map is None:
         corrected_map = conc_map_real
@@ -394,30 +444,29 @@ def ingest_data(sim_data: SimulationData):
     van_series = C1[src_y, src_x, :].tolist()
     van_time = list(range(len(van_series)))
 
-    payload_sensors.append({
-        "sensor_id": 1,
-        "sensor_is_fault": False,
-        "time": van_time,
-        "conc": van_series,
-        "concentration_series": van_series,
-        "wind_dir_x": np.cos(np.radians(wind_dir_deg_eff)),
-        "wind_dir_y": np.sin(np.radians(wind_dir_deg_eff)),
-        "wind_speed": sim_data.SensorAir.wind_speed_mps,
-        "wind_type": 1,
-        "gps_x": src_x,
-        "gps_y": src_y,
-        "stability_value": stability_index,
-        "sigma_y": sigma_y,
-        "sigma_z": sigma_z,
-        "pe_number": pe_number,
-    })
+    payload_sensors.append(
+        {
+            "sensor_id": 1,
+            "sensor_is_fault": False,
+            "time": van_time,
+            "conc": van_series,
+            "concentration_series": van_series,
+            "wind_dir_x": np.cos(np.radians(wind_dir_deg_eff)),
+            "wind_dir_y": np.sin(np.radians(wind_dir_deg_eff)),
+            "wind_speed": sim_data.SensorAir.wind_speed_mps,
+            "wind_type": 1,
+            "gps_x": src_x,
+            "gps_y": src_y,
+            "stability_value": stability_index,
+            "sigma_y": sigma_y,
+            "sigma_z": sigma_z,
+            "pe_number": pe_number,
+        }
+    )
 
     resp_localization = safe_post(
         "http://loc_emission_source_piml:8010/predict_source_piml",
-        {
-            "payload_sensors": payload_sensors,
-            "n_sensor_operating": 1
-        },
+        {"payload_sensors": payload_sensors, "n_sensor_operating": 1},
         label="EmissionSourceLocalization_PIML",
     )
 
@@ -457,7 +506,7 @@ def ingest_data(sim_data: SimulationData):
                 predicted_source_xy if predicted_source_xy is not None else [0.0, 0.0]
             ),
             predicted_class=predicted_class,
-            confidence_score=confidence_clf
+            confidence_score=confidence_clf,
         )
 
     if predicted_source_xy is not None:
@@ -480,17 +529,19 @@ def ingest_data(sim_data: SimulationData):
             wind_speed=sim_data.SensorAir.wind_speed_mps,
             drift_score=0.0,
             mse_free=mse_free,
-            latency_ms=0
+            latency_ms=0,
         )
 
         resp_nps = safe_post(
             f"http://clas_nps:8000/predict_xgb?dynamic_T={dynamic_T}",
             {"spectra": [spectrum_noisy.tolist()]},
-            label="NPSClassifier (XGB)"
+            label="NPSClassifier (XGB)",
         )
 
         if isinstance(resp_nps, dict):
-            predicted_class = resp_nps.get("predictions", [sim_data.SensorSubstance.compound_name])[0]
+            predicted_class = resp_nps.get(
+                "predictions", [sim_data.SensorSubstance.compound_name]
+            )[0]
             confidence_clf = float(resp_nps.get("confidence", 0.0))
 
         sim_data.Inference.predicted_class = predicted_class
@@ -507,13 +558,16 @@ def ingest_data(sim_data: SimulationData):
                 reg = json.load(f)
 
             import importlib
+
             if "service_correction_piml" in sys.modules:
                 importlib.reload(sys.modules["service_correction_piml"])
 
             v = reg.get("current_model_version")
             if v:
                 effective_model_version = v
-                print(f"[INFO] Ingestion usa model_version reale: {effective_model_version}")
+                print(
+                    f"[INFO] Ingestion usa model_version reale: {effective_model_version}"
+                )
         except Exception as e:
             print(f"[WARN] Errore lettura registry: {e}")
     else:
@@ -525,7 +579,7 @@ def ingest_data(sim_data: SimulationData):
             model_version=effective_model_version,
             drift_score=0.0,
             latency_ms=0,
-            mse_free=0.0
+            mse_free=0.0,
         )
     else:
         sim_data.Monitoring.model_version = effective_model_version
@@ -535,7 +589,7 @@ def ingest_data(sim_data: SimulationData):
         sim_data.ModelOps = ModelOps(
             model_registry_id="mdl_pention_m",
             training_data_version=td_version,
-            retraining_trigger=False
+            retraining_trigger=False,
         )
     else:
         td_version = reg.get("training_data_version", "PIML_DS_v1")
@@ -580,7 +634,9 @@ def ingest_data(sim_data: SimulationData):
         },
         "Monitoring": {
             "model_version": sim_data.Monitoring.model_version,
-            "drift_score": (sim_data.Monitoring.drift_score if sim_data.Monitoring else 0.0),
+            "drift_score": (
+                sim_data.Monitoring.drift_score if sim_data.Monitoring else 0.0
+            ),
             "latency_ms": latency_full_ms,
             "mse_free": mse_free,
         },
@@ -641,7 +697,7 @@ def ingest_data(sim_data: SimulationData):
 
         sim_data.ForensicExport = ForensicExport(
             export_file=f"{sim_data.simulation_id}_bundle.zip",
-            compliance_tags=compliance_tags
+            compliance_tags=compliance_tags,
         )
 
     forensic_payload = {
@@ -668,7 +724,7 @@ def ingest_data(sim_data: SimulationData):
         },
         "SourceGPS": {
             "latitude": sim_data.SourceGPS.latitude,
-            "longitude": sim_data.SourceGPS.longitude
+            "longitude": sim_data.SourceGPS.longitude,
         },
         "PIML_Features": {
             "sigma_y": sim_data.PIML_Features.sigma_y,
@@ -689,7 +745,7 @@ def ingest_data(sim_data: SimulationData):
         },
         "inference_latlon": {
             "latitude": pred_lat if pred_lat is not None else None,
-            "longitude": pred_lon if pred_lon is not None else None
+            "longitude": pred_lon if pred_lon is not None else None,
         },
         "Monitoring": {
             "model_version": sim_data.Monitoring.model_version or "v1.0",
@@ -724,14 +780,19 @@ def ingest_data(sim_data: SimulationData):
         "message": "Simulation data ingested successfully",
         "monitoring": monitoring_out,
         "forwarded_to": {
-            "correction_dispersion_piml": resp_correction.get("status", "ok")
-            if isinstance(resp_correction, dict)
-            else "unknown",
-            "source_localization_piml": resp_localization.get("status", "ok")
-            if isinstance(resp_localization, dict)
-            else "unknown",
+            "correction_dispersion_piml": (
+                resp_correction.get("status", "ok")
+                if isinstance(resp_correction, dict)
+                else "unknown"
+            ),
+            "source_localization_piml": (
+                resp_localization.get("status", "ok")
+                if isinstance(resp_localization, dict)
+                else "unknown"
+            ),
         },
     }
+
 
 if __name__ == "__main__":
     import uvicorn

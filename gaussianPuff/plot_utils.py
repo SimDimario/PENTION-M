@@ -9,19 +9,30 @@ import scipy
 from matplotlib.patches import Circle
 from windrose import WindroseAxes
 
-def plot_plan_view(C1, x, y, title, wind_dir=None, wind_speed=None, puff_list=None, stability_class=1, n_show=10):
+
+def plot_plan_view(
+    C1,
+    x,
+    y,
+    title,
+    wind_dir=None,
+    wind_speed=None,
+    puff_list=None,
+    stability_class=1,
+    n_show=10,
+):
     fig, ax_main = plt.subplots(figsize=(8, 6))
 
     data = np.trapz(C1, axis=2) * 1e6
     vmin = np.percentile(data, 5)
     vmax = np.percentile(data, 95)
 
-    pcm = ax_main.pcolor(x, y, data, cmap='jet', shading='auto', vmin=vmin, vmax=vmax)
-    fig.colorbar(pcm, ax=ax_main, label=r'$\mu g \cdot m^{-3}$')
-    ax_main.set_xlabel('x (m)')
-    ax_main.set_ylabel('y (m)')
+    pcm = ax_main.pcolor(x, y, data, cmap="jet", shading="auto", vmin=vmin, vmax=vmax)
+    fig.colorbar(pcm, ax=ax_main, label=r"$\mu g \cdot m^{-3}$")
+    ax_main.set_xlabel("x (m)")
+    ax_main.set_ylabel("y (m)")
     ax_main.set_title(title)
-    ax_main.axis('equal')
+    ax_main.axis("equal")
 
     if wind_dir is not None and wind_speed is not None:
         inset_pos = [0.65, 0.65, 0.3, 0.3]
@@ -30,8 +41,8 @@ def plot_plan_view(C1, x, y, title, wind_dir=None, wind_speed=None, puff_list=No
 
         wind_dir = np.array(wind_dir) % 360
         wind_speed = np.full_like(wind_dir, fill_value=wind_speed, dtype=float)
-        ax_inset.bar(wind_dir, wind_speed, normed=True, opening=0.8, edgecolor='white')
-        ax_inset.set_legend(loc='lower right', title='Wind speed (m/s)')
+        ax_inset.bar(wind_dir, wind_speed, normed=True, opening=0.8, edgecolor="white")
+        ax_inset.set_legend(loc="lower right", title="Wind speed (m/s)")
         ax_inset.set_title("Rosa dei venti")
 
     if puff_list is not None and len(puff_list) > 0:
@@ -42,54 +53,66 @@ def plot_plan_view(C1, x, y, title, wind_dir=None, wind_speed=None, puff_list=No
 
         for i, puff in enumerate(puff_list):
             distance = np.sqrt(puff.x**2 + puff.y**2)
-            sigma_y = a * (distance + 1)**b
-            circle = Circle((puff.x, puff.y), 2 * sigma_y, color='white', fill=False, lw=1.5)
+            sigma_y = a * (distance + 1) ** b
+            circle = Circle(
+                (puff.x, puff.y), 2 * sigma_y, color="white", fill=False, lw=1.5
+            )
             ax_main.add_patch(circle)
-            ax_main.plot(puff.x, puff.y, 'wo', markersize=3)
+            ax_main.plot(puff.x, puff.y, "wo", markersize=3)
 
-        ax_main.legend(["Puff center (2σ)"], loc='lower right')
+        ax_main.legend(["Puff center (2σ)"], loc="lower right")
 
     plt.tight_layout()
     plt.show()
 
+
 def plot_surface_time(C1, times, x_idx, y_idx, stability, stab_label, wind_label):
 
     def smooth(y, box_pts):
-        box = np.ones(box_pts)/box_pts
-        y_smooth = np.convolve(y, box, mode='same')
+        box = np.ones(box_pts) / box_pts
+        y_smooth = np.convolve(y, box, mode="same")
         return y_smooth
 
     fig, (ax1, ax2) = plt.subplots(2, sharex=True, figsize=(10, 6))
     signal = 1e6 * np.squeeze(C1[y_idx, x_idx, :])
     ax1.plot(times, signal, label="Hourly mean")
-    ax1.plot(times, smooth(signal, 24), 'r', label="Daily mean")
-    ax1.set_ylabel('Mass loading ($m$ g m$^{-3}$)')
-    ax1.set_title(stab_label + '\n' + wind_label)
+    ax1.plot(times, smooth(signal, 24), "r", label="Daily mean")
+    ax1.set_ylabel("Mass loading ($m$ g m$^{-3}$)")
+    ax1.set_title(stab_label + "\n" + wind_label)
     ax1.legend()
     ax2.plot(times, stability)
-    ax2.set_xlabel('Time (days)')
-    ax2.set_ylabel('Stability')
+    ax2.set_xlabel("Time (days)")
+    ax2.set_ylabel("Stability")
     plt.tight_layout()
     plt.show()
+
 
 def plot_height_slice(C1, y, z, stab_label, wind_label):
     plt.figure(figsize=(8, 6))
     data = np.mean(C1, axis=2) * 1e6
-    plt.pcolor(y,z, data, cmap='jet')      
-    plt.clim(0,1e2)
-    plt.xlabel('y (metres)')
-    plt.ylabel('z (metres)')
-    plt.title(stab_label + '\n' + wind_label)
-    cb1=plt.colorbar()
-    cb1.set_label(r'$\mu$ g m$^{-3}$')
+    plt.pcolor(y, z, data, cmap="jet")
+    plt.clim(0, 1e2)
+    plt.xlabel("y (metres)")
+    plt.ylabel("z (metres)")
+    plt.title(stab_label + "\n" + wind_label)
+    cb1 = plt.colorbar()
+    cb1.set_label(r"$\mu$ g m$^{-3}$")
     plt.show()
 
-def plot_surface_view_3d(C, x, y, z=None, times=None, 
-                                   source=None, sensors=None, 
-                                   t_index=None, z_index=None, 
-                                   binary_map= None,
-                                   title="Concentration distribution (3D)"):
 
+def plot_surface_view_3d(
+    C,
+    x,
+    y,
+    z=None,
+    times=None,
+    source=None,
+    sensors=None,
+    t_index=None,
+    z_index=None,
+    binary_map=None,
+    title="Concentration distribution (3D)",
+):
     """
     C       : ndarray (nx, ny, nt) oppure (nx, ny, nz, nt) se disponibile
     x, y    : coordinate spaziali (1D)
@@ -115,7 +138,9 @@ def plot_surface_view_3d(C, x, y, z=None, times=None,
         time_str = "media temporale"
     else:
         data = C_plane[:, :, t_index]
-        time_str = f"t={times[t_index]:.2f}" if times is not None else f"t_index={t_index}"
+        time_str = (
+            f"t={times[t_index]:.2f}" if times is not None else f"t_index={t_index}"
+        )
 
     data = data * 1e6
     X, Y = np.meshgrid(x, y)
@@ -123,29 +148,57 @@ def plot_surface_view_3d(C, x, y, z=None, times=None,
     vmin = np.percentile(Z, 5)
     vmax = np.percentile(Z, 95)
     fig = plt.figure(figsize=(10, 7))
-    ax = fig.add_subplot(111, projection='3d')
-    surf = ax.plot_surface(X, Y, Z, cmap='jet', vmin=vmin, vmax=vmax, linewidth=0, antialiased=True)
+    ax = fig.add_subplot(111, projection="3d")
+    surf = ax.plot_surface(
+        X, Y, Z, cmap="jet", vmin=vmin, vmax=vmax, linewidth=0, antialiased=True
+    )
     H, W = binary_map.shape
     y_map, x_map = np.meshgrid(np.arange(W), np.arange(H))
     buildings = np.where(binary_map == 0)
-    ax.bar3d(buildings[1], buildings[0], 0, 1, 1, np.max(Z)*0.1, color='gray', alpha=0.5, shade=True, label="Edifici")
+    ax.bar3d(
+        buildings[1],
+        buildings[0],
+        0,
+        1,
+        1,
+        np.max(Z) * 0.1,
+        color="gray",
+        alpha=0.5,
+        shade=True,
+        label="Edifici",
+    )
     if source is not None:
-        ax.scatter(source[0], source[1], np.max(Z)*1.1, color='cyan', marker='*', s=200, label='Sorgente')
+        ax.scatter(
+            source[0],
+            source[1],
+            np.max(Z) * 1.1,
+            color="cyan",
+            marker="*",
+            s=200,
+            label="Sorgente",
+        )
     if sensors is not None:
         for sx, sy in sensors:
-            ax.scatter(sx, sy, np.max(Z)*1.05, color='lime', marker='o', s=80)
-        ax.scatter([], [], [], color='lime', marker='o', label='Sensori')
+            ax.scatter(sx, sy, np.max(Z) * 1.05, color="lime", marker="o", s=80)
+        ax.scatter([], [], [], color="lime", marker="o", label="Sensori")
 
-    ax.set_xlabel('x (m)')
-    ax.set_ylabel('y (m)')
-    ax.set_zlabel(r'Concentrazione [$\mu g \cdot m^{-3}$]')
-    ax.set_title(f"{title}\n({time_str}, z={z[z_index]:.2f} m)" if is_4d and z is not None else f"{title}\n({time_str})")
-    fig.colorbar(surf, ax=ax, shrink=0.6, aspect=10, label=r'$\mu g \cdot m^{-3}$')
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
+    ax.set_zlabel(r"Concentrazione [$\mu g \cdot m^{-3}$]")
+    ax.set_title(
+        f"{title}\n({time_str}, z={z[z_index]:.2f} m)"
+        if is_4d and z is not None
+        else f"{title}\n({time_str})"
+    )
+    fig.colorbar(surf, ax=ax, shrink=0.6, aspect=10, label=r"$\mu g \cdot m^{-3}$")
     ax.legend()
     plt.tight_layout()
     plt.show()
 
-def animate_plan_view(C1, x, y, binary_map=None, sensor_locs=None, interval=200, save_path=None):
+
+def animate_plan_view(
+    C1, x, y, binary_map=None, sensor_locs=None, interval=200, save_path=None
+):
     """
     Animates temporal dispersion on a planar map.
 
@@ -163,17 +216,26 @@ def animate_plan_view(C1, x, y, binary_map=None, sensor_locs=None, interval=200,
     vmin = np.percentile(C1_micro, 5)
     vmax = np.percentile(C1_micro, 95)
     fig, ax = plt.subplots(figsize=(8, 6))
-    cmap = plt.get_cmap('jet')
-    img = ax.pcolormesh(x, y, C1_micro[:, :, 0], cmap=cmap, shading='auto', vmin=vmin, vmax=vmax)
+    cmap = plt.get_cmap("jet")
+    img = ax.pcolormesh(
+        x, y, C1_micro[:, :, 0], cmap=cmap, shading="auto", vmin=vmin, vmax=vmax
+    )
     cb = fig.colorbar(img, ax=ax)
-    cb.set_label(r'$\mu g \cdot m^{-3}$')
+    cb.set_label(r"$\mu g \cdot m^{-3}$")
     if binary_map is not None:
-        buildings_overlay = ax.imshow((binary_map == 0), extent=(x.min(), x.max(), y.min(), y.max()),
-                                      origin='lower', cmap='Greys', alpha=0.3)
+        buildings_overlay = ax.imshow(
+            (binary_map == 0),
+            extent=(x.min(), x.max(), y.min(), y.max()),
+            origin="lower",
+            cmap="Greys",
+            alpha=0.3,
+        )
     if sensor_locs is not None:
-        sensor_scatter = ax.scatter(*zip(*sensor_locs), marker='^', c='black', s=80, label='Sensors')
-    ax.set_xlabel('x (m)')
-    ax.set_ylabel('y (m)')
+        sensor_scatter = ax.scatter(
+            *zip(*sensor_locs), marker="^", c="black", s=80, label="Sensors"
+        )
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
     title = ax.set_title("Dispersion at time t = 0")
 
     def update(t):
@@ -186,12 +248,24 @@ def animate_plan_view(C1, x, y, binary_map=None, sensor_locs=None, interval=200,
     plt.tight_layout()
 
     if save_path:
-        ani.save(save_path, writer='pillow', fps=1000//interval)
+        ani.save(save_path, writer="pillow", fps=1000 // interval)
         print(f"Animation saved in: {save_path}")
     else:
         plt.show()
 
-def plot_puff_on_map(C1, x_grid, y_grid, center_lat, center_lon, timestep=-1, threshold=0.00, cutoff_norm=0.10, zoom_start=13, sensor_locs=None):
+
+def plot_puff_on_map(
+    C1,
+    x_grid,
+    y_grid,
+    center_lat,
+    center_lon,
+    timestep=-1,
+    threshold=0.00,
+    cutoff_norm=0.10,
+    zoom_start=13,
+    sensor_locs=None,
+):
     deg_per_m = 1 / 111320
 
     lat_grid = center_lat + y_grid * deg_per_m
@@ -217,20 +291,24 @@ def plot_puff_on_map(C1, x_grid, y_grid, center_lat, center_lon, timestep=-1, th
     if not points:
         raise ValueError("No concentration exceeds the threshold")
 
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=zoom_start, tiles="cartodbpositron")
+    m = folium.Map(
+        location=[center_lat, center_lon],
+        zoom_start=zoom_start,
+        tiles="cartodbpositron",
+    )
     HeatMap(points, radius=10, blur=5, max_zoom=1).add_to(m)
 
     folium.CircleMarker(
         location=[center_lat, center_lon],
         radius=7,
-        color='red',
+        color="red",
         fill=True,
-        fill_color='red',
+        fill_color="red",
         fill_opacity=0.9,
-        popup='Point of origin'
+        popup="Point of origin",
     ).add_to(m)
 
-    legend_html = '''
+    legend_html = """
      <div style="
      position: fixed; 
      bottom: 50px; left: 50px; width: 150px; height: 90px; 
@@ -245,11 +323,12 @@ def plot_puff_on_map(C1, x_grid, y_grid, center_lat, center_lon, timestep=-1, th
      <small>Blu: low</small><br>
      <small>Rosso: high</small>
      </div>
-     '''
+     """
     m.get_root().add_child(folium.Element(legend_html))
     if sensor_locs:
         m = plot_sensors_on_map(sensor_locs, m)
     return m
+
 
 def meters_to_latlon(x, y, origin_lat, origin_lon):
     R = 6378137
@@ -258,6 +337,7 @@ def meters_to_latlon(x, y, origin_lat, origin_lon):
     lat = origin_lat + dLat * (180 / np.pi)
     lon = origin_lon + dLon * (180 / np.pi)
     return lat, lon
+
 
 def folium_map_plot(sensor_coords_geo, source_geo, map_center=None, zoom_start=14):
     if map_center is None:
@@ -268,25 +348,34 @@ def folium_map_plot(sensor_coords_geo, source_geo, map_center=None, zoom_start=1
         folium.Marker(
             location=[lat, lon],
             icon=folium.Icon(color="red", icon="info-sign"),
-            popup=f"Sensor {i+1}"
+            popup=f"Sensor {i+1}",
         ).add_to(m)
     folium.Marker(
         location=source_geo,
         icon=folium.Icon(color="green", icon="star"),
-        popup="Estimated source"
+        popup="Estimated source",
     ).add_to(m)
 
     return m
 
+
 def plot_sensors_on_map(sensor_positions, mappa):
     import folium
+
     for pos in sensor_positions:
-        folium.Marker(location=pos, popup="Sensor", icon=folium.Icon(color='blue')).add_to(mappa)
+        folium.Marker(
+            location=pos, popup="Sensor", icon=folium.Icon(color="blue")
+        ).add_to(mappa)
     for i, pos in enumerate(sensor_positions):
-        folium.Marker(location=pos, popup=f"Sensor {i+1}", icon=folium.Icon(color='blue')).add_to(mappa)
+        folium.Marker(
+            location=pos, popup=f"Sensor {i+1}", icon=folium.Icon(color="blue")
+        ).add_to(mappa)
     return mappa
 
-def plot_concentration_with_sensors(C, x, y, sensors, source, times, time_index=0, title=""):
+
+def plot_concentration_with_sensors(
+    C, x, y, sensors, source, times, time_index=0, title=""
+):
     """
     C: array (X, Y, T)
     x, y: grid boards
@@ -296,7 +385,7 @@ def plot_concentration_with_sensors(C, x, y, sensors, source, times, time_index=
     conc_slice = C[:, :, time_index]
     extent = (x.min(), x.max(), y.min(), y.max())
     fig, ax = plt.subplots(figsize=(8, 6))
-    im=ax.imshow(conc_slice.T, origin='lower', extent=extent, cmap='viridis')
+    im = ax.imshow(conc_slice.T, origin="lower", extent=extent, cmap="viridis")
     plt.colorbar(im, ax=ax, label="Concentration (a.u.)")
     sensors_x, sensors_y = zip(*sensors)
     ax.scatter(sensors_x, sensors_y, c="red", marker="o", s=50, label="Sensors")

@@ -7,13 +7,17 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.exceptions import InvalidSignature
 
+
 def get_latest_bundle():
     bundle_dir = os.path.join("logs", "forensic")
-    paths = sorted(glob(os.path.join(bundle_dir, "bundle_*.json")), key=os.path.getmtime)
+    paths = sorted(
+        glob(os.path.join(bundle_dir, "bundle_*.json")), key=os.path.getmtime
+    )
     if not paths:
         print("No bundles found in logs/forensic/")
         sys.exit(1)
     return paths[-1]
+
 
 if len(sys.argv) > 1:
     arg = sys.argv[1]

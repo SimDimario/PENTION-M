@@ -6,7 +6,7 @@ import sys
 import logging
 import numpy as np
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from EmissionSourceLocalization.service_source_localization import predict_source
 
 logging.basicConfig(
@@ -14,6 +14,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
 logger = logging.getLogger(__name__)
+
 
 class SensorData(BaseModel):
     sensor_id: int
@@ -25,28 +26,34 @@ class SensorData(BaseModel):
     wind_speed: float | None
     wind_type: int | None
 
+
 class PredictRequest(BaseModel):
     payload_sensors: List[SensorData]
     n_sensor_operating: int
 
+
 app = FastAPI()
+
 
 @app.post("/predict_source_raw")
 def predict_source_raw(request: PredictRequest):
-    logger.info(f"Received request /predict_source_raw with {len(request.payload_sensors)} records")
+    logger.info(
+        f"Received request /predict_source_raw with {len(request.payload_sensors)} records"
+    )
 
     try:
         x, y = predict_source(request.payload_sensors, request.n_sensor_operating)
         logger.info("Source prediction completed")
-        return  {
-                "status": 200,
-                "x": x,
-                "y": y,
+        return {
+            "status": 200,
+            "x": x,
+            "y": y,
         }
 
     except Exception as e:
         logger.exception("Error during source prediction")
         raise e
+
 
 """if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8003)"""

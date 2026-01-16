@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
+
 class EarlyStopping:
     def __init__(self, patience=5, min_delta=1e-4, verbose=True):
         self.patience = patience
@@ -26,6 +27,7 @@ class EarlyStopping:
                 print(f"[EarlyStopping] No improvement for {self.counter} epochs")
             if self.counter >= self.patience:
                 self.early_stop = True
+
 
 class ConvBlock(nn.Module):
     def __init__(self, in_ch, out_ch, dropout_p=0.0):
@@ -55,8 +57,15 @@ class MCxM_PIML(nn.Module):
     - output: m x m
     """
 
-    def __init__(self, mask_unused, m=500, dropout_p=0.1,
-                 n_channel=1, n_global_features=0, wind_dim=2):
+    def __init__(
+        self,
+        mask_unused,
+        m=500,
+        dropout_p=0.1,
+        n_channel=1,
+        n_global_features=0,
+        wind_dim=2,
+    ):
         super().__init__()
         self.m = m
         self.wind_dim = wind_dim
@@ -120,7 +129,9 @@ class MCxM_PIML(nn.Module):
         b = b + wind_embed
         u2 = self.up2(b)
         if u2.shape[-2:] != e1.shape[-2:]:
-            u2 = F.interpolate(u2, size=e1.shape[-2:], mode="bilinear", align_corners=False)
+            u2 = F.interpolate(
+                u2, size=e1.shape[-2:], mode="bilinear", align_corners=False
+            )
         d1 = torch.cat([u2, e1], dim=1)
         d1 = self.dec1(d1)
         out = self.out_conv(d1)

@@ -1,14 +1,32 @@
 import os
 
-EXCLUDE_DIRS = {'.venv', '__pycache__', '.git', 'node_modules', '.idea', '.pytest_cache', 'test_datasetNPS', '.vscode'}
+EXCLUDE_DIRS = {
+    ".venv",
+    "__pycache__",
+    ".git",
+    "node_modules",
+    ".idea",
+    ".pytest_cache",
+    "test_datasetNPS",
+    ".vscode",
+}
 EXCLUDE_EXT = {
-    ".aux", ".bbl", ".bcf", ".blg", ".fdb_latexmk", ".fls", ".lof",
-    ".log", ".lot", ".run.xml", ".synctex.gz", ".toc", ".out"
+    ".aux",
+    ".bbl",
+    ".bcf",
+    ".blg",
+    ".fdb_latexmk",
+    ".fls",
+    ".lof",
+    ".log",
+    ".lot",
+    ".run.xml",
+    ".synctex.gz",
+    ".toc",
+    ".out",
 }
-COMPRESS_DIRS = {
-    "logs/forensic",
-    "CorrectionDispersion_PIML/dataset/real_dispersion"
-}
+COMPRESS_DIRS = {"logs/forensic", "CorrectionDispersion_PIML/dataset/real_dispersion"}
+
 
 def should_compress(path: str) -> bool:
     """True if the path is within one of the folders to be compressed."""
@@ -18,6 +36,7 @@ def should_compress(path: str) -> bool:
             return True
     return False
 
+
 def is_excluded_file(item: str) -> bool:
     """
     Returns True if the file has an extension to be ignored.
@@ -25,9 +44,10 @@ def is_excluded_file(item: str) -> bool:
     """
     if "." not in item:
         return False
-    
+
     full_ext = "." + item.split(".", 1)[1]
     return full_ext in EXCLUDE_EXT
+
 
 def list_with_compression(path):
     items = sorted(os.listdir(path))
@@ -35,6 +55,7 @@ def list_with_compression(path):
         return items
 
     return items[:3] + ["..."] + items[-3:]
+
 
 def get_structure(root_dir, prefix=""):
     lines = []
@@ -61,6 +82,7 @@ def get_structure(root_dir, prefix=""):
             lines.extend(get_structure(path, prefix + extension))
 
     return lines
+
 
 if __name__ == "__main__":
     base_dir = "."

@@ -19,10 +19,14 @@ LON_MIN = 4.88
 LON_MAX = 4.92
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 DATASET_CANDIDATES = [
-    os.path.join(ROOT_DIR, "ClassificatoreNPS", "datasetNPS", "PENTION_EI_Complete.csv"),
+    os.path.join(
+        ROOT_DIR, "ClassificatoreNPS", "datasetNPS", "PENTION_EI_Complete.csv"
+    ),
     os.path.join(ROOT_DIR, "test_datasetNPS", "PENTION_EI_Dataset.csv"),
 ]
-DEFAULT_OUTPUT_CSV = os.path.join(ROOT_DIR, "validation", "MLOps", "mlops_stress_results.csv")
+DEFAULT_OUTPUT_CSV = os.path.join(
+    ROOT_DIR, "validation", "MLOps", "mlops_stress_results.csv"
+)
 CONTAINERS_TO_MONITOR = [
     "mlops_ingestion",
     "mlops_monitoring",
@@ -31,6 +35,7 @@ CONTAINERS_TO_MONITOR = [
     "loc_emission_source_piml",
     "clas_nps",
 ]
+
 
 def load_nps_dataset() -> Optional[pd.DataFrame]:
     for path in DATASET_CANDIDATES:
@@ -44,7 +49,10 @@ def load_nps_dataset() -> Optional[pd.DataFrame]:
     print("[WARN] No NPS dataset found; spectra will be zeros.")
     return None
 
+
 NPS_DF = load_nps_dataset()
+
+
 def generate_noisy_spectrum(noise_level: float = 0.08) -> Tuple[List[float], str]:
     if NPS_DF is None:
         return [0.0] * 600, "UNKNOWN"
@@ -57,9 +65,7 @@ def generate_noisy_spectrum(noise_level: float = 0.08) -> Tuple[List[float], str
     shift = np.random.randint(-1, 2)
     s = np.roll(s, shift)
     drift = np.linspace(
-        np.random.uniform(-0.4, 0.4),
-        np.random.uniform(-0.4, 0.4),
-        len(s)
+        np.random.uniform(-0.4, 0.4), np.random.uniform(-0.4, 0.4), len(s)
     )
     s += drift
     s = s * (1 + np.random.normal(0, 0.03, len(s)))
@@ -70,10 +76,12 @@ def generate_noisy_spectrum(noise_level: float = 0.08) -> Tuple[List[float], str
     s = np.clip(s, 0, 100)
     return s.tolist(), str(compound_name)
 
+
 def random_latlon_in_bbox() -> Tuple[float, float]:
     lat = np.random.uniform(LAT_MIN, LAT_MAX)
     lon = np.random.uniform(LON_MIN, LON_MAX)
     return float(lat), float(lon)
+
 
 def get_meteo(meteo_url: str) -> Dict[str, Any]:
     try:
@@ -97,9 +105,15 @@ def get_meteo(meteo_url: str) -> Dict[str, Any]:
             "stability_class": "C",
         }
 
-def build_simulation_payload(sim_id: str, lat: float, lon: float,
-                             source_lat: float, source_lon: float,
-                             meteo_url: str) -> Dict[str, Any]:
+
+def build_simulation_payload(
+    sim_id: str,
+    lat: float,
+    lon: float,
+    source_lat: float,
+    source_lon: float,
+    meteo_url: str,
+) -> Dict[str, Any]:
 
     now_iso = datetime.utcnow().isoformat() + "Z"
     met = get_meteo(meteo_url)
@@ -127,6 +141,7 @@ def build_simulation_payload(sim_id: str, lat: float, lon: float,
     }
     return payload
 
+
 def safe_post(url: str, payload: Dict[str, Any], timeout: int = 180) -> Dict[str, Any]:
     try:
         r = requests.post(url, json=payload, timeout=timeout)
@@ -139,12 +154,16 @@ def safe_post(url: str, payload: Dict[str, Any], timeout: int = 180) -> Dict[str
     except Exception as e:
         return {"code": 500, "body": {"error": str(e)}}
 
+
 def get_docker_stats(containers: List[str]) -> Dict[str, Dict[str, Optional[float]]]:
     stats = {name: {"cpu": None, "mem": None} for name in containers}
     try:
         cmd = [
-            "docker", "stats", "--no-stream",
-            "--format", "{{.Name}},{{.CPUPerc}},{{.MemPerc}}"
+            "docker",
+            "stats",
+            "--no-stream",
+            "--format",
+            "{{.Name}},{{.CPUPerc}},{{.MemPerc}}",
         ] + containers
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True)
     except Exception as e:
@@ -163,8 +182,15 @@ def get_docker_stats(containers: List[str]) -> Dict[str, Dict[str, Optional[floa
             continue
     return stats
 
-def run_stress_test(n_runs: int, ingestion_url: str, meteo_url: str,
-                    output_csv: str, enable_docker_stats: bool = True, seed: int = 42):
+
+def run_stress_test(
+    n_runs: int,
+    ingestion_url: str,
+    meteo_url: str,
+    output_csv: str,
+    enable_docker_stats: bool = True,
+    seed: int = 42,
+):
     np.random.seed(seed)
     os.makedirs(os.path.dirname(output_csv), exist_ok=True)
     rows = []
@@ -178,7 +204,9 @@ def run_stress_test(n_runs: int, ingestion_url: str, meteo_url: str,
         if enable_docker_stats:
             docker_metrics_before = get_docker_stats(CONTAINERS_TO_MONITOR)
         else:
-            docker_metrics_before = {name: {"cpu": None, "mem": None} for name in CONTAINERS_TO_MONITOR}
+            docker_metrics_before = {
+                name: {"cpu": None, "mem": None} for name in CONTAINERS_TO_MONITOR
+            }
         t_start = time.time()
         resp = safe_post(ingestion_url, payload)
         t_end = time.time()
@@ -241,18 +269,29 @@ def run_stress_test(n_runs: int, ingestion_url: str, meteo_url: str,
     df.to_csv(output_csv, index=False)
     print(f"\n[DONE] Stress test completed.\nSaved to:\n  {output_csv}")
 
+
 def parse_args():
-    parser = argparse.ArgumentParser(description="Stress test for the MLOps PENTION-M pipeline.")
+    parser = argparse.ArgumentParser(
+        description="Stress test for the MLOps PENTION-M pipeline."
+    )
     parser.add_argument("--n-runs", type=int, default=20)
-    parser.add_argument("--ingestion-url", type=str,
-                        default=os.environ.get("INGESTION_URL", DEFAULT_INGESTION_URL))
-    parser.add_argument("--meteo-url", type=str,
-                        default=os.environ.get("METEO_URL", DEFAULT_METEO_URL))
-    parser.add_argument("--output-csv", type=str,
-                        default=os.environ.get("MLOPS_STRESS_CSV", DEFAULT_OUTPUT_CSV))
+    parser.add_argument(
+        "--ingestion-url",
+        type=str,
+        default=os.environ.get("INGESTION_URL", DEFAULT_INGESTION_URL),
+    )
+    parser.add_argument(
+        "--meteo-url", type=str, default=os.environ.get("METEO_URL", DEFAULT_METEO_URL)
+    )
+    parser.add_argument(
+        "--output-csv",
+        type=str,
+        default=os.environ.get("MLOPS_STRESS_CSV", DEFAULT_OUTPUT_CSV),
+    )
     parser.add_argument("--no-docker-stats", action="store_true")
     parser.add_argument("--seed", type=int, default=42)
     return parser.parse_args()
+
 
 if __name__ == "__main__":
     args = parse_args()
@@ -261,6 +300,10 @@ if __name__ == "__main__":
         ingestion_url=args.ingestion_url,
         meteo_url=args.meteo_url,
         output_csv=args.output_csv,
-        enable_docker_stats=not args.no-docker_stats if hasattr(args, "no-docker-stats") else not args.no_docker_stats,
+        enable_docker_stats=(
+            not args.no - docker_stats
+            if hasattr(args, "no-docker-stats")
+            else not args.no_docker_stats
+        ),
         seed=args.seed,
     )

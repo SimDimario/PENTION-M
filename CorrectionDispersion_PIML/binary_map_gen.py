@@ -4,33 +4,39 @@ import numpy as np
 import logging
 from typing import Optional, Tuple
 import matplotlib.pyplot as plt
-from tqdm import tqdm  
+from tqdm import tqdm
 import os
 import pandas as pd
 import json
 import geopandas as gpd
 
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-def fix_bbox_order(bbox: Optional[Tuple[float, float, float, float]]) -> Optional[Tuple[float, float, float, float]]:
+
+def fix_bbox_order(
+    bbox: Optional[Tuple[float, float, float, float]],
+) -> Optional[Tuple[float, float, float, float]]:
     """
     Ensures the bounding box is in the correct order: (min_lon, min_lat, max_lon, max_lat).
     """
     if bbox is None:
         return None
     if len(bbox) != 4:
-        raise ValueError("Bounding box must be a tuple of four values: (min_lon, min_lat, max_lon, max_lat).")
-    
+        raise ValueError(
+            "Bounding box must be a tuple of four values: (min_lon, min_lat, max_lon, max_lat)."
+        )
+
     min_lon, min_lat, max_lon, max_lat = bbox
     min_lon, max_lon = sorted([min_lon, max_lon])
     min_lat, max_lat = sorted([min_lat, max_lat])
     return (min_lon, min_lat, max_lon, max_lat)
 
+
 def generate_binary_map(
-        place: str = "", 
-        grid_size: int = 300,
-        bbox: Optional[Tuple[float, float, float, float]] = None
-        ) -> tuple[np.ndarray, dict]:
+    place: str = "",
+    grid_size: int = 300,
+    bbox: Optional[Tuple[float, float, float, float]] = None,
+) -> tuple[np.ndarray, dict]:
     """
     Generates a binary map (0 = building, 1 = free space) over a bounding box or OSM area.
 
@@ -46,8 +52,10 @@ def generate_binary_map(
 
     logging.info(f"Generating binary map for {place}...")
 
-    bbox=fix_bbox_order(bbox)
-    logging.info(f"Using bounding box: {bbox}" if bbox else "Using place name for OSM query.")
+    bbox = fix_bbox_order(bbox)
+    logging.info(
+        f"Using bounding box: {bbox}" if bbox else "Using place name for OSM query."
+    )
 
     try:
 
@@ -62,23 +70,26 @@ def generate_binary_map(
             bounds = gdf_place_proj.total_bounds
 
         tags = {"building": True, "height": True}
-        buildings = ox.features_from_place(place, tags=tags) if not bbox else ox.features_from_bbox(bbox, tags=tags) #type: ignore
-        
+        buildings = ox.features_from_place(place, tags=tags) if not bbox else ox.features_from_bbox(bbox, tags=tags)  # type: ignore
+
         if buildings.empty:
-            logging.warning(f"No building data found for {place}. Returning an empty map.")
+            logging.warning(
+                f"No building data found for {place}. Returning an empty map."
+            )
             return np.zeros((grid_size, grid_size), dtype=np.uint8), {}
-        
+
         logging.info(f"Found {len(buildings)} building features.")
 
     except Exception as e:
         logging.error(f"Error retrieving building data for {place}: {e}")
         return np.zeros((grid_size, grid_size), dtype=np.uint8), {}
 
-    
     buildings_proj = buildings.to_crs(epsg=32633)
     logging.info(f"Buildings projected to EPSG:32633 CRS.")
     x_min, y_min, x_max, y_max = bounds
-    logging.info(f"Total bounds: xmin={x_min:.1f}, ymin={y_min:.1f}, xmax={x_max:.1f}, ymax={y_max:.1f}")
+    logging.info(
+        f"Total bounds: xmin={x_min:.1f}, ymin={y_min:.1f}, xmax={x_max:.1f}, ymax={y_max:.1f}"
+    )
     cell_width = (x_max - x_min) / grid_size
     print(f"Cell width: {cell_width:.2f} metres")
     cell_height = (y_max - y_min) / grid_size
@@ -102,25 +113,32 @@ def generate_binary_map(
     building_cells = np.sum(binary_grid == 0)
     free_cells = np.sum(binary_grid == 1)
 
-    building_density_percent = ( building_cells / total_cells) * 100
+    building_density_percent = (building_cells / total_cells) * 100
     metadata = {
-        'city': place,
-        'grid_size': grid_size,
-        'bounds': (x_min, y_min, x_max, y_max),
-        'cell_size': (cell_width, cell_height),
-        'crs': "epsg 32633",
-        'total_buildings': len(buildings_proj),
-        'building_cells': building_cells,
-        'free_cells': free_cells,
-        'total_cells': total_cells,
-        'resolution (m)': cell_width,
-        'building_density': building_density_percent,
-        'mean_height': pd.to_numeric(buildings_proj['height'], errors='coerce').mean() if 'height' in buildings_proj.columns else None
+        "city": place,
+        "grid_size": grid_size,
+        "bounds": (x_min, y_min, x_max, y_max),
+        "cell_size": (cell_width, cell_height),
+        "crs": "epsg 32633",
+        "total_buildings": len(buildings_proj),
+        "building_cells": building_cells,
+        "free_cells": free_cells,
+        "total_cells": total_cells,
+        "resolution (m)": cell_width,
+        "building_density": building_density_percent,
+        "mean_height": (
+            pd.to_numeric(buildings_proj["height"], errors="coerce").mean()
+            if "height" in buildings_proj.columns
+            else None
+        ),
     }
 
     logging.info("Binary map generation complete.")
-    logging.info(f"Statistics: {building_cells}/{total_cells} cells with buildings ({building_cells/total_cells*100:.1f}%)")
+    logging.info(
+        f"Statistics: {building_cells}/{total_cells} cells with buildings ({building_cells/total_cells*100:.1f}%)"
+    )
     return binary_grid, metadata
+
 
 def convert_np(obj):
     if isinstance(obj, (np.integer, np.int32, np.int64)):
@@ -134,29 +152,44 @@ def convert_np(obj):
     else:
         return obj
 
+
 if __name__ == "__main__":
 
     target_city = "Amsterdam, Netherlands"
-    
-    quartiere_bbox = (4.822998,52.322750,4.993973,52.431316)
-    binary_map, metadata= generate_binary_map(place=target_city,bbox=quartiere_bbox, grid_size=500)
+
+    quartiere_bbox = (4.822998, 52.322750, 4.993973, 52.431316)
+    binary_map, metadata = generate_binary_map(
+        place=target_city, bbox=quartiere_bbox, grid_size=500
+    )
     metadata_clean = convert_np(metadata)
 
     if binary_map is not None and binary_map.size > 0:
 
-        output_filename = os.path.join(".", "CorrectionDispersion_PIML/binary_maps_data", f"{target_city.lower().replace(', ', '_').replace(' ', '_')}{'_bbox' if quartiere_bbox is not None else ''}.npy")
-        metadata_filename = os.path.join(".", "CorrectionDispersion_PIML/binary_maps_data", f"{target_city.lower().replace(', ', '_').replace(' ', '_')}_metadata{'_bbox' if quartiere_bbox is not None else ''}.json")
-    
+        output_filename = os.path.join(
+            ".",
+            "CorrectionDispersion_PIML/binary_maps_data",
+            f"{target_city.lower().replace(', ', '_').replace(' ', '_')}{'_bbox' if quartiere_bbox is not None else ''}.npy",
+        )
+        metadata_filename = os.path.join(
+            ".",
+            "CorrectionDispersion_PIML/binary_maps_data",
+            f"{target_city.lower().replace(', ', '_').replace(' ', '_')}_metadata{'_bbox' if quartiere_bbox is not None else ''}.json",
+        )
+
         os.makedirs(os.path.dirname(output_filename), exist_ok=True)
         np.save(output_filename, binary_map)
         with open(metadata_filename, "w") as file:
             json.dump(metadata_clean, file, indent=4)
 
-        logging.info(f"Binary map saved to '{output_filename}'. Shape: {binary_map.shape}")
-        
-        x_min, y_min, x_max, y_max = metadata['bounds']
-        plt.imshow(binary_map, cmap='gray', extent=(x_min, x_max, y_min, y_max), origin='lower')
-   
+        logging.info(
+            f"Binary map saved to '{output_filename}'. Shape: {binary_map.shape}"
+        )
+
+        x_min, y_min, x_max, y_max = metadata["bounds"]
+        plt.imshow(
+            binary_map, cmap="gray", extent=(x_min, x_max, y_min, y_max), origin="lower"
+        )
+
         building_cells = np.sum(binary_map == 0)
         free_cells = np.sum(binary_map == 1)
 
@@ -174,9 +207,14 @@ if __name__ == "__main__":
             • Origin coordinates: {metadata.get('origin', 'N/A')}
             • City: {metadata.get('city', 'N/A')}
             """
-        
-        plt.figtext(0.02, 0.02, info_text, fontsize=9, 
-               bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray"))
+
+        plt.figtext(
+            0.02,
+            0.02,
+            info_text,
+            fontsize=9,
+            bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray"),
+        )
 
         plt.title(f"Binary map of {target_city} (0 = building, 1 = free space)")
         plt.xlabel("Coordinate X (grid)")

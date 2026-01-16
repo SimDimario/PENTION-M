@@ -5,7 +5,9 @@ import joblib
 import logging
 import os
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(__file__)
@@ -16,8 +18,10 @@ model = joblib.load(os.path.join(MODEL_PATH, "emission_source_model_piml.pkl"))
 scaler = joblib.load(os.path.join(MODEL_PATH, "scaler_piml.pkl"))
 MODEL_VERSION = "RF_PIML_v1"
 
+
 def estrai_feature(time, conc, window=None, spike_height=None):
     import json
+
     if isinstance(time, str):
         time = json.loads(time)
     if isinstance(conc, str):
@@ -25,10 +29,22 @@ def estrai_feature(time, conc, window=None, spike_height=None):
     time = np.array(time, dtype=float)
     conc = np.array(conc, dtype=float)
     if len(time) == 0 or len(conc) == 0:
-        return {k: 0.0 for k in [
-            "C_max","t_peak","t_first_peak","mean","std","AUC",
-            "rise_rate","fall_rate","plume_duration","spike_count","spike_frequency"
-        ]}
+        return {
+            k: 0.0
+            for k in [
+                "C_max",
+                "t_peak",
+                "t_first_peak",
+                "mean",
+                "std",
+                "AUC",
+                "rise_rate",
+                "fall_rate",
+                "plume_duration",
+                "spike_count",
+                "spike_frequency",
+            ]
+        }
 
     C_max = np.max(conc)
     idx_max = np.argmax(conc)
@@ -43,7 +59,7 @@ def estrai_feature(time, conc, window=None, spike_height=None):
     above = np.where(conc > spike_height)[0]
     plume_duration = time[above[-1]] - time[above[0]] if len(above) > 1 else 0.0
     spike_count = len(peaks)
-    total_duration = (time[-1] - time[0] + 1e-6)
+    total_duration = time[-1] - time[0] + 1e-6
     spike_freq = spike_count / total_duration
 
     return {
@@ -57,8 +73,9 @@ def estrai_feature(time, conc, window=None, spike_height=None):
         "fall_rate": fall_rate,
         "plume_duration": plume_duration,
         "spike_count": spike_count,
-        "spike_frequency": spike_freq
+        "spike_frequency": spike_freq,
     }
+
 
 def predict_source_piml(sensors: list, n_sensor_operating: int):
     logger.info(f"[PIML] Predicting source for {len(sensors)} sensors")
@@ -74,19 +91,21 @@ def predict_source_piml(sensors: list, n_sensor_operating: int):
         conc_seq = group["conc"].iloc[0]
         feat = estrai_feature(time_seq, conc_seq)
         first = group.iloc[0]
-        feat.update({
-            "wind_dir_x": first["wind_dir_x"],
-            "wind_dir_y": first["wind_dir_y"],
-            "wind_speed": first["wind_speed"],
-            "wind_type": first["wind_type"],
-            "gps_x": first.get("gps_x", 0.0),
-            "gps_y": first.get("gps_y", 0.0),
-            "stability_value": first.get("stability_value", 0.0),
-            "sigma_y": first.get("sigma_y", 0.0),
-            "sigma_z": first.get("sigma_z", 0.0),
-            "pe_number": first.get("pe_number", 0.0),
-            "n_sens_valid": n_sensor_operating,
-        })
+        feat.update(
+            {
+                "wind_dir_x": first["wind_dir_x"],
+                "wind_dir_y": first["wind_dir_y"],
+                "wind_speed": first["wind_speed"],
+                "wind_type": first["wind_type"],
+                "gps_x": first.get("gps_x", 0.0),
+                "gps_y": first.get("gps_y", 0.0),
+                "stability_value": first.get("stability_value", 0.0),
+                "sigma_y": first.get("sigma_y", 0.0),
+                "sigma_z": first.get("sigma_z", 0.0),
+                "pe_number": first.get("pe_number", 0.0),
+                "n_sens_valid": n_sensor_operating,
+            }
+        )
         agg_features.append(feat)
     X_input = pd.DataFrame(agg_features).fillna(0)
     X_input = X_input.reindex(columns=scaler.feature_names_in_, fill_value=0)
@@ -101,5 +120,5 @@ def predict_source_piml(sensors: list, n_sensor_operating: int):
         "y": y,
         "confidence": conf,
         "model_version": MODEL_VERSION,
-        "predicted_source_xy": [x, y]
+        "predicted_source_xy": [x, y],
     }

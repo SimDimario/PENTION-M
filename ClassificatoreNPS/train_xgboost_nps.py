@@ -25,6 +25,7 @@ os.makedirs(MODEL_DIR, exist_ok=True)
 print("Loading dataset...")
 df = pd.read_csv(DATA_PATH)
 
+
 def augment_spectrum(s):
     s = s.copy().astype(float)
 
@@ -33,9 +34,7 @@ def augment_spectrum(s):
         s = np.roll(s, shift)
 
     drift = np.linspace(
-        np.random.uniform(-0.4, 0.4),
-        np.random.uniform(-0.4, 0.4),
-        len(s)
+        np.random.uniform(-0.4, 0.4), np.random.uniform(-0.4, 0.4), len(s)
     )
     s = s + drift
     s = s * (1 + np.random.normal(0, 0.03, len(s)))
@@ -47,13 +46,14 @@ def augment_spectrum(s):
     s = np.clip(s, 0, 100)
     return s
 
+
 print("Preparing features...")
 
-if 'Name' in df.columns:
-    df = df.drop(columns=['Name'])
+if "Name" in df.columns:
+    df = df.drop(columns=["Name"])
 
-X = df.drop(columns=['label']).values
-y = df['label'].values
+X = df.drop(columns=["label"]).values
+y = df["label"].values
 
 X_aug = []
 y_aug = []
@@ -109,7 +109,7 @@ print("Saving confusion matrix...")
 
 cm = confusion_matrix(y_test, y_pred)
 plt.figure(figsize=(10, 8))
-sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
 plt.title("Confusion Matrix - XGBoost")
 plt.xlabel("Predicted")
 plt.ylabel("True")

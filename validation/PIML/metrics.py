@@ -1,19 +1,23 @@
 import numpy as np
 from scipy.ndimage import gaussian_gradient_magnitude
 
+
 def rmse_free(corrected, reference, mask):
     diff = (corrected - reference) ** 2
     diff_masked = diff * mask
     return float(np.sqrt(np.mean(diff_masked + 1e-12)))
 
+
 def smoothness_index(field):
     grad_mag = gaussian_gradient_magnitude(field, sigma=1)
     return float(np.mean(grad_mag))
+
 
 def building_violation(corrected, mask):
     building_mask = 1 - mask
     violations = corrected * building_mask
     return float(np.mean(violations > 0.0001))
+
 
 def wind_alignment_score(field, wind_deg):
     theta = np.radians(270 - wind_deg)
@@ -26,6 +30,7 @@ def wind_alignment_score(field, wind_deg):
     gy /= norm
     align = gx * wx + gy * wy
     return float(np.mean(align))
+
 
 def geomask_violation(corrected, mask):
     return float(np.mean((corrected > 0) * (1 - mask)))

@@ -10,6 +10,7 @@ import importlib.util
 sys.path.extend(["/MLOps", "/CorrectionDispersion_PIML", "/gaussianPuff"])
 print("[RetrainService] mock_retrain.py LOADED (import container)")
 
+
 def load_piml_retrain():
     """
     Dynamically load the service_train_piml.py module from /CorrectionDispersion_PIML.
@@ -24,9 +25,11 @@ def load_piml_retrain():
     spec.loader.exec_module(module)
     return module
 
+
 app = FastAPI(title="MLOps Retrain Service")
 
 from contextlib import asynccontextmanager
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -36,6 +39,7 @@ async def lifespan(app: FastAPI):
     print("[RetrainService] Lifespan shutdown")
     global running
     running = False
+
 
 app.router.lifespan_context = lifespan
 
@@ -54,6 +58,7 @@ running = True
 LAST_RETRAIN_AT = None
 AUTO_THREAD_STARTED = False
 
+
 def load_recent_monitoring(n: int = 50):
     """Load the last N lines of the monitoring log."""
     if not os.path.exists(MONITOR_LOG):
@@ -68,17 +73,24 @@ def load_recent_monitoring(n: int = 50):
             continue
     return data
 
+
 def append_log(path: str, entry: dict):
     """Adds a JSONL line to a log file."""
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, default=str) + "\n")
 
+
 def compute_mean_drift(events):
     """Calculate the average drift over the last events."""
-    vals = [e.get("drift_score") for e in events if isinstance(e.get("drift_score"), (float, int))]
+    vals = [
+        e.get("drift_score")
+        for e in events
+        if isinstance(e.get("drift_score"), (float, int))
+    ]
     if not vals:
         return 0.0
     return sum(vals) / len(vals)
+
 
 def simulate_retrain():
     """
@@ -100,10 +112,11 @@ def simulate_retrain():
     new_version = f"PIML_v{current + 1}"
     metrics = {
         "description": "Mock retrain executed due to manual trigger",
-        "drift_reset": True
+        "drift_reset": True,
     }
 
     return new_version, metrics
+
 
 def retrain_loop():
     """Continuous loop that checks drift and decides whether to retrieve."""
@@ -135,8 +148,10 @@ def retrain_loop():
         drift_trigger = drift_mean > DRIFT_THRESHOLD
         try:
             recent = [
-                e for e in events
-                if datetime.fromisoformat(e["time"]) > datetime.utcnow() - timedelta(minutes=5)
+                e
+                for e in events
+                if datetime.fromisoformat(e["time"])
+                > datetime.utcnow() - timedelta(minutes=5)
             ]
         except Exception:
             recent = events
@@ -165,29 +180,37 @@ def retrain_loop():
             piml_mod = load_piml_retrain()
             new_version, metrics = piml_mod.retrain_model()
 
-            entry.update({
-                "new_model_version": new_version,
-                "metrics": metrics,
-                "status": "retrained",
-                "fallback_used": False,
-            })
+            entry.update(
+                {
+                    "new_model_version": new_version,
+                    "metrics": metrics,
+                    "status": "retrained",
+                    "fallback_used": False,
+                }
+            )
 
             print(f"[RetrainService] Retraining COMPLETED → New version: {new_version}")
 
             # Aggiorna registry
             with open(REGISTRY_PATH, "w", encoding="utf-8") as f:
-                json.dump({
-                    "last_update": entry["timestamp"],
-                    "current_model_version": new_version,
-                    "previous_model_version": registry_version,
-                    "training_data_version": f"PIML_DS_v{int(new_version.replace('PIML_v',''))}",
-                    "metrics": metrics
-                }, f, indent=2)
+                json.dump(
+                    {
+                        "last_update": entry["timestamp"],
+                        "current_model_version": new_version,
+                        "previous_model_version": registry_version,
+                        "training_data_version": f"PIML_DS_v{int(new_version.replace('PIML_v',''))}",
+                        "metrics": metrics,
+                    },
+                    f,
+                    indent=2,
+                )
 
             drift_baseline_path = "/logs/drift_baseline.json"
             try:
                 with open(drift_baseline_path, "w", encoding="utf-8") as f:
-                    json.dump({"mean": None, "cov": None, "count": 0, "distances": []}, f)
+                    json.dump(
+                        {"mean": None, "cov": None, "count": 0, "distances": []}, f
+                    )
                 print("[RetrainService] Baseline drift reset after retrain.")
             except Exception as e:
                 print(f"[RetrainService] ERROR reset baseline drift: {e}")
@@ -196,20 +219,22 @@ def retrain_loop():
                 pass
             print("[RetrainService] Monitoring log cleared after retrain.")
 
-
             append_log(RETRAIN_LOG, entry)
             LAST_RETRAIN_AT = now
 
         except Exception as e:
-            entry.update({
-                "status": "retrain_failed",
-                "error": str(e),
-                "fallback_used": False,
-            })
+            entry.update(
+                {
+                    "status": "retrain_failed",
+                    "error": str(e),
+                    "fallback_used": False,
+                }
+            )
             print(f"[RetrainService] Real retraining FAILED: {e}")
             append_log(RETRAIN_LOG, entry)
 
     print("[RetrainService] Loop retraining completed")
+
 
 def start_retrain_thread():
     global AUTO_THREAD_STARTED
@@ -220,9 +245,15 @@ def start_retrain_thread():
     thread = threading.Thread(target=retrain_loop, daemon=True)
     thread.start()
 
+
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "mock_retrain", "time": datetime.utcnow().isoformat()}
+    return {
+        "status": "ok",
+        "service": "mock_retrain",
+        "time": datetime.utcnow().isoformat(),
+    }
+
 
 @app.get("/status")
 def get_status():
@@ -236,6 +267,7 @@ def get_status():
     last = lines[-1]
     return {"status": "ok", "last_entry": last, "entries": len(lines)}
 
+
 @app.post("/trigger_retrain")
 def trigger_manual():
     """
@@ -247,7 +279,7 @@ def trigger_manual():
         "manual_trigger": True,
         "new_model_version": new_version,
         "metrics": metrics,
-        "status": "manual_mock_retrained"
+        "status": "manual_mock_retrained",
     }
     append_log(RETRAIN_LOG, entry)
     print(f"[RetrainService] Manual retraining (MOCK) → {new_version}")
@@ -261,18 +293,24 @@ def trigger_manual():
     else:
         registry = {}
 
-    registry.update({
-        "last_update": entry["timestamp"],
-        "previous_model_version": registry.get("current_model_version"),
-        "current_model_version": new_version,
-        "training_data_version": f"PIML_DS_v{int(new_version.replace('PIML_v',''))}",
-        "metrics": metrics
-    })
+    registry.update(
+        {
+            "last_update": entry["timestamp"],
+            "previous_model_version": registry.get("current_model_version"),
+            "current_model_version": new_version,
+            "training_data_version": f"PIML_DS_v{int(new_version.replace('PIML_v',''))}",
+            "metrics": metrics,
+        }
+    )
 
     with open(REGISTRY_PATH, "w", encoding="utf-8") as f:
         json.dump(registry, f, indent=2)
 
-    return {"status": "ok", "message": "Manual MOCK retrain completed", "new_version": new_version}
+    return {
+        "status": "ok",
+        "message": "Manual MOCK retrain completed",
+        "new_version": new_version,
+    }
 
 
 if os.environ.get("MLOPS_AUTOSTART_RETRAIN", "1") == "1":
@@ -280,4 +318,5 @@ if os.environ.get("MLOPS_AUTOSTART_RETRAIN", "1") == "1":
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8014)
