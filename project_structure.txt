@@ -180,13 +180,14 @@
 ├── docker-compose.yml
 ├── documents
 │   ├── .$PENTION-M_Architecture.drawio.bkp
-│   ├── Descrizione_documenti_prof.docx
-│   ├── PENTION-M simulazione PIML + MLOps per la detection di sostanze NPS.pdf
-│   ├── PENTION-M simulazione PIML + MLOps per la detection di sostanze NPS.pptx
+│   ├── Data Flow Model DSR.drawio
+│   ├── Documenti iniziali
+│   │   ├── Descrizione_documenti_prof.docx
+│   │   ├── PENTION proposal_MION_vFINAL.pdf
+│   │   ├── PENTION_initial_requirements_elicitation.xls
+│   │   └── Requirements Elicitations Interview.docx
 │   ├── PENTION-M_Architecture.drawio
-│   ├── PENTION_initial_requirements_elicitation.xlsx
 │   ├── Paper utili
-│   │   ├── Journal of Chemistry - 2022 - Bărbulescu - Computer‐Aided Classification of New Psychoactive Substances.pdf
 │   │   ├── PENTION-M
 │   │   │   ├── 2503.18849v1.pdf
 │   │   │   ├── A+comprehensive+review+of+physics-informed+deep+learning+and+its+applications+in+geoenergy+development.pdf
@@ -202,29 +203,59 @@
 │   │   │   ├── paper13.pdf
 │   │   │   ├── s42979-023-02282-2.pdf
 │   │   │   └── s44379-025-00016-0.pdf
-│   │   ├── Scheda di utilità dei paper.txt
-│   │   ├── analytica-06-00017.pdf
-│   │   └── deep-learning-enabled-ms-ms-spectrum-prediction-facilitates-automated-identification-of-novel-psychoactive-substances.pdf
-│   ├── Requirements Elicitations Interview.docx
+│   │   └── PENTION-S Claudio
+│   │       ├── Journal of Chemistry - 2022 - Bărbulescu - Computer‐Aided Classification of New Psychoactive Substances.pdf
+│   │       ├── Scheda di utilità dei paper.txt
+│   │       ├── analytica-06-00017.pdf
+│   │       └── deep-learning-enabled-ms-ms-spectrum-prediction-facilitates-automated-identification-of-novel-psychoactive-substances.pdf
+│   ├── Presentazione finale
+│   │   ├── PENTION-M simulazione PIML + MLOps per la detection di sostanze NPS.pdf
+│   │   └── PENTION-M simulazione PIML + MLOps per la detection di sostanze NPS.pptx
 │   ├── Workshop-4-11-2025
 │   │   ├── (Audio) 2025-11-04.m4a
 │   │   ├── 2025-11-04 09-59-04.mkv
+│   │   ├── PENTION Requirements Elicitation Form (V2)(1-3).xlsx
+│   │   ├── PENTION Requirements Elicitation Form(1-5).xlsx
 │   │   ├── PENTION_LEA_Workshop_DutchPolice_Meeting_Summary_2025-11-04.docx
 │   │   ├── PENTION_LEA_Workshop_DutchPolice_Meeting_Summary_2025-11-04.pdf
-│   │   ├── Trascrizione meeting PENTION.txt
+│   │   ├── Trascrizione workshop PENTION.txt
 │   │   └── Workshop-requirement engineering.pptx
-│   ├── descrizionecodice.docx
-│   ├── spiegazione sintetica.docx
+│   ├── forensic_report_SIM_20260112_182710.pdf
 │   └── thesis_latex
 │       ├── bib.bib
 │       ├── chapters
-│       │   └── 01_introduzione.tex
+│       │   ├── 01_introduzione.tex
+│       │   ├── 02_background.tex
+│       │   ├── 03_metodologia.tex
+│       │   ├── 04_architettura.tex
+│       │   ├── 05_validazione.tex
+│       │   ├── 06_limitazioni.tex
+│       │   └── 07_conclusioni.tex
+│       ├── frontespizio.tex
 │       ├── img
-│       │   └── logo_unisa.png
+│       │   ├── PDF1.png
+│       │   ├── PDF2.png
+│       │   ├── PENTION-M_Architecture.png
+│       │   ├── UI0.png
+│       │   ├── UI1.png
+│       │   ├── UI2.png
+│       │   ├── UI3.png
+│       │   ├── calibration_curve.png
+│       │   ├── confidence_histogram.png
+│       │   ├── confusion_matrix_xgb.png
+│       │   ├── distribuzioni_variabili_continue.png
+│       │   ├── dsr_process_flow.png
+│       │   ├── logo_unisa.png
+│       │   ├── model_accuracies.png
+│       │   ├── noise_robustness.png
+│       │   ├── piml_feature_correlation.png
+│       │   ├── rfe_feature_importance.png
+│       │   ├── source_localization_error_distribution.png
+│       │   ├── source_localization_map.png
+│       │   └── source_localization_scatter_xy.png
 │       ├── main.pdf
 │       ├── main.tex
-│       ├── preambolo.tex
-│       └── struttura_tesi.tex
+│       └── preambolo.tex
 ├── gaussianPuff
 │   ├── .dockerignore
 │   ├── Dockerfile
@@ -255,9 +286,9 @@
 │   │   ├── bundle_20251129_165157_04b341e9.json
 │   │   ├── bundle_20251129_165208_0cb9af00.json
 │   │   │   ...
-│   │   ├── bundle_20251209_130655_b56f4d30.json
-│   │   ├── bundle_20251210_113828_40280e5c.json
-│   │   └── bundle_20251210_151741_ae02d155.json
+│   │   ├── bundle_20260110_175557_1651e311.json
+│   │   ├── bundle_20260112_182819_dccf4ed9.json
+│   │   └── bundle_20260112_191033_890e8595.json
 │   ├── ingestion_log.jsonl
 │   ├── model_registry.json
 │   ├── modelops_retrain_log.jsonl
@@ -268,7 +299,6 @@
 ├── shared_config
 │   └── config_geo.py
 ├── struttura.py
-├── test_MLOps_end2end.py
 └── validation
     ├── Emission
     │   └── emission_piml_metrics.json

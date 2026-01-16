@@ -3,14 +3,11 @@ import json
 import math
 import statistics
 from typing import Dict, Any
-
 import pandas as pd
-
 
 def safe_mean(values):
     vals = [v for v in values if v is not None]
     return float(sum(vals) / len(vals)) if vals else None
-
 
 def safe_std(values):
     vals = [v for v in values if v is not None]
@@ -18,10 +15,9 @@ def safe_std(values):
         return None
     return float(statistics.pstdev(vals))
 
-
 def load_piml_dispersion_kpi(piml_csv_path: str) -> Dict[str, Any]:
     """
-    Legge validation/PIML/validation_results_piml.csv e sintetizza:
+    Read validation/PIML/validation_results_piml.csv and summarize:
     - rmse_free_mean / std
     - smoothness_mean / std
     - wind_alignment_mean / std
@@ -44,10 +40,9 @@ def load_piml_dispersion_kpi(piml_csv_path: str) -> Dict[str, Any]:
     }
     return kpi
 
-
 def load_nps_kpi(nps_summary_path: str) -> Dict[str, Any]:
     """
-    Legge validation/NPS/results_nps/summary.json e sintetizza:
+    Read validation/NPS/results_nps/summary.json and summarize:
     - clf_brier_score
     - clf_conf_mean
     - clf_conf_std
@@ -63,7 +58,6 @@ def load_nps_kpi(nps_summary_path: str) -> Dict[str, Any]:
     brier = float(data.get("brier_score", 0.0))
     conf_mean = float(data.get("avg_confidence", 0.0))
     conf_std = float(data.get("std_confidence", 0.0))
-
     conf_min = max(0.0, conf_mean - conf_std)
     conf_max = min(1.0, conf_mean + conf_std)
 
@@ -75,10 +69,9 @@ def load_nps_kpi(nps_summary_path: str) -> Dict[str, Any]:
         "clf_conf_range_max": conf_max,
     }
 
-
 def load_localization_kpi(emission_metrics_path: str) -> Dict[str, Any]:
     """
-    Legge validation/Emission/emission_piml_metrics.json prodotto dal notebook
+    Read validation/Emission/emission_piml_metrics.json produced by the notebook
     emission_source_piml.ipynb:
     {
       "rmse_m": ...,
@@ -97,10 +90,9 @@ def load_localization_kpi(emission_metrics_path: str) -> Dict[str, Any]:
         "localization_mae_m": float(data.get("mae_m", 0.0)),
     }
 
-
 def load_mlops_kpi(monitoring_log_path: str) -> Dict[str, Any]:
     """
-    Legge logs/monitoring_log.jsonl e calcola:
+    Reads logs/monitoring_log.jsonl and calculates:
     - latency_ms_mean / median / max
     - drift_score_mean
     - drift_score_last
@@ -113,7 +105,6 @@ def load_mlops_kpi(monitoring_log_path: str) -> Dict[str, Any]:
     latencies = []
     drifts = []
     mses = []
-
     last_drift = None
 
     with open(monitoring_log_path, "r", encoding="utf-8") as f:
@@ -129,7 +120,6 @@ def load_mlops_kpi(monitoring_log_path: str) -> Dict[str, Any]:
             lat = obj.get("latency_ms")
             drift = obj.get("drift_score")
             mse = obj.get("mse_free")
-
             if isinstance(lat, (int, float)):
                 latencies.append(float(lat))
             if isinstance(drift, (int, float)):
@@ -140,9 +130,7 @@ def load_mlops_kpi(monitoring_log_path: str) -> Dict[str, Any]:
 
     if not latencies and not drifts and not mses:
         return {}
-
     kpi = {}
-
     if latencies:
         kpi["latency_ms_mean"] = float(sum(latencies) / len(latencies))
         kpi["latency_ms_median"] = float(statistics.median(latencies))
@@ -152,15 +140,13 @@ def load_mlops_kpi(monitoring_log_path: str) -> Dict[str, Any]:
         kpi["drift_score_last"] = last_drift
     if mses:
         kpi["mse_free_mean"] = float(sum(mses) / len(mses))
-
     return kpi
-
 
 def load_forensic_kpi(forensic_csv_path: str) -> Dict[str, Any]:
     """
-    Legge validation/Forensic/forensic_validation_results.csv e calcola:
-    - auditability_score = frazione di bundle con TUTTI True
-    - share per colonna (hash_match, signature_ok, model_hash_match, map_hash_match)
+    Read validation/Forensic/forensic_validation_results.csv and calculate:
+    - auditability_score = fraction of bundles with ALL True
+    - share per column (hash_match, signature_ok, model_hash_match, map_hash_match)
     """
     if not os.path.exists(forensic_csv_path):
         print(f"[WARN] Forensic csv not found: {forensic_csv_path}")
@@ -174,7 +160,6 @@ def load_forensic_kpi(forensic_csv_path: str) -> Dict[str, Any]:
 
     cols = ["hash_match", "signature_ok", "model_hash_match", "map_hash_match"]
     per_col = {f"forensic_{c}_ratio": col_ratio(c) for c in cols}
-
     all_ok = df[cols].astype(str).applymap(lambda x: x.lower() == "true")
     audit_score = float((all_ok.all(axis=1)).mean())
 
@@ -184,43 +169,29 @@ def load_forensic_kpi(forensic_csv_path: str) -> Dict[str, Any]:
         "forensic_num_bundles": int(len(df)),
     }
 
-
 def main():
-    # Questo script è in: validation/build_final_kpi_table.py
     script_dir = os.path.dirname(os.path.abspath(__file__))
     root_dir = os.path.dirname(script_dir)
-
-    # --- PATHS ---
     piml_csv = os.path.join(script_dir, "PIML", "validation_results_piml.csv")
     nps_json = os.path.join(script_dir, "NPS", "results_nps", "summary.json")
     emission_json = os.path.join(script_dir, "Emission", "emission_piml_metrics.json")
     forensic_csv = os.path.join(script_dir, "Forensic", "forensic_validation_results.csv")
     monitoring_log = os.path.join(root_dir, "logs", "monitoring_log.jsonl")
-
-    # --- CARICO OGNI BLOCCO DI KPI ---
     kpi = {}
     kpi.update(load_piml_dispersion_kpi(piml_csv))
     kpi.update(load_localization_kpi(emission_json))
     kpi.update(load_nps_kpi(nps_json))
     kpi.update(load_mlops_kpi(monitoring_log))
     kpi.update(load_forensic_kpi(forensic_csv))
-
-    # Aggiungi eventualmente un identificatore di scenario / versione
     kpi["system_version"] = "PENTION-M_PIML_v1"
-
-    # Costruisco tabella finale (una sola riga)
     df = pd.DataFrame([kpi])
-
     out_csv = os.path.join(script_dir, "final_kpi_summary.csv")
     df.to_csv(out_csv, index=False)
     print(f"\n[OK] Saved final KPI table to: {out_csv}\n")
-
-    # Stampo anche in formato markdown (utile per la tesi)
     try:
         print(df.to_markdown(index=False))
     except Exception:
         print(df)
-
 
 if __name__ == "__main__":
     main()

@@ -1,5 +1,4 @@
-# comando: python validation/MLOps/mlops_pipeline_stress_test.py --n-runs 20
-
+# command: python validation/MLOps/mlops_pipeline_stress_test.py --n-runs 20
 import os
 import json
 import time
@@ -7,33 +6,23 @@ import uuid
 import argparse
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple
-
 import numpy as np
 import pandas as pd
 import requests
 import subprocess
 
-# ---------------------------------------------------
-# CONFIGURAZIONE
-# ---------------------------------------------------
-
 DEFAULT_INGESTION_URL = "http://localhost:8011/ingest_data"
 DEFAULT_METEO_URL = "http://localhost:8002/get_meteo"
-
-# Bounding box Amsterdam
 LAT_MIN = 52.35
 LAT_MAX = 52.39
 LON_MIN = 4.88
 LON_MAX = 4.92
-
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 DATASET_CANDIDATES = [
     os.path.join(ROOT_DIR, "ClassificatoreNPS", "datasetNPS", "PENTION_EI_Complete.csv"),
     os.path.join(ROOT_DIR, "test_datasetNPS", "PENTION_EI_Dataset.csv"),
 ]
-
 DEFAULT_OUTPUT_CSV = os.path.join(ROOT_DIR, "validation", "MLOps", "mlops_stress_results.csv")
-
 CONTAINERS_TO_MONITOR = [
     "mlops_ingestion",
     "mlops_monitoring",
@@ -42,11 +31,6 @@ CONTAINERS_TO_MONITOR = [
     "loc_emission_source_piml",
     "clas_nps",
 ]
-
-
-# ---------------------------------------------------
-# UTILITIES
-# ---------------------------------------------------
 
 def load_nps_dataset() -> Optional[pd.DataFrame]:
     for path in DATASET_CANDIDATES:
@@ -61,51 +45,35 @@ def load_nps_dataset() -> Optional[pd.DataFrame]:
     return None
 
 NPS_DF = load_nps_dataset()
-
-
 def generate_noisy_spectrum(noise_level: float = 0.08) -> Tuple[List[float], str]:
     if NPS_DF is None:
         return [0.0] * 600, "UNKNOWN"
-
     row = NPS_DF.sample(n=1).iloc[0]
     compound_name = row.get("Name", "UNKNOWN")
-
     try:
         s = row.iloc[1:601].values.astype(float).copy()
     except Exception:
         s = row.select_dtypes(include=[np.number]).values[:600].astype(float)
-
-    # jitter
     shift = np.random.randint(-1, 2)
     s = np.roll(s, shift)
-
-    # baseline drift
     drift = np.linspace(
         np.random.uniform(-0.4, 0.4),
         np.random.uniform(-0.4, 0.4),
         len(s)
     )
     s += drift
-
-    # multiplicative noise
     s = s * (1 + np.random.normal(0, 0.03, len(s)))
-
-    # peak dropout
     dropout = np.random.rand(len(s)) < 0.02
     s[dropout] = 0
-
     s = np.clip(s, 0, None)
     s = s ** np.random.uniform(0.92, 1.05)
     s = np.clip(s, 0, 100)
-
     return s.tolist(), str(compound_name)
-
 
 def random_latlon_in_bbox() -> Tuple[float, float]:
     lat = np.random.uniform(LAT_MIN, LAT_MAX)
     lon = np.random.uniform(LON_MIN, LON_MAX)
     return float(lat), float(lon)
-
 
 def get_meteo(meteo_url: str) -> Dict[str, Any]:
     try:
@@ -129,24 +97,18 @@ def get_meteo(meteo_url: str) -> Dict[str, Any]:
             "stability_class": "C",
         }
 
-
 def build_simulation_payload(sim_id: str, lat: float, lon: float,
                              source_lat: float, source_lon: float,
                              meteo_url: str) -> Dict[str, Any]:
 
     now_iso = datetime.utcnow().isoformat() + "Z"
-
     met = get_meteo(meteo_url)
     spectrum_noisy, true_compound = generate_noisy_spectrum()
 
     payload = {
         "simulation_id": sim_id,
         "timestamp": now_iso,
-
-        # 🔴 FIX IMPORTANTE: aggiungi event_start_ts
-        # così api_ingestion.py può calcolare latency_full_ms
         "event_start_ts": now_iso,
-
         "SensorAir": {
             "temperature_C": met["temperature_C"],
             "humidity_%": met["humidity_%"],
@@ -163,9 +125,7 @@ def build_simulation_payload(sim_id: str, lat: float, lon: float,
         "SensorGPS": {"latitude": lat, "longitude": lon, "altitude_m": 2.0},
         "SourceGPS": {"latitude": source_lat, "longitude": source_lon},
     }
-
     return payload
-
 
 def safe_post(url: str, payload: Dict[str, Any], timeout: int = 180) -> Dict[str, Any]:
     try:
@@ -179,10 +139,8 @@ def safe_post(url: str, payload: Dict[str, Any], timeout: int = 180) -> Dict[str
     except Exception as e:
         return {"code": 500, "body": {"error": str(e)}}
 
-
 def get_docker_stats(containers: List[str]) -> Dict[str, Dict[str, Optional[float]]]:
     stats = {name: {"cpu": None, "mem": None} for name in containers}
-
     try:
         cmd = [
             "docker", "stats", "--no-stream",
@@ -203,60 +161,40 @@ def get_docker_stats(containers: List[str]) -> Dict[str, Dict[str, Optional[floa
                 stats[name]["mem"] = mem
         except Exception:
             continue
-
     return stats
-
-
-# ---------------------------------------------------
-# MAIN STRESS TEST
-# ---------------------------------------------------
 
 def run_stress_test(n_runs: int, ingestion_url: str, meteo_url: str,
                     output_csv: str, enable_docker_stats: bool = True, seed: int = 42):
-
     np.random.seed(seed)
     os.makedirs(os.path.dirname(output_csv), exist_ok=True)
-
     rows = []
-
     for i in range(1, n_runs + 1):
         sim_id = f"STRESS_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{i:03d}"
-
         source_lat, source_lon = random_latlon_in_bbox()
         van_lat, van_lon = random_latlon_in_bbox()
-
         payload = build_simulation_payload(
             sim_id, van_lat, van_lon, source_lat, source_lon, meteo_url
         )
-
         if enable_docker_stats:
             docker_metrics_before = get_docker_stats(CONTAINERS_TO_MONITOR)
         else:
             docker_metrics_before = {name: {"cpu": None, "mem": None} for name in CONTAINERS_TO_MONITOR}
-
         t_start = time.time()
         resp = safe_post(ingestion_url, payload)
         t_end = time.time()
-
         e2e_latency_ms = round((t_end - t_start) * 1000.0, 2)
-
         code = resp.get("code", 0)
         body = resp.get("body", {})
-
         monitoring_block = None
         if isinstance(body, dict):
             monitoring_block = body.get("monitoring")
-
-        # ------------------------
-        # Estrazione campi aggiornati
-        # ------------------------
 
         latency_ms = None
         drift = None
         stability_index = None
         confidence = None
         model_version = None
-        mse_free = None  # ingestion oggi non lo rimanda nel blocco monitoring
+        mse_free = None
 
         if isinstance(monitoring_block, dict):
             latency_ms = monitoring_block.get("latency_ms")
@@ -270,40 +208,30 @@ def run_stress_test(n_runs: int, ingestion_url: str, meteo_url: str,
         if code != 200:
             error_msg = json.dumps(body)[:500]
 
-        # ------------------------
-        # Compilazione riga CSV
-        # ------------------------
-
         row = {
             "run_id": i,
             "simulation_id": sim_id,
             "t_start_iso": datetime.utcfromtimestamp(t_start).isoformat() + "Z",
             "e2e_latency_ms": e2e_latency_ms,
-
-            # Metriche interne dal blocco Monitoring (PENTION-M)
             "latency_ms": latency_ms,
             "drift_score": drift,
             "stability_index": stability_index,
             "confidence": confidence,
             "model_version": model_version,
             "mse_free": mse_free,
-
             "http_status": code,
             "error_msg": error_msg,
-
             "van_lat": van_lat,
             "van_lon": van_lon,
             "source_lat": source_lat,
             "source_lon": source_lon,
         }
 
-        # Aggiunta metriche Docker
         for cname, m in docker_metrics_before.items():
             row[f"{cname}_cpu"] = m.get("cpu")
             row[f"{cname}_mem"] = m.get("mem")
 
         rows.append(row)
-
         print(
             f"[RUN {i}/{n_runs}] status={code}, latency={latency_ms}, drift={drift}, "
             f"conf={confidence}, version={model_version}"
@@ -313,13 +241,8 @@ def run_stress_test(n_runs: int, ingestion_url: str, meteo_url: str,
     df.to_csv(output_csv, index=False)
     print(f"\n[DONE] Stress test completed.\nSaved to:\n  {output_csv}")
 
-
-# ---------------------------------------------------
-# CMD PARSER
-# ---------------------------------------------------
-
 def parse_args():
-    parser = argparse.ArgumentParser(description="Stress test per la pipeline MLOps PENTION-M.")
+    parser = argparse.ArgumentParser(description="Stress test for the MLOps PENTION-M pipeline.")
     parser.add_argument("--n-runs", type=int, default=20)
     parser.add_argument("--ingestion-url", type=str,
                         default=os.environ.get("INGESTION_URL", DEFAULT_INGESTION_URL))
@@ -330,7 +253,6 @@ def parse_args():
     parser.add_argument("--no-docker-stats", action="store_true")
     parser.add_argument("--seed", type=int, default=42)
     return parser.parse_args()
-
 
 if __name__ == "__main__":
     args = parse_args()

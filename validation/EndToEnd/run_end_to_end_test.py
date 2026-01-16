@@ -7,7 +7,6 @@ UI = "http://localhost:8000"
 INGEST = "http://localhost:8011/ingest_data"
 FORENSIC = "http://localhost:8013/forensic_bundles"
 
-# === 1) Sample input minimo ===================================
 sample = {
     "simulation_id": "E2E_TEST",
     "timestamp": "2025-01-01T12:00:00Z",
@@ -36,45 +35,29 @@ sample = {
     }
 }
 
-print("\n=== STEP 1: Invio dati a /ingest_data ===")
+print("\n=== STEP 1: Sending data to /ingest_data ===")
 t0 = time.time()
 resp = requests.post(INGEST, json=sample).json()
 t1 = time.time()
-
 print(json.dumps(resp, indent=2))
 print(f"\nLatency ingestion request: {round((t1-t0)*1000,2)} ms")
-
-# ===============================================================
-# 2) Controlli base sul risultato
-# ===============================================================
 errors = []
-
 mon = resp.get("monitoring", {})
 if mon.get("latency_ms", 9999) > 500:
     errors.append("Latency too high")
-
 if mon.get("drift_score", 1) > 0.5:
     errors.append("Unexpected high drift")
 
-# ===============================================================
-# 3) Controllo bundle forense generato
-# ===============================================================
-print("\n=== STEP 2: Recupero ultimo bundle ===")
+print("\n=== STEP 2: Recovering the last bundle ===")
 bundles = requests.get(FORENSIC).json().get("bundles", [])
 if not bundles:
-    raise RuntimeError("Nessun bundle forense generato!")
-
+    raise RuntimeError("No forensic bundles generated!")
 last = bundles[0]
 print("Last bundle:", last)
-
 bundle = requests.get(f"http://localhost:8013/forensic_bundle/{last}").json()
 event = bundle["bundle"]["event"]
 
-# ===============================================================
-# 4) Validazioni
-# ===============================================================
-print("\n=== STEP 3: Validazioni ===")
-
+print("\n=== STEP 3: Validations ===")
 def check(cond, name):
     if cond: 
         print(f"[OK] {name}")
@@ -82,25 +65,20 @@ def check(cond, name):
         print(f"[FAIL] {name}")
         errors.append(name)
 
-# --- Controlli ---
 check("PIML_Runtime" in event, "PIML runtime exists")
 check(event["PIML_Runtime"]["correction_dispersion_piml"]["corrected_map_shape"] == [500,500], "Corrected map shape is 500x500")
-
 px, py = event["Inference"]["predicted_source_location"]
 check(np.isfinite(px) and np.isfinite(py), "Predicted source finite")
-
 conf = event["Inference"]["confidence_score"]
 check(0 <= conf <= 1, "Confidence in [0,1]")
-
 lat = event["Monitoring"]["latency_ms"]
 check(lat < 500, "Latency under limit")
-
 drift = event["Monitoring"]["drift_score"]
 check(drift < 0.6, "Drift under limit")
 
 print("\n=== RESULT ===")
 if errors:
-    print("❌ Test FAILED")
+    print("Test FAILED")
     print(errors)
 else:
-    print("✅ End-to-end pipeline OK")
+    print("End-to-end pipeline OK")
