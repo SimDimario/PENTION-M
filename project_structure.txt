@@ -170,8 +170,6 @@
 │   │   ├── style.css
 │   │   └── van_icon.png
 │   └── ui_pention_m.py
-├── cls
-├── docker
 ├── docker-compose.yml
 ├── documents
 │   ├── architecture
@@ -179,9 +177,6 @@
 │   │   └── PENTION-M_Architecture.drawio
 │   ├── forensic_outputs
 │   │   └── forensic_report_SIM_20260112_182710.pdf
-│   ├── presentation
-│   │   ├── PENTION-M simulazione PIML + MLOps per la detection di sostanze NPS.pdf
-│   │   └── PENTION-M simulazione PIML + MLOps per la detection di sostanze NPS.pptx
 │   ├── requirements
 │   │   ├── PENTION proposal_MION_vFINAL.pdf
 │   │   ├── PENTION_initial_requirements_elicitation.xls
@@ -262,7 +257,6 @@
 ├── project_structure.txt
 ├── shared_config
 │   └── config_geo.py
-├── struttura.py
 └── validation
     ├── Emission
     │   └── emission_piml_metrics.json

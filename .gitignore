@@ -235,3 +235,5 @@ documents/presentazione_finale
 *.vrb
 
 .vscode/
+
+struttura.py
