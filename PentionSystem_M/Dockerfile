@@ -1,6 +1,5 @@
 FROM python:3.10-slim-bookworm
 
-# --- Install system dependencies for OSMNX ---
 RUN apt-get update && apt-get install -y \
     libspatialindex-dev \
     gcc \

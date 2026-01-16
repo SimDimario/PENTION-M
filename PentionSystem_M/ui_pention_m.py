@@ -1,4 +1,3 @@
-# ui_pention_m.py
 import asyncio
 import json
 import os
@@ -13,35 +12,22 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.responses import HTMLResponse, JSONResponse
-
 import networkx as nx
 import osmnx as ox
 import sys
 sys.path.append("/shared_config")
-
 from config_geo import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX
 
-
-
-# ----------------------------------------------------
-# CONFIG
-# ----------------------------------------------------
 AMSTERDAM_PLACE = "Amsterdam, Netherlands"
 CACHE_DIR = "/app/cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
-
 GRAPH_PATH = os.path.join(CACHE_DIR, "amsterdam_drive.graphml")
-DETECTION_RADIUS_M = 300.0  # raggio operativo per "detection"
-STEP_DELAY_SEC = 0.18        # tempo tra un passo e l'altro
+DETECTION_RADIUS_M = 300.0
+STEP_DELAY_SEC = 0.18
 LOG_DIR = "/logs"
 INGESTION_URL = "http://mlops_ingestion:8011/ingest_data"
-
 app = FastAPI(title="PENTION-M UI (Van Simulation)")
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# ==========================================================
-# CARICAMENTO DATASET NPS (solo una volta)
-# ==========================================================
 DATASET_PATH = "/app/datasetNPS/PENTION_EI_Complete.csv"
 
 try:
@@ -51,9 +37,6 @@ except Exception as e:
     print(f"[UI] ERROR loading NPS dataset: {e}", flush=True)
     NPS_DF = None
 
-# ----------------------------------------------------
-# STATO GLOBALE SEMPLICE
-# ----------------------------------------------------
 class SimulationState:
     def __init__(self):
         self.G: nx.MultiDiGraph | None = None
@@ -61,30 +44,25 @@ class SimulationState:
         self.van_node = None
         self.running = False
         self.detected = False
-        self.path = []  # lista di (lat, lon)
+        self.path = []
         self.current_sim_id = None
 
 state = SimulationState()
 active_sockets: list[WebSocket] = []
 
-# ----------------------------------------------------
-# FUNZIONI DI SUPPORTO
-# ----------------------------------------------------
 def load_graph():
-    """Carica il grafo stradale di Amsterdam o, in fallback, un grafo sintetico a griglia."""
+    """Loads the Amsterdam road graph or, as a fallback, a synthetic grid graph."""
     if state.G is not None:
         return state.G
 
     G = None
 
-    # 1) Prova a caricare da cache
     if os.path.exists(GRAPH_PATH):
         try:
             print("[UI] Loading graph from cache: ", GRAPH_PATH, flush=True)
             G = ox.load_graphml(GRAPH_PATH)
             G = nx.Graph(G)
 
-            # 🔥 DEBUG BOUNDING BOX DEL GRAFO OSM
             lats = [v["y"] for k, v in G.nodes(data=True)]
             lons = [v["x"] for k, v in G.nodes(data=True)]
             print("[UI] BOUNDING BOX REAL:",
@@ -96,7 +74,6 @@ def load_graph():
             print(f"[UI] Error loading cached graph: {e}", flush=True)
             G = None
 
-    # 2) Se non ho il grafo, provo a scaricarlo (se c'è internet nel container)
     if G is None:
         try:
             print("[UI] Downloading graph from OpenStreetMap...", flush=True)
@@ -108,10 +85,9 @@ def load_graph():
             print(f"[UI] ERROR downloading graph, falling back to synthetic grid: {e}", flush=True)
             G = None
 
-    # 3) Fallback definitivo: grafo sintetico a griglia (nessun accesso OSM necessario)
     if G is None:
         print("[UI] Building synthetic grid graph for Amsterdam area.", flush=True)
-        G = nx.grid_2d_graph(20, 20)  # 20x20 = 400 nodi
+        G = nx.grid_2d_graph(20, 20)
 
         for (i, j) in G.nodes:
             fi = i / 19.0
@@ -126,10 +102,10 @@ def load_graph():
 
 def node_latlon(G, node):
     data = G.nodes[node]
-    return float(data["y"]), float(data["x"])  # (lat, lon)
+    return float(data["y"]), float(data["x"])
 
 def haversine_m(lat1, lon1, lat2, lon2):
-    R = 6371000.0  # raggio terrestre in m
+    R = 6371000.0
     phi1, phi2 = radians(lat1), radians(lat2)
     dphi = radians(lat2 - lat1)
     dlambda = radians(lon2 - lon1)
@@ -139,7 +115,7 @@ def haversine_m(lat1, lon1, lat2, lon2):
     return R * c
 
 async def broadcast(message: dict):
-    """Invia un messaggio JSON a tutti i client WebSocket connessi."""
+    """Sends a JSON message to all connected WebSocket clients."""
     dead = []
     for ws in active_sockets:
         try:
@@ -151,7 +127,7 @@ async def broadcast(message: dict):
             active_sockets.remove(ws)
 
 def get_last_monitoring():
-    """Legge l'ultima entry da monitoring_log.jsonl, se esiste."""
+    """Reads the latest entry from monitoring_log.jsonl, if it exists."""
     log_path = os.path.join(LOG_DIR, "monitoring_log.jsonl")
     if not os.path.exists(log_path):
         return None
@@ -176,7 +152,7 @@ def get_model_registry():
         return None
 
 def get_last_forensic_bundle():
-    """Prende l'ultimo bundle forensic JSON in /logs/forensic."""
+    """Gets the latest JSON forensic bundle in /logs/forensic."""
     dir_forensic = os.path.join(LOG_DIR, "forensic")
     if not os.path.isdir(dir_forensic):
         return None
@@ -201,46 +177,32 @@ def generate_noisy_spectrum(noise_level: float):
 
     s = row.iloc[1:601].values.astype(float).copy()
 
-    # (1) jitter ±1 m/z
     shift = np.random.randint(-1, 2)
     if shift != 0:
         s = np.roll(s, shift)
 
-    # (2) baseline drift
     drift = np.linspace(
         np.random.uniform(-0.4, 0.4),
         np.random.uniform(-0.4, 0.4),
         len(s)
     )
     s = s + drift
-
-    # (3) multiplicative noise proporzionale
     s = s * (1 + np.random.normal(0, 0.03, len(s)))
-
-    # (4) peak dropout (2%)
     dropout = np.random.rand(len(s)) < 0.02
     s[dropout] = 0
-
-    # (4.5) evita valori negativi prima della potenza
     s = np.clip(s, 0, None)
-
-    # (5) non-linear scaling
     s = s ** np.random.uniform(0.92, 1.05)
-
-    # (6) clipping stile EI
     s = np.clip(s, 0, 100)
-
 
     return s.tolist(), compound_name
 
 def build_simulation_payload(sim_id: str, lat: float, lon: float, source_lat: float, source_lon: float):
     """
-    NUOVA VERSIONE — La UI invia solo dati grezzi.
-    Meteo fisico da GaussianPuff /get_meteo.
+    NEW VERSION — The UI only sends raw data.
+    Physical weather from GaussianPuff /get_meteo.
     """
     now_iso = datetime.utcnow().isoformat() + "Z"
 
-    # === Meteo fisico da GaussianPuff ===
     try:
         resp_met = requests.get("http://gaussian_dispersion_model:8002/get_meteo", timeout=10).json()
         temperature = resp_met.get("temperature", 20.0)
@@ -255,7 +217,6 @@ def build_simulation_payload(sim_id: str, lat: float, lon: float, source_lat: fl
         wind_dir_deg = 180
         stability_class = "C"
 
-    # === Spettro EI simulato ===
     noise_level = 0.08
     spectrum_noisy, true_compound = generate_noisy_spectrum(noise_level)
 
@@ -307,10 +268,6 @@ def call_ingestion_pipeline(sim_id: str, lat: float, lon: float, source_lat: flo
     except Exception as e:
         return {"code": 500, "body": {"error": str(e)}}
 
-# ----------------------------------------------------
-# LOOP DI SIMULAZIONE VAN
-# ----------------------------------------------------
-
 async def simulation_loop(force_near=False):
     try:
         G = load_graph()
@@ -319,9 +276,6 @@ async def simulation_loop(force_near=False):
         state.detected = False
         state.path = []
 
-        # ------------------------------
-        # SCEGLIAMO NODO SORGENTE
-        # ------------------------------
         nodes = list(G.nodes)
         if not nodes:
             raise RuntimeError("Graph has no nodes – cannot start simulation.")
@@ -329,11 +283,7 @@ async def simulation_loop(force_near=False):
         state.source_node = random.choice(nodes)
         source_lat, source_lon = node_latlon(G, state.source_node)
 
-        # ------------------------------
-        # SCEGLIAMO POSIZIONE VAN
-        # ------------------------------
         if force_near:
-            # scegli un nodo a distanza 1800–2000 m dalla sorgente
             candidates = []
             for n in nodes:
                 lat, lon = node_latlon(G, n)
@@ -344,14 +294,12 @@ async def simulation_loop(force_near=False):
             if candidates:
                 state.van_node = random.choice(candidates)
             else:
-                # fallback: vicino alla sorgente
                 neighbors = list(G.neighbors(state.source_node))
                 if neighbors:
                     state.van_node = random.choice(neighbors)
                 else:
                     state.van_node = random.choice(nodes)
         else:
-            # caso normale: van in un punto random lontano
             while True:
                 candidate = random.choice(nodes)
                 if candidate != state.source_node:
@@ -360,16 +308,8 @@ async def simulation_loop(force_near=False):
 
         van_lat, van_lon = node_latlon(G, state.van_node)
         state.path.append((van_lat, van_lon))
-
-        # ------------------------------
-        # ID SIMULAZIONE
-        # ------------------------------
         sim_id = f"SIM_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
         state.current_sim_id = sim_id
-
-        # ------------------------------
-        # INVIA INIT ALLA UI
-        # ------------------------------
         await broadcast({
             "type": "init",
             "simulation_id": sim_id,
@@ -377,10 +317,6 @@ async def simulation_loop(force_near=False):
             "van": {"lat": van_lat, "lon": van_lon},
             "status": "patrolling",
         })
-
-        # ==========================================================
-        # == DEBUG MODE → PERCORSO DIRETTO (DIJKSTRA) VERSO LA SOURCE
-        # ==========================================================
         if force_near:
             try:
                 path_nodes = nx.shortest_path(
@@ -392,7 +328,6 @@ async def simulation_loop(force_near=False):
             except Exception:
                 path_nodes = [state.van_node, state.source_node]
 
-            # seguiamo il percorso
             for pn in path_nodes[1:]:
                 if not state.running:
                     break
@@ -429,22 +364,15 @@ async def simulation_loop(force_near=False):
 
                 await asyncio.sleep(STEP_DELAY_SEC)
 
-            # detection? → esegui pipeline
             if state.detected:
                 result = call_ingestion_pipeline(sim_id, lat, lon, source_lat, source_lon)
-
-                # 1) Prova a usare il blocco 'monitoring' restituito da api_ingestion
                 monitoring = None
                 if isinstance(result.get("body"), dict):
                     monitoring = result["body"].get("monitoring")
-
-                # 2) Se per qualunque motivo manca, fallback al log del monitoring service
                 if monitoring is None:
                     monitoring = get_last_monitoring()
-
                 registry = get_model_registry()
                 bundle = get_last_forensic_bundle()
-
                 await broadcast({
                     "type": "detection_result",
                     "simulation_id": sim_id,
@@ -454,11 +382,8 @@ async def simulation_loop(force_near=False):
                     "forensic_bundle": bundle,
                 })
 
-            return  # 🔚 termina la simulazione DEBUG
+            return
 
-        # ==========================================================
-        # == SIMULAZIONE NORMALE (RANDOM WALK)
-        # ==========================================================
         while state.running and not state.detected:
             neighbors = list(G.neighbors(state.van_node))
             if not neighbors:
@@ -467,10 +392,7 @@ async def simulation_loop(force_near=False):
             state.van_node = random.choice(neighbors)
             van_lat, van_lon = node_latlon(G, state.van_node)
             state.path.append((van_lat, van_lon))
-
             dist = haversine_m(van_lat, van_lon, source_lat, source_lon)
-
-            # isteresi per evitare detection “istantanea” prima che entri visivamente
             INNER_RADIUS = DETECTION_RADIUS_M - 50
 
             if dist <= INNER_RADIUS:
@@ -485,12 +407,9 @@ async def simulation_loop(force_near=False):
                     "distance_m": dist,
                 })
 
-                # 🔥 FIX: dai tempo al frontend di mostrare la card
                 await asyncio.sleep(0.15)
 
                 result = call_ingestion_pipeline(sim_id, van_lat, van_lon, source_lat, source_lon)
-
-
                 monitoring = result.get("body", {}).get("monitoring") or get_last_monitoring()
                 registry = get_model_registry()
                 bundle = get_last_forensic_bundle()
@@ -506,7 +425,6 @@ async def simulation_loop(force_near=False):
 
                 break
 
-
             await broadcast({
                 "type": "van_update",
                 "lat": van_lat,
@@ -517,7 +435,6 @@ async def simulation_loop(force_near=False):
 
             await asyncio.sleep(STEP_DELAY_SEC)
 
-        # fine corsa senza detection
         if not state.detected:
             await broadcast({
                 "type": "sim_end",
@@ -526,7 +443,6 @@ async def simulation_loop(force_near=False):
             })
 
     except Exception as e:
-        # se succede QUALSIASI errore, fermiamo la simulazione e avvisiamo la UI
         state.running = False
         state.detected = False
         print(f"[UI] simulation_loop error: {e}", flush=True)
@@ -543,7 +459,6 @@ def serve_index():
 async def start_simulation():
     if state.running:
         return JSONResponse({"status": "already_running"})
-    # avvio loop in background
     asyncio.create_task(simulation_loop())
     return {"status": "started"}
 
@@ -575,17 +490,12 @@ async def start_simulation_near():
     asyncio.create_task(simulation_loop(force_near=True))
     return {"status": "started_debug"}
 
-
-# ----------------------------------------------------
-# WEBSOCKET
-# ----------------------------------------------------
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     active_sockets.append(websocket)
     try:
         while True:
-            # non ci aspettiamo messaggi dal client, ma dobbiamo await per tenere aperta la connessione
             await websocket.receive_text()
     except WebSocketDisconnect:
         if websocket in active_sockets:
@@ -594,9 +504,6 @@ async def websocket_endpoint(websocket: WebSocket):
         if websocket in active_sockets:
             active_sockets.remove(websocket)
 
-# ----------------------------------------------------
-# AVVIO LOCALE (opzionale)
-# ----------------------------------------------------
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("ui_pention_m:app", host="0.0.0.0", port=8005, reload=True)

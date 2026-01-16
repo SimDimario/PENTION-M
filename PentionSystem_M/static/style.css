@@ -1,8 +1,10 @@
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   height: 100%;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
   background: #0b1020;
   color: #f5f5f5;
 }
@@ -31,9 +33,8 @@ html, body {
   gap: 12px;
   position: relative;
   z-index: 10;
-  overflow: visible; 
+  overflow: visible;
 }
-
 
 h1 {
   font-size: 18px;
@@ -82,9 +83,15 @@ button:disabled {
   margin-right: 6px;
 }
 
-.status-patrolling .status-dot { background: #10b981; }
-.status-detected .status-dot { background: #f97316; }
-.status-idle .status-dot { background: #6b7280; }
+.status-patrolling .status-dot {
+  background: #10b981;
+}
+.status-detected .status-dot {
+  background: #f97316;
+}
+.status-idle .status-dot {
+  background: #6b7280;
+}
 
 .card {
   background: #111827;
@@ -111,7 +118,7 @@ button:disabled {
 
 .log-box {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-               "Liberation Mono", "Courier New", monospace;
+    "Liberation Mono", "Courier New", monospace;
   font-size: 11px;
   background: #020617;
   padding: 8px;
@@ -157,10 +164,11 @@ button:disabled {
 }
 
 @keyframes spin {
-  100% { transform: rotate(360deg); }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
-/* ---- PROCESSING CARD ---- */
 .processing-card {
   background: #1e293b;
   border: 1px solid #334155;
@@ -186,8 +194,14 @@ button:disabled {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .small-btn {
@@ -200,9 +214,11 @@ button:disabled {
   font-size: 11px;
   color: #e2e8f0;
 }
+
 .small-btn:hover {
   background: #475569;
 }
+
 pre {
   font-size: 11px;
   background: #0f172a;
@@ -211,7 +227,6 @@ pre {
   border: 1px solid #1e293b;
 }
 
-/* --- Full Report Popup --- */
 .popup-close {
   position: absolute;
   top: 12px;
@@ -227,15 +242,13 @@ pre {
   background: #1d4ed8;
 }
 
-/* ====== FORENSIC REPORT POPUP (NEW) ====== */
-
 .popup-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0,0,0,0.65);
+  background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
@@ -251,8 +264,8 @@ pre {
   border-radius: 16px;
   padding: 0;
   border: 1px solid #3c4f6b;
-  box-shadow: 0 0 20px rgba(0,0,0,0.3);
-  overflow: hidden; /* ANGOLO PERFETTO */
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   animation: fadeIn 0.25s ease-in-out;
@@ -303,7 +316,7 @@ pre {
   color: #e8edf5;
   line-height: 1.55;
   overflow-y: auto;
-  max-height: calc(85vh - 120px);  
+  max-height: calc(85vh - 120px);
 }
 
 .report-section {
@@ -318,9 +331,9 @@ pre {
 
 .report-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;   /* metà e metà */
+  grid-template-columns: 1fr 1fr;
   gap: 14px 40px;
-  align-items: start;                /* allinea verticalmente */
+  align-items: start;
 }
 
 .report-item-label {
@@ -363,14 +376,12 @@ pre {
   background: #6b7280;
 }
 
-/* Rendere il logo visibile sullo sfondo scuro del popup */
 .report-logo {
-  background: #ffffffcc;   /* bianco semi-trasparente */
+  background: #ffffffcc;
   padding: 6px 10px;
   border-radius: 8px;
 }
 
-/* ===== Elegant Dark Scrollbar for popup ===== */
 .popup-content::-webkit-scrollbar {
   width: 10px;
 }
@@ -390,8 +401,6 @@ pre {
   background: #51749f;
 }
 
-/* === Metric badges & animations === */
-
 .badge-green {
   color: #10b981;
   font-weight: 600;
@@ -408,7 +417,6 @@ pre {
   font-weight: 600;
 }
 
-/* transizione generale per qualunque metric-value */
 .metric-value {
   font-weight: 500;
   transition: color 0.3s ease, transform 0.3s ease;
@@ -419,9 +427,15 @@ pre {
 }
 
 @keyframes pulse-green {
-  0% { text-shadow: 0 0 0 #10b981; }
-  50% { text-shadow: 0 0 6px #10b981; }
-  100% { text-shadow: 0 0 0 #10b981; }
+  0% {
+    text-shadow: 0 0 0 #10b981;
+  }
+  50% {
+    text-shadow: 0 0 6px #10b981;
+  }
+  100% {
+    text-shadow: 0 0 0 #10b981;
+  }
 }
 
 #pdf-map {
@@ -437,7 +451,6 @@ pre {
   cursor: pointer;
 }
 
-/* BOX DEL TOOLTIP */
 [data-tooltip]::after {
   content: attr(data-tooltip);
   white-space: pre-line;
@@ -463,7 +476,6 @@ pre {
   opacity: 1;
 }
 
-/* FRECCIA */
 [data-tooltip]::before {
   content: "";
   position: absolute;
@@ -481,35 +493,32 @@ pre {
   opacity: 1;
 }
 
-/* MINI MASS SPECTRUM — Sidebar */
 #mini-spectrum-card {
-    padding: 12px;
-    height: 190px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    border-radius: 10px;
-    background: #0f1623;
-    border: 1px solid #1f2937;
+  padding: 12px;
+  height: 190px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #0f1623;
+  border: 1px solid #1f2937;
 }
 
 #mini-spectrum-card h2 {
-    font-size: 14px;
+  font-size: 14px;
 }
 
-/* Canvas del mini grafico */
 #mini-spectrum-chart {
-    width: 100% !important;
-    height: 150px !important;
-    display: block;
+  width: 100% !important;
+  height: 150px !important;
+  display: block;
 }
-
 
 #full-spectrum-chart {
   width: 100% !important;
   max-height: 260px !important;
   height: 260px !important;
-  background: #0c111b; 
+  background: #0c111b;
   border: 1px solid #1d2635;
   padding: 10px;
   border-radius: 8px;
@@ -531,7 +540,5 @@ pre {
   font-size: 12px;
   word-break: break-word;
   line-height: 1.45;
-  box-shadow: 0 0 6px rgba(0,0,0,0.25);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.25);
 }
-
-

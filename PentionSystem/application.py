@@ -32,7 +32,6 @@ def safe_markdown(placeholder, text, level="info"):
         else:
             st.info(text)
 
-# Detect dark mode from localStorage
 if "theme" not in st.session_state:
     theme_base = st.get_option("theme.base") or "light"
     st.session_state["theme"] = "dark" if "dark" in theme_base.lower() else "light"
@@ -507,7 +506,7 @@ st.markdown(
             z-index: 999;
         }
 
-        /* COLOR VARS: chiaro/scuro automatici */
+        /* COLOR VARS: automatic light/dark */
         :root {
             --primary-color: #3a0ca3;
             --secondary-color: #4cc9f0;
