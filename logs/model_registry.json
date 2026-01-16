@@ -1,0 +1,13 @@
+{
+  "last_update": "2025-12-09T13:07:18.266585",
+  "current_model_version": "PIML_v8",
+  "previous_model_version": "PIML_v7",
+  "training_data_version": "PIML_DS_v8",
+  "metrics": {
+    "final_val_loss": 0.208886,
+    "samples": 30,
+    "epochs": 2,
+    "duration_min": 3.38,
+    "model_path": "NOT_SAVED_FAST_RETRAIN"
+  }
+}
