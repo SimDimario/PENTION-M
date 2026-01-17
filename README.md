@@ -122,11 +122,7 @@ Core layers include:
 
 ## 📁 Repository Structure
 
-A complete and detailed project structure is provided in:
-
-```
-project_structure.txt
-```
+A detailed file tree is available [here](documents/project_structure.txt)
 
 The repository contains:
 - Modular Dockerized services
