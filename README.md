@@ -160,6 +160,8 @@ http://localhost:8005
 
 ## 🧪 Validation
 
+## 🧪 Validation
+
 Validation is performed through:
 
 - Module-level tests (physics, PIML, APIs)
@@ -167,10 +169,8 @@ Validation is performed through:
 - Forensic integrity checks
 - Monitoring stress tests
 
-Results are stored under:
-```
-/validation
-```
+All validation activities and experimental artifacts are available in the  
+[`validation/`](validation) directory.
 
 This approach reflects a **validation-by-construction** strategy aligned with DSR principles.
 
@@ -178,11 +178,9 @@ This approach reflects a **validation-by-construction** strategy aligned with DS
 
 ## 📄 Thesis Document
 
-The complete thesis manuscript (PDF) is included in the repository:
+The complete thesis manuscript (PDF) is included in the repository and can be accessed here:
 
-```
-/documents/thesis_latex/main.pdf
-```
+📄 **[Download the thesis (PDF)](documents/thesis_latex/main.pdf)**
 
 ---
 
