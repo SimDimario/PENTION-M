@@ -243,5 +243,3 @@ documents/thesis_latex/*
 
 # But keep the compiled PDF
 !documents/thesis_latex/main.pdf
-!documents/thesis_latex/img/UI1.png
-!documents/thesis_latex/img/PENTION-M_Architecture-EN.png
