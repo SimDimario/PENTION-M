@@ -9,30 +9,12 @@ services:
       - ./ClassificatoreNPS/model:/ClassificatoreNPS/model
       - ./ClassificatoreNPS/datasetNPS:/ClassificatoreNPS/datasetNPS
 
-  correction_dispersion:
-    build: ./CorrectionDispersion
-    container_name: correction_dispersion
-    ports:
-      - "8001:8001"
-    restart: unless-stopped
-    volumes:
-      - ./CorrectionDispersion/models:/CorrectionDispersion/models
-
   gaussian_puff:
     build: ./gaussianPuff
     container_name: gaussian_dispersion_model
     ports:
       - "8002:8002"
     restart: unless-stopped
-
-  source_localization:
-    build: ./EmissionSourceLocalization
-    container_name: loc_emission_source
-    ports:
-      - "8003:8003"
-    restart: unless-stopped
-    volumes:
-      - ./EmissionSourceLocalization/models:/EmissionSourceLocalization/models
 
   correction_piml:
     build: ./CorrectionDispersion_PIML
@@ -131,18 +113,6 @@ services:
           cpus: "3"
 
   # -------------------- UI --------------------
-  pention_system:
-    build: ./PentionSystem
-    container_name: pention_system
-    ports:
-      - "8004:8004"
-    restart: unless-stopped
-    volumes:
-      - ./gaussianPuff:/PentionSystem/gaussianPuff
-      - ./ClassificatoreNPS/model:/PentionSystem/ClassificatoreNPS/model
-      - ./ClassificatoreNPS/datasetNPS:/PentionSystem/ClassificatoreNPS/datasetNPS
-      - ./logs:/logs
-
   pentionsystem_m:
     build: ./PentionSystem_M
     container_name: pentionsystem_m

@@ -1,7 +1,0 @@
-numpy
-folium
-streamlit
-matplotlib
-streamlit-folium
-windrose
-scipy
