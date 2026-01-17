@@ -37,44 +37,6 @@
 │   ├── requirements.txt
 │   ├── service_clf_nps.py
 │   └── train_xgboost_nps.py
-├── CorrectionDispersion
-│   ├── .dockerignore
-│   ├── CNNDataset.py
-│   ├── Dockerfile
-│   ├── MCxM.py
-│   ├── __init__.py
-│   ├── api_correction.py
-│   ├── binary_map_gen.py
-│   ├── binary_maps_data
-│   │   ├── binary_map_example.png
-│   │   ├── roma_italy_bbox.npy
-│   │   └── roma_italy_metadata_bbox.json
-│   ├── cnn_train_pipeline.py
-│   ├── correction_dispersione_preprocess.ipynb
-│   ├── dataset
-│   │   ├── nps_simulated_dataset_gaussiano_2025-09-08.csv
-│   │   ├── nps_simulated_dataset_gaussiano_2025-09-08_processed.csv
-│   │   └── nps_simulated_dataset_tsfresh_2025-09-08.csv
-│   ├── example
-│   │   ├── Figure_1.png
-│   │   ├── conc_origin.png
-│   │   ├── dist_feat_cat.png
-│   │   ├── dist_feat_num.png
-│   │   ├── matrix_corr.png
-│   │   ├── outpu_finale.png
-│   │   ├── res_cnn.png
-│   │   ├── train_val_curv.png
-│   │   ├── train_val_curv2.png
-│   │   ├── windrose_0.png
-│   │   ├── windrose_10.png
-│   │   └── windrose_250.png
-│   ├── loss_function.py
-│   ├── models
-│   │   └── mcxm_cnn_model.pth
-│   ├── requirements.txt
-│   ├── service_correction.py
-│   ├── simulation_gen.py
-│   └── train_model.py
 ├── CorrectionDispersion_PIML
 │   ├── .dockerignore
 │   ├── CNNDataset.py
@@ -114,22 +76,6 @@
 │   ├── service_train_piml.py
 │   ├── simulation_gen.py
 │   └── train_model.py
-├── EmissionSourceLocalization
-│   ├── .dockerignore
-│   ├── Dockerfile
-│   ├── __init__.py
-│   ├── api_source_localization.py
-│   ├── emission_source.ipynb
-│   ├── example
-│   │   ├── matric_corr_xy.png
-│   │   ├── r2_graph.png
-│   │   ├── real_vs_pred.png
-│   │   └── rmse_graph.png
-│   ├── models
-│   │   ├── emission_source_model.pkl
-│   │   └── scaler.pkl
-│   ├── requirements.txt
-│   └── service_source_localization.py
 ├── EmissionSourceLocalization_PIML
 │   ├── .dockerignore
 │   ├── Dockerfile
@@ -151,14 +97,6 @@
 │   ├── mock_retrain.py
 │   ├── monitoring_service.py
 │   └── requirements.txt
-├── PentionSystem
-│   ├── .dockerignore
-│   ├── Dockerfile
-│   ├── application.py
-│   ├── flow.png
-│   ├── plot_functions.py
-│   ├── requirements.txt
-│   └── utils.py
 ├── PentionSystem_M
 │   ├── .dockerignore
 │   ├── Dockerfile
@@ -170,6 +108,7 @@
 │   │   ├── style.css
 │   │   └── van_icon.png
 │   └── ui_pention_m.py
+├── README.md
 ├── docker-compose.yml
 ├── documents
 │   ├── architecture
@@ -245,9 +184,9 @@
 │   │   ├── bundle_20251208_180254_f016b3e0.json
 │   │   ├── bundle_20251208_180301_68039736.json
 │   │   │   ...
-│   │   ├── bundle_20260110_175557_1651e311.json
-│   │   ├── bundle_20260112_182819_dccf4ed9.json
-│   │   └── bundle_20260112_191033_890e8595.json
+│   │   ├── bundle_20260117_162540_12e9f20b.json
+│   │   ├── bundle_20260117_162554_955d03ee.json
+│   │   └── bundle_20260117_162915_4abfa3c4.json
 │   ├── ingestion_log.jsonl
 │   ├── model_registry.json
 │   ├── modelops_retrain_log.jsonl
