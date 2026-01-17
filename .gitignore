@@ -243,3 +243,4 @@ documents/thesis_latex/*
 
 # But keep the compiled PDF
 !documents/thesis_latex/main.pdf
+documents/architecture
