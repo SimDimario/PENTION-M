@@ -10,7 +10,7 @@
 The project extends the original **[PENTION-S](https://github.com/minicla03/Pention-System)** concept by introducing a **mobile, vehicle-mounted paradigm** for the detection and localization of **New Psychoactive Substances (NPS)** in open and semi-open environments.
 
 <p align="center">
-  <img src="documents/thesis_latex/img/PENTION-M_Architecture.png" width="90%" alt="PENTION-M System Architecture"/>
+  <img src="documents/thesis_latex/img/PENTION-M_Architecture-EN.png" width="90%" alt="PENTION-M System Architecture"/>
 </p>
 
 The system simulates a **mobile forensic laboratory** capable of:
@@ -160,8 +160,6 @@ http://localhost:8005
 
 ## 🧪 Validation
 
-## 🧪 Validation
-
 Validation is performed through:
 
 - Module-level tests (physics, PIML, APIs)
@@ -181,6 +179,8 @@ This approach reflects a **validation-by-construction** strategy aligned with DS
 The complete thesis manuscript (PDF) is included in the repository and can be accessed here:
 
 📄 **[Download the thesis (PDF)](documents/thesis_latex/main.pdf)**
+
+> *Note: The thesis manuscript is written in Italian, as required by the degree programme.*
 
 ---
 
