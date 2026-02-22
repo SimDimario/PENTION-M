@@ -239,6 +239,6 @@ documents/presentazione_finale
 struttura.py
 
 # Ignore full LaTeX thesis sources
-documents/thesis_latex/*
+#documents/thesis_latex/*
 
 documents/architecture

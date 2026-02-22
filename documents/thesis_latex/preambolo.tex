@@ -1,0 +1,113 @@
+% !TEX root = main.tex
+
+\usepackage{fontspec}
+\setmainfont{Latin Modern Roman}
+
+\usepackage[margin=3cm, bindingoffset=1cm]{geometry}
+\linespread{1.5}
+
+\usepackage[backend=biber, sorting=none]{biblatex}
+\addbibresource{bib.bib}
+
+\usepackage{float}
+\usepackage{csquotes}
+\usepackage{graphicx}
+\usepackage{indentfirst}
+\usepackage{fancyhdr}
+\usepackage{xurl}
+\usepackage[hidelinks]{hyperref}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{amsmath,amssymb}
+\usepackage{subcaption}
+
+\graphicspath{{img/}}
+
+\setlength{\parindent}{1cm}
+\setlength{\headheight}{14.5pt}
+
+\pagestyle{fancy}
+\renewcommand{\chaptermark}[1]{\markboth{\thechapter.\ \uppercase{#1}}{}}
+\fancyhf{}
+\fancyhead[C]{\textbf{\leftmark}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{1pt}
+\renewcommand{\footrulewidth}{1pt}
+
+%\usepackage[Rejne]{fncychap}
+
+\usepackage{titlesec}
+\usepackage{tikz}
+\makeatletter
+
+\newcommand{\chapterstylebox}[1]{%
+
+  % compensazione reale dello spazio del display chapter
+  \vspace*{-\baselineskip}
+  \vspace*{-\topskip}
+  \vspace*{-5pt}
+
+  % --- CAPITOLO (solo nel mainmatter) ---
+  \if@mainmatter
+    {\centering\scshape\huge CAPITOLO\par}
+    \vspace{10pt}
+  \fi
+
+  \centering
+  \begin{tikzpicture}
+    \def\boxwidth{1\textwidth}
+    \def\boxheight{4.5cm}
+
+    % lati e base
+    \draw (0,0) -- (0,-\boxheight) -- (\boxwidth,-\boxheight) -- (\boxwidth,0);
+
+    % linea superiore
+    \if@mainmatter
+      % spezzata + numero
+      \draw (0,0) -- (0.45*\boxwidth,0);
+      \draw (0.55*\boxwidth,0) -- (\boxwidth,0);
+      \node at (0.5*\boxwidth,0) {\Huge\bfseries \thechapter};
+    \else
+      % chiusa (front/back matter)
+      \draw (0,0) -- (\boxwidth,0);
+    \fi
+
+    % titolo (sempre)
+    \node[text width=0.8\textwidth, align=center]
+      at (0.5*\boxwidth,-0.55*\boxheight)
+      {\Huge \MakeUppercase{#1}};
+  \end{tikzpicture}
+}
+
+\titleformat{\chapter}[display]
+  {\normalfont}
+  {}
+  {0pt}
+  {\chapterstylebox}
+
+\titlespacing*{\chapter}
+  {0pt}    % margine sinistro
+  {0pt}   % spazio PRIMA del titolo (riduci qui)
+  {10pt}   % spazio DOPO il titolo (riduci qui)
+\makeatother
+
+\title{Tesi Magistrale}
+\author{Marco DI MAIO}
+\date{Febbraio 2026}
+
+% Ambiente dedica
+\newenvironment{dedication}
+{\clearpage
+	\thispagestyle{empty}
+	\vspace*{\stretch{1}}
+	\itshape
+	\raggedleft}
+{\par
+	\vspace{\stretch{3}}
+	\clearpage}
+
+\renewcommand{\listfigurename}{Elenco delle figure}
+\renewcommand{\listtablename}{Elenco delle tabelle}
+\renewcommand{\contentsname}{Indice}
+\renewcommand{\chaptername}{Capitolo}
