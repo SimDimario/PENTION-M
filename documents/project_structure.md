@@ -109,61 +109,30 @@
 │   │   └── van_icon.png
 │   └── ui_pention_m.py
 ├── README.md
+├── cls
+├── deliverables
+│   ├── Slides_MarcoDiMaio_2026.pptx
+│   └── Thesis_MarcoDiMaio_2026.pdf
+├── docker
 ├── docker-compose.yml
 ├── documents
-│   ├── architecture
-│   │   ├── Data Flow Model DSR.drawio
-│   │   └── PENTION-M_Architecture.drawio
 │   ├── forensic_outputs
 │   │   └── forensic_report_SIM_20260112_182710.pdf
+│   ├── img
+│   │   ├── PENTION-M_Architecture-EN.png
+│   │   └── UI1.png
+│   ├── project_structure.md
 │   ├── requirements
 │   │   ├── PENTION proposal_MION_vFINAL.pdf
 │   │   ├── PENTION_initial_requirements_elicitation.xls
 │   │   └── Requirements Elicitations Interview.docx
-│   ├── stakeholder_workshop_2025-11-04
-│   │   ├── (Audio) 2025-11-04.m4a
-│   │   ├── 2025-11-04 09-59-04.mkv
+│   └── stakeholder_workshop_2025-11-04
 │   │   ├── PENTION Requirements Elicitation Form (V2)(1-3).xlsx
 │   │   ├── PENTION Requirements Elicitation Form(1-5).xlsx
 │   │   ├── PENTION_LEA_Workshop_DutchPolice_Meeting_Summary_2025-11-04.docx
 │   │   ├── PENTION_LEA_Workshop_DutchPolice_Meeting_Summary_2025-11-04.pdf
 │   │   ├── Workshop-requirement engineering.pptx
 │   │   └── transcript.txt
-│   └── thesis_latex
-│       ├── bib.bib
-│       ├── chapters
-│       │   ├── 01_introduzione.tex
-│       │   ├── 02_background.tex
-│       │   ├── 03_metodologia.tex
-│       │   ├── 04_architettura.tex
-│       │   ├── 05_validazione.tex
-│       │   ├── 06_limitazioni.tex
-│       │   └── 07_conclusioni.tex
-│       ├── frontespizio.tex
-│       ├── img
-│       │   ├── PDF1.png
-│       │   ├── PDF2.png
-│       │   ├── PENTION-M_Architecture.png
-│       │   ├── UI0.png
-│       │   ├── UI1.png
-│       │   ├── UI2.png
-│       │   ├── UI3.png
-│       │   ├── calibration_curve.png
-│       │   ├── confidence_histogram.png
-│       │   ├── confusion_matrix_xgb.png
-│       │   ├── distribuzioni_variabili_continue.png
-│       │   ├── dsr_process_flow.png
-│       │   ├── logo_unisa.png
-│       │   ├── model_accuracies.png
-│       │   ├── noise_robustness.png
-│       │   ├── piml_feature_correlation.png
-│       │   ├── rfe_feature_importance.png
-│       │   ├── source_localization_error_distribution.png
-│       │   ├── source_localization_map.png
-│       │   └── source_localization_scatter_xy.png
-│       ├── main.pdf
-│       ├── main.tex
-│       └── preambolo.tex
 ├── gaussianPuff
 │   ├── .dockerignore
 │   ├── Dockerfile
@@ -193,7 +162,6 @@
 │   └── monitoring_log.jsonl
 ├── osm_cache
 │   └── amsterdam_drive.graphml
-├── project_structure.txt
 ├── shared_config
 │   └── config_geo.py
 └── validation

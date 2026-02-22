@@ -174,11 +174,17 @@ This approach reflects a **validation-by-construction** strategy aligned with DS
 
 ---
 
-## 📄 Thesis Document
+## 📄 Thesis & Presentation
 
-The complete thesis manuscript (PDF) is included in the repository and can be accessed here:
+The final thesis manuscript and the defense slides are included in the repository.
 
-📄 **[Download the thesis (PDF)](documents/thesis_latex/main.pdf)**
+📄 **Thesis (PDF)**  
+[Download the thesis](deliverables/Thesis_MarcoDiMaio_2026.pdf)  
+*Language: Italian*
+
+📊 **Defense Slides (PPTX)**  
+[Download the presentation slides](deliverables/Slides_MarcoDiMaio_2026.pptx)  
+*Language: Italian*
 
 > *Note: The thesis manuscript is written in Italian, as required by the degree programme.*
 
