@@ -71,6 +71,24 @@
         <h2>EI Mass Spectrum</h2>
         <canvas id="mini-spectrum-chart" height="120"></canvas>
       </div>
+      <div id="trajectory-card" class="card" style="display:none;">
+  <h2>Trajectory source localization</h2>
+
+  <div class="metric-row">
+    <div class="metric-label">Predicted latitude</div>
+    <div class="metric-value" id="traj-lat">–</div>
+  </div>
+
+  <div class="metric-row">
+    <div class="metric-label">Predicted longitude</div>
+    <div class="metric-value" id="traj-lon">–</div>
+  </div>
+
+  <div class="metric-row">
+    <div class="metric-label">Confidence</div>
+    <div class="metric-value" id="traj-confidence">–</div>
+  </div>
+</div>
       <div id="bundle-card" class="card" style="display:none;">
         <h2>Last forensic bundle</h2>
         <div class="small" id="bundle-name">–</div>

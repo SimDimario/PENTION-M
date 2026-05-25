@@ -1,6 +1,7 @@
 let map;
 let vanMarker = null;
 let sourceCircle = null;
+let predictedSourceMarker = null;
 let vanPath = null;
 let pathLatLngs = [];
 let ws = null;
@@ -25,6 +26,10 @@ const stabilityEl = document.getElementById("stability-index");
 const confidenceEl = document.getElementById("confidence");
 const btnDebug = document.getElementById("btn-debug");
 const canvasRenderer = L.canvas({ padding: 0.5 });
+const trajectoryCard = document.getElementById("trajectory-card");
+const trajLatEl = document.getElementById("traj-lat");
+const trajLonEl = document.getElementById("traj-lon");
+const trajConfidenceEl = document.getElementById("traj-confidence");
 
 function getJsPDF() {
   if (window.jspdf && window.jspdf.jsPDF) return window.jspdf.jsPDF;
@@ -154,6 +159,12 @@ function resetGraphics() {
     map.removeLayer(vanPath);
     vanPath = null;
   }
+  if (predictedSourceMarker) {
+  map.removeLayer(predictedSourceMarker);
+  predictedSourceMarker = null;
+   }
+
+trajectoryCard.style.display = "none";
   pathLatLngs = [];
   simIdEl.textContent = "–";
   modelVersionEl.textContent = "–";
@@ -963,6 +974,47 @@ function connectWebSocket() {
       btnReset.disabled = false;
       window.lastBundle = msg.forensic_bundle;
       window.lastMonitoring = msg.monitoring;
+      if (msg.trajectory_analysis) {
+
+  const pred = msg.trajectory_analysis.predicted_source;
+
+  if (pred) {
+
+    trajectoryCard.style.display = "block";
+
+    trajLatEl.textContent =
+      pred.latitude?.toFixed?.(6) ?? pred.latitude;
+
+    trajLonEl.textContent =
+      pred.longitude?.toFixed?.(6) ?? pred.longitude;
+
+    trajConfidenceEl.textContent =
+      pred.confidence?.toFixed?.(3) ?? pred.confidence ?? "N/A";
+
+    if (predictedSourceMarker) {
+      map.removeLayer(predictedSourceMarker);
+    }
+
+    predictedSourceMarker = L.circleMarker(
+      [pred.latitude, pred.longitude],
+      {
+        radius: 10,
+        color: "#22c55e",
+        fillColor: "#22c55e",
+        fillOpacity: 0.8,
+      }
+    ).addTo(map);
+
+    predictedSourceMarker.bindPopup(
+      `
+      <b>Predicted source</b><br>
+      Lat: ${pred.latitude}<br>
+      Lon: ${pred.longitude}<br>
+      Confidence: ${pred.confidence}
+      `
+    );
+  }
+}
       if (msg.simulation_id) {
         simIdEl.textContent = msg.simulation_id;
       }

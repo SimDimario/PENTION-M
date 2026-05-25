@@ -16,6 +16,14 @@ import networkx as nx
 import osmnx as ox
 import sys
 
+from model_trajectory import *
+
+from trajectory_reconciliation import *
+
+from gradient_analysis import *
+
+from hotspot_estimation import *
+
 sys.path.append("/shared_config")
 from config_geo import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX
 
@@ -30,6 +38,7 @@ INGESTION_URL = "http://mlops_ingestion:8011/ingest_data"
 app = FastAPI(title="PENTION-M UI (Van Simulation)")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 DATASET_PATH = "/app/datasetNPS/PENTION_EI_Complete.csv"
+
 
 try:
     NPS_DF = pd.read_csv(DATASET_PATH)
@@ -48,6 +57,7 @@ class SimulationState:
         self.detected = False
         self.path = []
         self.current_sim_id = None
+        self.trajectory_points = []
 
 
 state = SimulationState()
@@ -128,6 +138,68 @@ def haversine_m(lat1, lon1, lat2, lon2):
     a = sin(dphi / 2) ** 2 + cos(phi1) * cos(phi2) * sin(dlambda / 2) ** 2
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
     return R * c
+
+def process_trajectory_payload(payload: dict):
+
+    request = TrajectoryRequest(**payload)
+
+    # ========================================================
+    # 1. RECONCILIATION
+    # ========================================================
+
+    observations = reconcile_trajectory(
+        request
+    )
+
+    # ========================================================
+    # 2. GRADIENT ANALYSIS
+    # ========================================================
+
+    gradients = estimate_gradient(
+        observations
+    )
+
+    # ========================================================
+    # 3. HOTSPOT ESTIMATION
+    # ========================================================
+
+    hotspot = estimate_hotspot(
+        observations
+    )
+
+    # ========================================================
+    # 4. SPECTRUM GENERATION
+    # ========================================================
+
+    hotspot_observation = max(
+        observations,
+        key=lambda x: x.total_load
+    )
+
+    spectrum = generate_noisy_spectrum(
+        noise_level=0.05
+    )
+
+    confidence = min(
+        0.95,
+        0.45 + len(observations) * 0.008
+    )
+
+    return {
+        "status": "trajectory_processed",
+
+        "predicted_source": {
+            "latitude": hotspot["latitude"],
+            "longitude": hotspot["longitude"],
+            "confidence": round(confidence, 3)
+        },
+
+        "trajectory_points": len(observations),
+
+        "gradient_analysis": gradients,
+
+        "generated_spectrum_size": len(spectrum),
+    }
 
 
 async def broadcast(message: dict):
@@ -290,10 +362,11 @@ def call_ingestion_pipeline(
 async def simulation_loop(force_near=False):
     try:
         G = load_graph()
-
+        state.trajectory_points = []
         state.running = True
         state.detected = False
         state.path = []
+
 
         nodes = list(G.nodes)
         if not nodes:
@@ -325,10 +398,23 @@ async def simulation_loop(force_near=False):
                     state.van_node = candidate
                     break
 
-        van_lat, van_lon = node_latlon(G, state.van_node)
-        state.path.append((van_lat, van_lon))
         sim_id = f"SIM_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
         state.current_sim_id = sim_id
+
+        van_lat, van_lon = node_latlon(G, state.van_node)
+        state.path.append((van_lat, van_lon))
+        state.trajectory_points.append(
+            build_trajectory_point(
+                sim_id,
+                str(state.van_node),
+                van_lat,
+                van_lon,
+                source_lat,
+                source_lon
+            )
+        )
+
+
         await broadcast(
             {
                 "type": "init",
@@ -352,6 +438,18 @@ async def simulation_loop(force_near=False):
 
                 state.van_node = pn
                 lat, lon = node_latlon(G, pn)
+
+                state.trajectory_points.append(
+                    build_trajectory_point(
+                        sim_id,
+                        str(pn),
+                        lat,
+                        lon,
+                        source_lat,
+                        source_lon
+                    )
+                )
+
                 state.path.append((lat, lon))
 
                 dist = haversine_m(lat, lon, source_lat, source_lon)
@@ -370,6 +468,29 @@ async def simulation_loop(force_near=False):
                 if dist <= INNER_RADIUS:
                     state.detected = True
                     state.running = False
+                    trajectory_payload = {
+                        "sampling_points": state.trajectory_points,
+                        "units": {
+                            "concentration": "arbitrary",
+                            "coordinates": "WGS84"
+                        }
+                    }
+
+                    trajectory_result = process_trajectory_payload(
+                        trajectory_payload
+                    )
+                    estimated = trajectory_result.get(
+                        "predicted_source",
+                        {}
+                    )
+
+                    est_lat = estimated.get("latitude")
+                    est_lon = estimated.get("longitude")
+
+                    print(
+                        f"[UI] Estimated hotspot: {est_lat}, {est_lon}",
+                        flush=True
+                    )
 
                     await broadcast(
                         {
@@ -388,7 +509,7 @@ async def simulation_loop(force_near=False):
 
             if state.detected:
                 result = call_ingestion_pipeline(
-                    sim_id, lat, lon, source_lat, source_lon
+                    sim_id, est_lat, est_lon, source_lat, source_lon
                 )
                 monitoring = None
                 if isinstance(result.get("body"), dict):
@@ -405,6 +526,7 @@ async def simulation_loop(force_near=False):
                         "monitoring": monitoring,
                         "registry": registry,
                         "forensic_bundle": bundle,
+                        "trajectory_analysis": trajectory_result,
                     }
                 )
 
@@ -417,14 +539,43 @@ async def simulation_loop(force_near=False):
 
             state.van_node = random.choice(neighbors)
             van_lat, van_lon = node_latlon(G, state.van_node)
+            state.trajectory_points.append(
+                build_trajectory_point(
+                    sim_id,
+                    str(state.van_node),
+                    van_lat,
+                    van_lon,
+                    source_lat,
+                    source_lon
+                )
+            )
+
             state.path.append((van_lat, van_lon))
+
             dist = haversine_m(van_lat, van_lon, source_lat, source_lon)
             INNER_RADIUS = DETECTION_RADIUS_M - 50
 
             if dist <= INNER_RADIUS:
                 state.detected = True
                 state.running = False
+                trajectory_payload = {
+                    "sampling_points": state.trajectory_points,
+                    "units": {
+                        "concentration": "arbitrary",
+                        "coordinates": "WGS84"
+                    }
+                }
 
+                trajectory_result = requests.post(
+                    "http://localhost:8005/trajectory/infer",
+                    json=trajectory_payload,
+                    timeout=180
+                ).json()
+
+                estimated = trajectory_result.get("predicted_source", {})
+
+                est_lat = estimated.get("latitude")
+                est_lon = estimated.get("longitude")
                 await broadcast(
                     {
                         "type": "van_update",
@@ -438,7 +589,7 @@ async def simulation_loop(force_near=False):
                 await asyncio.sleep(0.15)
 
                 result = call_ingestion_pipeline(
-                    sim_id, van_lat, van_lon, source_lat, source_lon
+                    sim_id, est_lat, est_lon, source_lat, source_lon
                 )
                 monitoring = (
                     result.get("body", {}).get("monitoring") or get_last_monitoring()
@@ -454,6 +605,7 @@ async def simulation_loop(force_near=False):
                         "monitoring": monitoring,
                         "registry": registry,
                         "forensic_bundle": bundle,
+                        "trajectory_analysis": trajectory_result,
                     }
                 )
 
@@ -491,6 +643,20 @@ async def simulation_loop(force_near=False):
             }
         )
 
+def build_trajectory_point(sim_id, node_id, lat, lon, source_lat, source_lon):
+    return {
+        "id": node_id,
+        "coordinates": {
+            "latitude": lat,
+            "longitude": lon
+        },
+        "measured_concentrations": {
+            "PFOS": random.uniform(50, 250),
+            "PFOA": random.uniform(20, 180),
+            "GenX": random.uniform(10, 100)
+        },
+        "sample_time": datetime.utcnow().isoformat() + "Z"
+    }
 
 @app.get("/", response_class=FileResponse)
 def serve_index():
@@ -550,6 +716,15 @@ async def websocket_endpoint(websocket: WebSocket):
         if websocket in active_sockets:
             active_sockets.remove(websocket)
 
+
+@app.post("/trajectory/infer")
+async def infer_from_trajectory(request: TrajectoryRequest):
+
+    payload = request.dict()
+
+    result = process_trajectory_payload(payload)
+
+    return result
 
 if __name__ == "__main__":
     import uvicorn
