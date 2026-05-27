@@ -9,6 +9,15 @@ let vanIcon = null;
 let miniSpectrumChart = null;
 let fullSpectrumChart = null;
 
+// ── Selezione punti sulla mappa ──────────────────────────────────────────────
+let pickingMode = false;       // true mentre aspettiamo i due click
+let pickStep = 0;              // 0 = nessuna selezione, 1 = aspetto van, 2 = aspetto source
+let pickedVan = null;          // { lat, lon }
+let pickedSource = null;       // { lat, lon }
+let pickVanMarker = null;      // marker temporaneo van
+let pickSourceMarker = null;   // marker temporaneo source
+let pendingSimType = null;     // "normal" | "near"
+
 const btnStart = document.getElementById("btn-start");
 const btnReset = document.getElementById("btn-reset");
 const statusPill = document.getElementById("status-pill");
@@ -30,6 +39,132 @@ const trajectoryCard = document.getElementById("trajectory-card");
 const trajLatEl = document.getElementById("traj-lat");
 const trajLonEl = document.getElementById("traj-lon");
 const trajConfidenceEl = document.getElementById("traj-confidence");
+
+// Banner di istruzione pick
+const pickBanner = document.getElementById("pick-banner");
+const pickBannerText = document.getElementById("pick-banner-text");
+const btnPickCancel = document.getElementById("btn-pick-cancel");
+
+// ── Gestione modalità pick ───────────────────────────────────────────────────
+
+function startPickingMode(simType) {
+  pendingSimType = simType;
+  pickingMode = true;
+  pickStep = 1;
+  pickedVan = null;
+  pickedSource = null;
+
+  // Rimuovi eventuali marker temporanei precedenti
+  if (pickVanMarker)    { map.removeLayer(pickVanMarker);    pickVanMarker = null; }
+  if (pickSourceMarker) { map.removeLayer(pickSourceMarker); pickSourceMarker = null; }
+
+  map.getContainer().style.cursor = "crosshair";
+  pickBanner.style.display = "flex";
+  pickBannerText.textContent = "Click sul punto di PARTENZA del van (punto 1 di 2)";
+}
+
+function cancelPickingMode() {
+  pickingMode = false;
+  pickStep = 0;
+  pickedVan = null;
+  pickedSource = null;
+  pendingSimType = null;
+
+  if (pickVanMarker)    { map.removeLayer(pickVanMarker);    pickVanMarker = null; }
+  if (pickSourceMarker) { map.removeLayer(pickSourceMarker); pickSourceMarker = null; }
+
+  map.getContainer().style.cursor = "";
+  pickBanner.style.display = "none";
+
+  btnStart.disabled = false;
+  btnDebug.disabled = false;
+  btnReset.disabled = true;
+}
+
+function onMapPickClick(e) {
+  if (!pickingMode) return;
+
+  const { lat, lng } = e.latlng;
+
+  if (pickStep === 1) {
+    // Primo click → posizione van
+    pickedVan = { lat, lon: lng };
+    if (pickVanMarker) map.removeLayer(pickVanMarker);
+    pickVanMarker = L.circleMarker([lat, lng], {
+      radius: 10,
+      color: "#0ea5e9",
+      fillColor: "#0ea5e9",
+      fillOpacity: 0.9,
+    }).addTo(map).bindPopup("Partenza van").openPopup();
+
+    pickStep = 2;
+    pickBannerText.textContent = "Ottimo! Ora click sulla posizione della SORGENTE (punto 2 di 2)";
+
+  } else if (pickStep === 2) {
+    // Secondo click → posizione sorgente
+    pickedSource = { lat, lon: lng };
+    if (pickSourceMarker) map.removeLayer(pickSourceMarker);
+    pickSourceMarker = L.circleMarker([lat, lng], {
+      radius: 10,
+      color: "#f97316",
+      fillColor: "#fb923c",
+      fillOpacity: 0.9,
+    }).addTo(map).bindPopup("Sorgente").openPopup();
+
+    // Fine picking → avvia simulazione
+    pickingMode = false;
+    pickStep = 0;
+    map.getContainer().style.cursor = "";
+    pickBanner.style.display = "none";
+
+    launchSimulationWithPoints(pendingSimType, pickedVan, pickedSource);
+  }
+}
+
+async function launchSimulationWithPoints(simType, vanPos, sourcePos) {
+  showLoading();
+  resetGraphics();
+  hideSimCard();
+  hideBundleCard();
+  hideProcessing();
+  window.lastBundle = null;
+  window.lastMonitoring = null;
+  btnStart.disabled = true;
+  btnDebug.disabled = true;
+  btnReset.disabled = true;
+
+  // Rimuovi marker temporanei (ora ci penserà l'init ws)
+  if (pickVanMarker)    { map.removeLayer(pickVanMarker);    pickVanMarker = null; }
+  if (pickSourceMarker) { map.removeLayer(pickSourceMarker); pickSourceMarker = null; }
+
+  const endpoint = simType === "near"
+    ? "/api/start_simulation_near"
+    : "/api/start_simulation";
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        van_lat: vanPos.lat,
+        van_lon: vanPos.lon,
+        source_lat: sourcePos.lat,
+        source_lon: sourcePos.lon,
+      }),
+    });
+    if (!resp.ok) {
+      hideLoading();
+      btnStart.disabled = false;
+      btnDebug.disabled = false;
+      alert("Errore avvio simulazione: " + resp.status);
+    }
+  } catch (e) {
+    hideLoading();
+    btnStart.disabled = false;
+    btnDebug.disabled = false;
+    alert("Errore avvio simulazione: " + e);
+  }
+}
 
 function getJsPDF() {
   if (window.jspdf && window.jspdf.jsPDF) return window.jspdf.jsPDF;
@@ -59,32 +194,11 @@ function hideProcessing() {
   processingCard.style.display = "none";
 }
 
-document.getElementById("btn-debug").addEventListener("click", async () => {
-  showLoading();
-  resetGraphics();
-  hideSimCard();
-  hideBundleCard();
-  hideProcessing();
-  window.lastBundle = null;
-  window.lastMonitoring = null;
+document.getElementById("btn-debug").addEventListener("click", () => {
   btnStart.disabled = true;
-  btnReset.disabled = true;
   btnDebug.disabled = true;
-
-  try {
-    const resp = await fetch("/api/start_simulation_near", { method: "POST" });
-    if (!resp.ok) {
-      hideLoading();
-      btnStart.disabled = false;
-      btnReset.disabled = false;
-      alert("Error starting debug simulation: " + resp.status);
-    }
-  } catch (e) {
-    hideLoading();
-    btnStart.disabled = false;
-    btnReset.disabled = false;
-    alert("Error starting debug simulation: " + e);
-  }
+  btnReset.disabled = true;
+  startPickingMode("near");
 });
 
 function showLoading() {
@@ -129,6 +243,8 @@ function ensureMap() {
       iconSize: [32, 32],
       iconAnchor: [16, 16],
     });
+    // Registra il click per la selezione punti
+    map.on("click", onMapPickClick);
     hideLoading();
   }
 }
@@ -1121,24 +1237,19 @@ function connectWebSocket() {
   };
 }
 
-btnStart.addEventListener("click", async () => {
-  showLoading();
-  resetGraphics();
-  hideSimCard();
-  hideBundleCard();
-  hideProcessing();
-  window.lastBundle = null;
-  window.lastMonitoring = null;
+btnStart.addEventListener("click", () => {
   btnStart.disabled = true;
   btnDebug.disabled = true;
   btnReset.disabled = true;
-  await fetch("/api/start_simulation", { method: "POST" });
+  startPickingMode("normal");
 });
 
 btnReset.addEventListener("click", async () => {
+  if (pickingMode) cancelPickingMode();
   await fetch("/api/reset", { method: "POST" });
   setStatus("idle");
   btnStart.disabled = false;
+  btnDebug.disabled = false;
   btnReset.disabled = true;
   resetGraphics();
   hideProcessing();
@@ -1148,7 +1259,6 @@ btnReset.addEventListener("click", async () => {
   window.lastBundle = null;
   window.lastMonitoring = null;
 });
-
 ensureMap();
 hideLoading();
 connectWebSocket();

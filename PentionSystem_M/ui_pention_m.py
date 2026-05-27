@@ -359,7 +359,7 @@ def call_ingestion_pipeline(
         return {"code": 500, "body": {"error": str(e)}}
 
 
-async def simulation_loop(force_near=False):
+async def simulation_loop(force_near=False, user_points=None):
     try:
         G = load_graph()
         state.trajectory_points = []
@@ -367,36 +367,58 @@ async def simulation_loop(force_near=False):
         state.detected = False
         state.path = []
 
-
         nodes = list(G.nodes)
         if not nodes:
             raise RuntimeError("Graph has no nodes – cannot start simulation.")
 
-        state.source_node = random.choice(nodes)
-        source_lat, source_lon = node_latlon(G, state.source_node)
+        if user_points is not None:
+            def nearest_node(target_lat, target_lon):
+                best = None
+                best_dist = float("inf")
+                for n in nodes:
+                    nlat, nlon = node_latlon(G, n)
+                    d = haversine_m(nlat, nlon, target_lat, target_lon)
+                    if d < best_dist:
+                        best_dist = d
+                        best = n
+                return best
 
-        if force_near:
-            candidates = []
-            for n in nodes:
-                lat, lon = node_latlon(G, n)
-                dist = haversine_m(lat, lon, source_lat, source_lon)
-                if 1800 < dist < 2000:
-                    candidates.append(n)
+            state.source_node = nearest_node(
+                user_points["source_lat"], user_points["source_lon"]
+            )
+            state.van_node = nearest_node(
+                user_points["van_lat"], user_points["van_lon"]
+            )
+            source_lat, source_lon = node_latlon(G, state.source_node)
 
-            if candidates:
-                state.van_node = random.choice(candidates)
-            else:
-                neighbors = list(G.neighbors(state.source_node))
-                if neighbors:
-                    state.van_node = random.choice(neighbors)
-                else:
-                    state.van_node = random.choice(nodes)
         else:
-            while True:
-                candidate = random.choice(nodes)
-                if candidate != state.source_node:
-                    state.van_node = candidate
-                    break
+            state.source_node = random.choice(nodes)
+            source_lat, source_lon = node_latlon(G, state.source_node)
+
+            if force_near:
+                candidates = []
+                for n in nodes:
+                    lat, lon = node_latlon(G, n)
+                    dist = haversine_m(lat, lon, source_lat, source_lon)
+                    if 1800 < dist < 2000:
+                        candidates.append(n)
+
+                if candidates:
+                    state.van_node = random.choice(candidates)
+                else:
+                    neighbors = list(G.neighbors(state.source_node))
+                    if neighbors:
+                        state.van_node = random.choice(neighbors)
+                    else:
+                        state.van_node = random.choice(nodes)
+            else:
+                while True:
+                    candidate = random.choice(nodes)
+                    if candidate != state.source_node:
+                        state.van_node = candidate
+                        break
+
+        # ── DA QUI IN POI: tutto il codice originale invariato ───────────────
 
         sim_id = f"SIM_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
         state.current_sim_id = sim_id
@@ -414,7 +436,6 @@ async def simulation_loop(force_near=False):
             )
         )
 
-
         await broadcast(
             {
                 "type": "init",
@@ -424,6 +445,7 @@ async def simulation_loop(force_near=False):
                 "status": "patrolling",
             }
         )
+
         if force_near:
             try:
                 path_nodes = nx.shortest_path(
@@ -441,17 +463,11 @@ async def simulation_loop(force_near=False):
 
                 state.trajectory_points.append(
                     build_trajectory_point(
-                        sim_id,
-                        str(pn),
-                        lat,
-                        lon,
-                        source_lat,
-                        source_lon
+                        sim_id, str(pn), lat, lon, source_lat, source_lon
                     )
                 )
 
                 state.path.append((lat, lon))
-
                 dist = haversine_m(lat, lon, source_lat, source_lon)
 
                 await broadcast(
@@ -476,21 +492,12 @@ async def simulation_loop(force_near=False):
                         }
                     }
 
-                    trajectory_result = process_trajectory_payload(
-                        trajectory_payload
-                    )
-                    estimated = trajectory_result.get(
-                        "predicted_source",
-                        {}
-                    )
-
+                    trajectory_result = process_trajectory_payload(trajectory_payload)
+                    estimated = trajectory_result.get("predicted_source", {})
                     est_lat = estimated.get("latitude")
                     est_lon = estimated.get("longitude")
 
-                    print(
-                        f"[UI] Estimated hotspot: {est_lat}, {est_lon}",
-                        flush=True
-                    )
+                    print(f"[UI] Estimated hotspot: {est_lat}, {est_lon}", flush=True)
 
                     await broadcast(
                         {
@@ -502,7 +509,6 @@ async def simulation_loop(force_near=False):
                         }
                     )
                     await asyncio.sleep(0.1)
-
                     break
 
                 await asyncio.sleep(STEP_DELAY_SEC)
@@ -532,12 +538,22 @@ async def simulation_loop(force_near=False):
 
             return
 
+        visited_nodes = set()
+        visited_nodes.add(state.van_node)
+
         while state.running and not state.detected:
             neighbors = list(G.neighbors(state.van_node))
             if not neighbors:
                 break
 
-            state.van_node = random.choice(neighbors)
+            unvisited = [n for n in neighbors if n not in visited_nodes]
+            if unvisited:
+                state.van_node = random.choice(unvisited)
+            else:
+
+                state.van_node = random.choice(neighbors)
+
+            visited_nodes.add(state.van_node)
             van_lat, van_lon = node_latlon(G, state.van_node)
             state.trajectory_points.append(
                 build_trajectory_point(
@@ -551,7 +567,6 @@ async def simulation_loop(force_near=False):
             )
 
             state.path.append((van_lat, van_lon))
-
             dist = haversine_m(van_lat, van_lon, source_lat, source_lon)
             INNER_RADIUS = DETECTION_RADIUS_M - 50
 
@@ -573,9 +588,9 @@ async def simulation_loop(force_near=False):
                 ).json()
 
                 estimated = trajectory_result.get("predicted_source", {})
-
                 est_lat = estimated.get("latitude")
                 est_lon = estimated.get("longitude")
+
                 await broadcast(
                     {
                         "type": "van_update",
@@ -585,7 +600,6 @@ async def simulation_loop(force_near=False):
                         "distance_m": dist,
                     }
                 )
-
                 await asyncio.sleep(0.15)
 
                 result = call_ingestion_pipeline(
@@ -608,7 +622,6 @@ async def simulation_loop(force_near=False):
                         "trajectory_analysis": trajectory_result,
                     }
                 )
-
                 break
 
             await broadcast(
@@ -620,7 +633,6 @@ async def simulation_loop(force_near=False):
                     "distance_m": dist,
                 }
             )
-
             await asyncio.sleep(STEP_DELAY_SEC)
 
         if not state.detected:
@@ -658,17 +670,50 @@ def build_trajectory_point(sim_id, node_id, lat, lon, source_lat, source_lon):
         "sample_time": datetime.utcnow().isoformat() + "Z"
     }
 
+from pydantic import BaseModel
+from typing import Optional
+
+class SimStartRequest(BaseModel):
+    van_lat: Optional[float] = None
+    van_lon: Optional[float] = None
+    source_lat: Optional[float] = None
+    source_lon: Optional[float] = None
+
 @app.get("/", response_class=FileResponse)
 def serve_index():
     return FileResponse("static/index.html")
 
 
 @app.post("/api/start_simulation")
-async def start_simulation():
+async def start_simulation(body: SimStartRequest = None):
     if state.running:
         return JSONResponse({"status": "already_running"})
-    asyncio.create_task(simulation_loop())
+    user_points = None
+    if body and body.van_lat is not None:
+        user_points = {
+            "van_lat": body.van_lat,
+            "van_lon": body.van_lon,
+            "source_lat": body.source_lat,
+            "source_lon": body.source_lon,
+        }
+    asyncio.create_task(simulation_loop(force_near=False, user_points=user_points))
     return {"status": "started"}
+
+
+@app.post("/api/start_simulation_near")
+async def start_simulation_near(body: SimStartRequest = None):
+    if state.running:
+        return JSONResponse({"status": "already_running"})
+    user_points = None
+    if body and body.van_lat is not None:
+        user_points = {
+            "van_lat": body.van_lat,
+            "van_lon": body.van_lon,
+            "source_lat": body.source_lat,
+            "source_lon": body.source_lon,
+        }
+    asyncio.create_task(simulation_loop(force_near=True, user_points=user_points))
+    return {"status": "started_debug"}
 
 
 @app.post("/api/reset")
@@ -693,13 +738,6 @@ def api_status():
     }
 
 
-@app.post("/api/start_simulation_near")
-async def start_simulation_near():
-    if state.running:
-        return JSONResponse({"status": "already_running"})
-
-    asyncio.create_task(simulation_loop(force_near=True))
-    return {"status": "started_debug"}
 
 
 @app.websocket("/ws")
