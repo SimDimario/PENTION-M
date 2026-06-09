@@ -540,18 +540,26 @@ async def simulation_loop(force_near=False, user_points=None):
 
         visited_nodes = set()
         visited_nodes.add(state.van_node)
+        STEP_STALE_LIMIT = 40
+        steps_since_improvement = 0
+        best_dist_so_far = haversine_m(van_lat, van_lon, source_lat, source_lon)
 
         while state.running and not state.detected:
             neighbors = list(G.neighbors(state.van_node))
             if not neighbors:
                 break
 
-            unvisited = [n for n in neighbors if n not in visited_nodes]
-            if unvisited:
-                state.van_node = random.choice(unvisited)
-            else:
+            def dist_to_source(n):
+                nlat, nlon = node_latlon(G, n)
+                return haversine_m(nlat, nlon, source_lat, source_lon)
 
-                state.van_node = random.choice(neighbors)
+            unvisited = [n for n in neighbors if n not in visited_nodes]
+            candidates = unvisited if unvisited else neighbors
+
+            if random.random() < 0.6:
+                state.van_node = min(candidates, key=dist_to_source)
+            else:
+                state.van_node = random.choice(candidates)
 
             visited_nodes.add(state.van_node)
             van_lat, van_lon = node_latlon(G, state.van_node)
@@ -565,9 +573,49 @@ async def simulation_loop(force_near=False, user_points=None):
                     source_lon
                 )
             )
-
             state.path.append((van_lat, van_lon))
             dist = haversine_m(van_lat, van_lon, source_lat, source_lon)
+
+            if dist < best_dist_so_far:
+                best_dist_so_far = dist
+                steps_since_improvement = 0
+            else:
+                steps_since_improvement += 1
+
+            if steps_since_improvement >= STEP_STALE_LIMIT:
+                steps_since_improvement = 0
+                visited_nodes.clear()
+                visited_nodes.add(state.van_node)
+                try:
+                    rescue_path = nx.shortest_path(
+                        G, source=state.van_node, target=state.source_node, weight="length"
+                    )
+                    for rescue_node in rescue_path[1:6]:
+                        if not state.running:
+                            break
+                        state.van_node = rescue_node
+                        van_lat, van_lon = node_latlon(G, rescue_node)
+                        visited_nodes.add(rescue_node)
+                        state.trajectory_points.append(
+                            build_trajectory_point(
+                                sim_id, str(rescue_node), van_lat, van_lon,
+                                source_lat, source_lon
+                            )
+                        )
+                        state.path.append((van_lat, van_lon))
+                        dist = haversine_m(van_lat, van_lon, source_lat, source_lon)
+                        best_dist_so_far = min(best_dist_so_far, dist)
+                        await broadcast({
+                            "type": "van_update",
+                            "lat": van_lat,
+                            "lon": van_lon,
+                            "status": "patrolling",
+                            "distance_m": dist,
+                        })
+                        await asyncio.sleep(STEP_DELAY_SEC)
+                except Exception:
+                    pass
+
             INNER_RADIUS = DETECTION_RADIUS_M - 50
 
             if dist <= INNER_RADIUS:
@@ -581,58 +629,48 @@ async def simulation_loop(force_near=False, user_points=None):
                     }
                 }
 
-                trajectory_result = requests.post(
-                    "http://localhost:8005/trajectory/infer",
-                    json=trajectory_payload,
-                    timeout=180
-                ).json()
+                trajectory_result = process_trajectory_payload(trajectory_payload)
 
                 estimated = trajectory_result.get("predicted_source", {})
                 est_lat = estimated.get("latitude")
                 est_lon = estimated.get("longitude")
 
-                await broadcast(
-                    {
-                        "type": "van_update",
-                        "lat": van_lat,
-                        "lon": van_lon,
-                        "status": "detected",
-                        "distance_m": dist,
-                    }
-                )
+                await broadcast({
+                    "type": "van_update",
+                    "lat": van_lat,
+                    "lon": van_lon,
+                    "status": "detected",
+                    "distance_m": dist,
+                })
                 await asyncio.sleep(0.15)
 
                 result = call_ingestion_pipeline(
                     sim_id, est_lat, est_lon, source_lat, source_lon
                 )
                 monitoring = (
-                    result.get("body", {}).get("monitoring") or get_last_monitoring()
+                        result.get("body", {}).get("monitoring") or get_last_monitoring()
                 )
                 registry = get_model_registry()
                 bundle = get_last_forensic_bundle()
 
-                await broadcast(
-                    {
-                        "type": "detection_result",
-                        "simulation_id": sim_id,
-                        "ingestion_response": result,
-                        "monitoring": monitoring,
-                        "registry": registry,
-                        "forensic_bundle": bundle,
-                        "trajectory_analysis": trajectory_result,
-                    }
-                )
+                await broadcast({
+                    "type": "detection_result",
+                    "simulation_id": sim_id,
+                    "ingestion_response": result,
+                    "monitoring": monitoring,
+                    "registry": registry,
+                    "forensic_bundle": bundle,
+                    "trajectory_analysis": trajectory_result,
+                })
                 break
 
-            await broadcast(
-                {
-                    "type": "van_update",
-                    "lat": van_lat,
-                    "lon": van_lon,
-                    "status": "patrolling",
-                    "distance_m": dist,
-                }
-            )
+            await broadcast({
+                "type": "van_update",
+                "lat": van_lat,
+                "lon": van_lon,
+                "status": "patrolling",
+                "distance_m": dist,
+            })
             await asyncio.sleep(STEP_DELAY_SEC)
 
         if not state.detected:
